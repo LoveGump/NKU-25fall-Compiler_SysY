@@ -2,7 +2,7 @@
 %require "3.2"
 
 %define api.namespace { FE }
-%define api.parser.class { YaccParser }
+%define api.parser.class { YaccParser } // 生成的语法分析类名字是：FE::YaccParser
 %define api.token.constructor
 %define api.value.type variant
 %define parse.assert
@@ -27,7 +27,7 @@
     }
 }
 
-%code top
+%code top // Bison ←→ 调用 yylex() ←→ 调用 Flex 扫描器。
 {
     #include <iostream>
 
@@ -61,14 +61,39 @@
 // 从这开始定义你需要用到的 token
 // 对于一些需要 "值" 的 token，可以在前面加上 <type> 来指定值的类型
 // 例如，%token <int> INT_CONST 定义了一个名为 INT_CONST
+// 整型
 %token <int> INT_CONST
-%token <std::string> STR_CONST ERR_TOKEN SLASH_COMMENT
-
+// 字符串： 字符串常量、错误token、单行注释 
+%token <std::string> STR_CONST ERR_TOKEN SLASH_COMMENT 
+// 标识符
 %token <std::string> IDENT 
-
+// 关键字
 %token IF ELSE FOR WHILE CONTINUE BREAK SWITCH CASE GOTO DO RETURN CONST
+// 界符 ;         ,     (      )      [        ]          {        }
 %token SEMICOLON COMMA LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE
+// 文件结束符
 %token END
+
+// 补充：
+%token <long long> LL_CONST
+// switch case default ：
+%token DEFAULT COLON 
+%token INT FLOAT VOID
+// 多行注释
+%token <std::string> MULTI_COMMENT  
+// 浮点数字面量
+%token <float> FLOAT_CONST
+// 运算符 + - * / %
+%token PLUS MINUS STAR DIV MOD 
+// 关系运算符 == != < > <= >=
+%token EQ NE LT GT LE GE
+// 逻辑运算符 && || !
+%token AND OR NOT
+// 自增自减 ++ --
+%token INC DEC
+// 赋值 =  += -= *= /= %=
+%token ASSIGN PLUS_ASSIGN MINUS_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
+
 
 %nterm <FE::AST::Operator> UNARY_OP
 %nterm <FE::AST::Type*> TYPE

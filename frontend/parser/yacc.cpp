@@ -37,54 +37,47 @@
 // "%code top" blocks.
 #line 31 "frontend/parser/yacc.y"
 
-    #include <iostream>
+#include <iostream>
 
-    #include <frontend/parser/parser.h>
-    #include <frontend/parser/location.hh>
-    #include <frontend/parser/scanner.h>
-    #include <frontend/parser/yacc.h>
+#include <frontend/parser/parser.h>
+#include <frontend/parser/location.hh>
+#include <frontend/parser/scanner.h>
+#include <frontend/parser/yacc.h>
 
-    using namespace FE;
-    using namespace FE::AST;
+using namespace FE;
+using namespace FE::AST;
 
-    static YaccParser::symbol_type yylex(Scanner& scanner, Parser &parser)
-    {
-        (void)parser;
-        return scanner.nextToken(); 
-    }
+static YaccParser::symbol_type yylex(Scanner& scanner, Parser& parser)
+{
+    (void)parser;
+    return scanner.nextToken();
+}
 
-    extern size_t errCnt;
+extern size_t errCnt;
 
 #line 59 "frontend/parser/yacc.cpp"
 
-
-
-
 #include "yacc.h"
 
-
-
-
 #ifndef YY_
-# if defined YYENABLE_NLS && YYENABLE_NLS
-#  if ENABLE_NLS
-#   include <libintl.h> // FIXME: INFRINGES ON USER NAME SPACE.
-#   define YY_(msgid) dgettext ("bison-runtime", msgid)
-#  endif
-# endif
-# ifndef YY_
-#  define YY_(msgid) msgid
-# endif
+#if defined YYENABLE_NLS && YYENABLE_NLS
+#if ENABLE_NLS
+#include <libintl.h>  // FIXME: INFRINGES ON USER NAME SPACE.
+#define YY_(msgid) dgettext("bison-runtime", msgid)
 #endif
-
+#endif
+#ifndef YY_
+#define YY_(msgid) msgid
+#endif
+#endif
 
 // Whether we are compiled with exception support.
 #ifndef YY_EXCEPTIONS
-# if defined __GNUC__ && !defined __EXCEPTIONS
-#  define YY_EXCEPTIONS 0
-# else
-#  define YY_EXCEPTIONS 1
-# endif
+#if defined __GNUC__ && !defined __EXCEPTIONS
+#define YY_EXCEPTIONS 0
+#else
+#define YY_EXCEPTIONS 1
+#endif
 #endif
 
 #define YYRHSLOC(Rhs, K) ((Rhs)[K].location)
@@ -92,1505 +85,1818 @@
    If N is 0, then set CURRENT to the empty location which ends
    the previous symbol: RHS[0] (always defined).  */
 
-# ifndef YYLLOC_DEFAULT
-#  define YYLLOC_DEFAULT(Current, Rhs, N)                               \
-    do                                                                  \
-      if (N)                                                            \
-        {                                                               \
-          (Current).begin  = YYRHSLOC (Rhs, 1).begin;                   \
-          (Current).end    = YYRHSLOC (Rhs, N).end;                     \
-        }                                                               \
-      else                                                              \
-        {                                                               \
-          (Current).begin = (Current).end = YYRHSLOC (Rhs, 0).end;      \
-        }                                                               \
+#ifndef YYLLOC_DEFAULT
+#define YYLLOC_DEFAULT(Current, Rhs, N)                                  \
+    do                                                                   \
+        if (N)                                                           \
+        {                                                                \
+            (Current).begin = YYRHSLOC(Rhs, 1).begin;                    \
+            (Current).end   = YYRHSLOC(Rhs, N).end;                      \
+        }                                                                \
+        else { (Current).begin = (Current).end = YYRHSLOC(Rhs, 0).end; } \
     while (false)
-# endif
-
+#endif
 
 // Enable debugging if requested.
 #if YYDEBUG
 
 // A pseudo ostream that takes yydebug_ into account.
-# define YYCDEBUG if (yydebug_) (*yycdebug_)
+#define YYCDEBUG \
+    if (yydebug_) (*yycdebug_)
 
-# define YY_SYMBOL_PRINT(Title, Symbol)         \
-  do {                                          \
-    if (yydebug_)                               \
-    {                                           \
-      *yycdebug_ << Title << ' ';               \
-      yy_print_ (*yycdebug_, Symbol);           \
-      *yycdebug_ << '\n';                       \
-    }                                           \
-  } while (false)
+#define YY_SYMBOL_PRINT(Title, Symbol)     \
+    do {                                   \
+        if (yydebug_)                      \
+        {                                  \
+            *yycdebug_ << Title << ' ';    \
+            yy_print_(*yycdebug_, Symbol); \
+            *yycdebug_ << '\n';            \
+        }                                  \
+    } while (false)
 
-# define YY_REDUCE_PRINT(Rule)          \
-  do {                                  \
-    if (yydebug_)                       \
-      yy_reduce_print_ (Rule);          \
-  } while (false)
+#define YY_REDUCE_PRINT(Rule)                 \
+    do {                                      \
+        if (yydebug_) yy_reduce_print_(Rule); \
+    } while (false)
 
-# define YY_STACK_PRINT()               \
-  do {                                  \
-    if (yydebug_)                       \
-      yy_stack_print_ ();                \
-  } while (false)
+#define YY_STACK_PRINT()                 \
+    do {                                 \
+        if (yydebug_) yy_stack_print_(); \
+    } while (false)
 
-#else // !YYDEBUG
+#else  // !YYDEBUG
 
-# define YYCDEBUG if (false) std::cerr
-# define YY_SYMBOL_PRINT(Title, Symbol)  YY_USE (Symbol)
-# define YY_REDUCE_PRINT(Rule)           static_cast<void> (0)
-# define YY_STACK_PRINT()                static_cast<void> (0)
+#define YYCDEBUG \
+    if (false) std::cerr
+#define YY_SYMBOL_PRINT(Title, Symbol) YY_USE(Symbol)
+#define YY_REDUCE_PRINT(Rule) static_cast<void>(0)
+#define YY_STACK_PRINT() static_cast<void>(0)
 
-#endif // !YYDEBUG
+#endif  // !YYDEBUG
 
-#define yyerrok         (yyerrstatus_ = 0)
-#define yyclearin       (yyla.clear ())
+#define yyerrok (yyerrstatus_ = 0)
+#define yyclearin (yyla.clear())
 
-#define YYACCEPT        goto yyacceptlab
-#define YYABORT         goto yyabortlab
-#define YYERROR         goto yyerrorlab
-#define YYRECOVERING()  (!!yyerrstatus_)
+#define YYACCEPT goto yyacceptlab
+#define YYABORT goto yyabortlab
+#define YYERROR goto yyerrorlab
+#define YYRECOVERING() (!!yyerrstatus_)
 
 #line 4 "frontend/parser/yacc.y"
-namespace  FE  {
+namespace FE
+{
 #line 159 "frontend/parser/yacc.cpp"
 
-  /// Build a parser object.
-   YaccParser :: YaccParser  (FE::Scanner& scanner_yyarg, FE::Parser& parser_yyarg)
+    /// Build a parser object.
+    YaccParser ::YaccParser(FE::Scanner& scanner_yyarg, FE::Parser& parser_yyarg)
 #if YYDEBUG
-    : yydebug_ (false),
-      yycdebug_ (&std::cerr),
+        : yydebug_(false),
+          yycdebug_(&std::cerr),
 #else
-    :
+        :
 #endif
-      scanner (scanner_yyarg),
-      parser (parser_yyarg)
-  {}
+          scanner(scanner_yyarg),
+          parser(parser_yyarg)
+    {}
 
-   YaccParser ::~ YaccParser  ()
-  {}
+    YaccParser ::~YaccParser() {}
 
-   YaccParser ::syntax_error::~syntax_error () YY_NOEXCEPT YY_NOTHROW
-  {}
+    YaccParser ::syntax_error::~syntax_error() YY_NOEXCEPT YY_NOTHROW {}
 
-  /*---------.
-  | symbol.  |
-  `---------*/
+    /*---------.
+    | symbol.  |
+    `---------*/
 
+    // by_state.
+    YaccParser ::by_state::by_state() YY_NOEXCEPT : state(empty_state) {}
 
+    YaccParser ::by_state::by_state(const by_state& that) YY_NOEXCEPT : state(that.state) {}
 
-  // by_state.
-   YaccParser ::by_state::by_state () YY_NOEXCEPT
-    : state (empty_state)
-  {}
+    void YaccParser ::by_state::clear() YY_NOEXCEPT { state = empty_state; }
 
-   YaccParser ::by_state::by_state (const by_state& that) YY_NOEXCEPT
-    : state (that.state)
-  {}
-
-  void
-   YaccParser ::by_state::clear () YY_NOEXCEPT
-  {
-    state = empty_state;
-  }
-
-  void
-   YaccParser ::by_state::move (by_state& that)
-  {
-    state = that.state;
-    that.clear ();
-  }
-
-   YaccParser ::by_state::by_state (state_type s) YY_NOEXCEPT
-    : state (s)
-  {}
-
-   YaccParser ::symbol_kind_type
-   YaccParser ::by_state::kind () const YY_NOEXCEPT
-  {
-    if (state == empty_state)
-      return symbol_kind::S_YYEMPTY;
-    else
-      return YY_CAST (symbol_kind_type, yystos_[+state]);
-  }
-
-   YaccParser ::stack_symbol_type::stack_symbol_type ()
-  {}
-
-   YaccParser ::stack_symbol_type::stack_symbol_type (YY_RVREF (stack_symbol_type) that)
-    : super_type (YY_MOVE (that.state), YY_MOVE (that.location))
-  {
-    switch (that.kind ())
+    void YaccParser ::by_state::move(by_state& that)
     {
-      case symbol_kind::S_ASSIGN_EXPR: // ASSIGN_EXPR
-      case symbol_kind::S_EXPR: // EXPR
-      case symbol_kind::S_NOCOMMA_EXPR: // NOCOMMA_EXPR
-      case symbol_kind::S_LOGICAL_OR_EXPR: // LOGICAL_OR_EXPR
-        value.YY_MOVE_OR_COPY< FE::AST::ExprNode* > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_PROGRAM: // PROGRAM
-        value.YY_MOVE_OR_COPY< FE::AST::Root* > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_STMT: // STMT
-      case symbol_kind::S_CONTINUE_STMT: // CONTINUE_STMT
-      case symbol_kind::S_EXPR_STMT: // EXPR_STMT
-      case symbol_kind::S_VAR_DECL_STMT: // VAR_DECL_STMT
-      case symbol_kind::S_FUNC_BODY: // FUNC_BODY
-      case symbol_kind::S_FUNC_DECL_STMT: // FUNC_DECL_STMT
-      case symbol_kind::S_FOR_STMT: // FOR_STMT
-      case symbol_kind::S_IF_STMT: // IF_STMT
-        value.YY_MOVE_OR_COPY< FE::AST::StmtNode* > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_TYPE: // TYPE
-        value.YY_MOVE_OR_COPY< FE::AST::Type* > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_VAR_DECLARATION: // VAR_DECLARATION
-        value.YY_MOVE_OR_COPY< FE::AST::VarDeclaration* > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_VAR_DECLARATOR: // VAR_DECLARATOR
-        value.YY_MOVE_OR_COPY< FE::AST::VarDeclarator* > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_INT_CONST: // INT_CONST
-        value.YY_MOVE_OR_COPY< int > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_STR_CONST: // STR_CONST
-      case symbol_kind::S_ERR_TOKEN: // ERR_TOKEN
-      case symbol_kind::S_SLASH_COMMENT: // SLASH_COMMENT
-      case symbol_kind::S_IDENT: // IDENT
-        value.YY_MOVE_OR_COPY< std::string > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_PARAM_DECLARATOR_LIST: // PARAM_DECLARATOR_LIST
-        value.YY_MOVE_OR_COPY< std::vector<FE::AST::ParamDeclarator*>* > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_STMT_LIST: // STMT_LIST
-        value.YY_MOVE_OR_COPY< std::vector<FE::AST::StmtNode*>* > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_VAR_DECLARATOR_LIST: // VAR_DECLARATOR_LIST
-        value.YY_MOVE_OR_COPY< std::vector<FE::AST::VarDeclarator*>* > (YY_MOVE (that.value));
-        break;
-
-      default:
-        break;
+        state = that.state;
+        that.clear();
     }
+
+    YaccParser ::by_state::by_state(state_type s) YY_NOEXCEPT : state(s) {}
+
+    YaccParser ::symbol_kind_type YaccParser ::by_state::kind() const YY_NOEXCEPT
+    {
+        if (state == empty_state)
+            return symbol_kind::S_YYEMPTY;
+        else
+            return YY_CAST(symbol_kind_type, yystos_[+state]);
+    }
+
+    YaccParser ::stack_symbol_type::stack_symbol_type() {}
+
+    YaccParser ::stack_symbol_type::stack_symbol_type(YY_RVREF(stack_symbol_type) that)
+        : super_type(YY_MOVE(that.state), YY_MOVE(that.location))
+    {
+        switch (that.kind())
+        {
+            case symbol_kind::S_ASSIGN_EXPR:      // ASSIGN_EXPR
+            case symbol_kind::S_EXPR:             // EXPR
+            case symbol_kind::S_NOCOMMA_EXPR:     // NOCOMMA_EXPR
+            case symbol_kind::S_LOGICAL_OR_EXPR:  // LOGICAL_OR_EXPR
+                value.YY_MOVE_OR_COPY<FE::AST::ExprNode*>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_PROGRAM:  // PROGRAM
+                value.YY_MOVE_OR_COPY<FE::AST::Root*>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_STMT:            // STMT
+            case symbol_kind::S_CONTINUE_STMT:   // CONTINUE_STMT
+            case symbol_kind::S_EXPR_STMT:       // EXPR_STMT
+            case symbol_kind::S_VAR_DECL_STMT:   // VAR_DECL_STMT
+            case symbol_kind::S_FUNC_BODY:       // FUNC_BODY
+            case symbol_kind::S_FUNC_DECL_STMT:  // FUNC_DECL_STMT
+            case symbol_kind::S_FOR_STMT:        // FOR_STMT
+            case symbol_kind::S_IF_STMT:         // IF_STMT
+                value.YY_MOVE_OR_COPY<FE::AST::StmtNode*>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_TYPE:  // TYPE
+                value.YY_MOVE_OR_COPY<FE::AST::Type*>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_VAR_DECLARATION:  // VAR_DECLARATION
+                value.YY_MOVE_OR_COPY<FE::AST::VarDeclaration*>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_VAR_DECLARATOR:  // VAR_DECLARATOR
+                value.YY_MOVE_OR_COPY<FE::AST::VarDeclarator*>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_FLOAT_CONST:  // FLOAT_CONST
+                value.YY_MOVE_OR_COPY<float>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_INT_CONST:  // INT_CONST
+                value.YY_MOVE_OR_COPY<int>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_LL_CONST:  // LL_CONST
+                value.YY_MOVE_OR_COPY<long long>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_STR_CONST:      // STR_CONST
+            case symbol_kind::S_ERR_TOKEN:      // ERR_TOKEN
+            case symbol_kind::S_SLASH_COMMENT:  // SLASH_COMMENT
+            case symbol_kind::S_IDENT:          // IDENT
+            case symbol_kind::S_MULTI_COMMENT:  // MULTI_COMMENT
+                value.YY_MOVE_OR_COPY<std::string>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_PARAM_DECLARATOR_LIST:  // PARAM_DECLARATOR_LIST
+                value.YY_MOVE_OR_COPY<std::vector<FE::AST::ParamDeclarator*>*>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_STMT_LIST:  // STMT_LIST
+                value.YY_MOVE_OR_COPY<std::vector<FE::AST::StmtNode*>*>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_VAR_DECLARATOR_LIST:  // VAR_DECLARATOR_LIST
+                value.YY_MOVE_OR_COPY<std::vector<FE::AST::VarDeclarator*>*>(YY_MOVE(that.value));
+                break;
+
+            default: break;
+        }
 
 #if 201103L <= YY_CPLUSPLUS
-    // that is emptied.
-    that.state = empty_state;
+        // that is emptied.
+        that.state = empty_state;
 #endif
-  }
-
-   YaccParser ::stack_symbol_type::stack_symbol_type (state_type s, YY_MOVE_REF (symbol_type) that)
-    : super_type (s, YY_MOVE (that.location))
-  {
-    switch (that.kind ())
-    {
-      case symbol_kind::S_ASSIGN_EXPR: // ASSIGN_EXPR
-      case symbol_kind::S_EXPR: // EXPR
-      case symbol_kind::S_NOCOMMA_EXPR: // NOCOMMA_EXPR
-      case symbol_kind::S_LOGICAL_OR_EXPR: // LOGICAL_OR_EXPR
-        value.move< FE::AST::ExprNode* > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_PROGRAM: // PROGRAM
-        value.move< FE::AST::Root* > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_STMT: // STMT
-      case symbol_kind::S_CONTINUE_STMT: // CONTINUE_STMT
-      case symbol_kind::S_EXPR_STMT: // EXPR_STMT
-      case symbol_kind::S_VAR_DECL_STMT: // VAR_DECL_STMT
-      case symbol_kind::S_FUNC_BODY: // FUNC_BODY
-      case symbol_kind::S_FUNC_DECL_STMT: // FUNC_DECL_STMT
-      case symbol_kind::S_FOR_STMT: // FOR_STMT
-      case symbol_kind::S_IF_STMT: // IF_STMT
-        value.move< FE::AST::StmtNode* > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_TYPE: // TYPE
-        value.move< FE::AST::Type* > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_VAR_DECLARATION: // VAR_DECLARATION
-        value.move< FE::AST::VarDeclaration* > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_VAR_DECLARATOR: // VAR_DECLARATOR
-        value.move< FE::AST::VarDeclarator* > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_INT_CONST: // INT_CONST
-        value.move< int > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_STR_CONST: // STR_CONST
-      case symbol_kind::S_ERR_TOKEN: // ERR_TOKEN
-      case symbol_kind::S_SLASH_COMMENT: // SLASH_COMMENT
-      case symbol_kind::S_IDENT: // IDENT
-        value.move< std::string > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_PARAM_DECLARATOR_LIST: // PARAM_DECLARATOR_LIST
-        value.move< std::vector<FE::AST::ParamDeclarator*>* > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_STMT_LIST: // STMT_LIST
-        value.move< std::vector<FE::AST::StmtNode*>* > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_VAR_DECLARATOR_LIST: // VAR_DECLARATOR_LIST
-        value.move< std::vector<FE::AST::VarDeclarator*>* > (YY_MOVE (that.value));
-        break;
-
-      default:
-        break;
     }
 
-    // that is emptied.
-    that.kind_ = symbol_kind::S_YYEMPTY;
-  }
+    YaccParser ::stack_symbol_type::stack_symbol_type(state_type s, YY_MOVE_REF(symbol_type) that)
+        : super_type(s, YY_MOVE(that.location))
+    {
+        switch (that.kind())
+        {
+            case symbol_kind::S_ASSIGN_EXPR:      // ASSIGN_EXPR
+            case symbol_kind::S_EXPR:             // EXPR
+            case symbol_kind::S_NOCOMMA_EXPR:     // NOCOMMA_EXPR
+            case symbol_kind::S_LOGICAL_OR_EXPR:  // LOGICAL_OR_EXPR
+                value.move<FE::AST::ExprNode*>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_PROGRAM:  // PROGRAM
+                value.move<FE::AST::Root*>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_STMT:            // STMT
+            case symbol_kind::S_CONTINUE_STMT:   // CONTINUE_STMT
+            case symbol_kind::S_EXPR_STMT:       // EXPR_STMT
+            case symbol_kind::S_VAR_DECL_STMT:   // VAR_DECL_STMT
+            case symbol_kind::S_FUNC_BODY:       // FUNC_BODY
+            case symbol_kind::S_FUNC_DECL_STMT:  // FUNC_DECL_STMT
+            case symbol_kind::S_FOR_STMT:        // FOR_STMT
+            case symbol_kind::S_IF_STMT:         // IF_STMT
+                value.move<FE::AST::StmtNode*>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_TYPE:  // TYPE
+                value.move<FE::AST::Type*>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_VAR_DECLARATION:  // VAR_DECLARATION
+                value.move<FE::AST::VarDeclaration*>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_VAR_DECLARATOR:  // VAR_DECLARATOR
+                value.move<FE::AST::VarDeclarator*>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_FLOAT_CONST:  // FLOAT_CONST
+                value.move<float>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_INT_CONST:  // INT_CONST
+                value.move<int>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_LL_CONST:  // LL_CONST
+                value.move<long long>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_STR_CONST:      // STR_CONST
+            case symbol_kind::S_ERR_TOKEN:      // ERR_TOKEN
+            case symbol_kind::S_SLASH_COMMENT:  // SLASH_COMMENT
+            case symbol_kind::S_IDENT:          // IDENT
+            case symbol_kind::S_MULTI_COMMENT:  // MULTI_COMMENT
+                value.move<std::string>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_PARAM_DECLARATOR_LIST:  // PARAM_DECLARATOR_LIST
+                value.move<std::vector<FE::AST::ParamDeclarator*>*>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_STMT_LIST:  // STMT_LIST
+                value.move<std::vector<FE::AST::StmtNode*>*>(YY_MOVE(that.value));
+                break;
+
+            case symbol_kind::S_VAR_DECLARATOR_LIST:  // VAR_DECLARATOR_LIST
+                value.move<std::vector<FE::AST::VarDeclarator*>*>(YY_MOVE(that.value));
+                break;
+
+            default: break;
+        }
+
+        // that is emptied.
+        that.kind_ = symbol_kind::S_YYEMPTY;
+    }
 
 #if YY_CPLUSPLUS < 201103L
-   YaccParser ::stack_symbol_type&
-   YaccParser ::stack_symbol_type::operator= (const stack_symbol_type& that)
-  {
-    state = that.state;
-    switch (that.kind ())
+    YaccParser ::stack_symbol_type& YaccParser ::stack_symbol_type::operator=(const stack_symbol_type& that)
     {
-      case symbol_kind::S_ASSIGN_EXPR: // ASSIGN_EXPR
-      case symbol_kind::S_EXPR: // EXPR
-      case symbol_kind::S_NOCOMMA_EXPR: // NOCOMMA_EXPR
-      case symbol_kind::S_LOGICAL_OR_EXPR: // LOGICAL_OR_EXPR
-        value.copy< FE::AST::ExprNode* > (that.value);
-        break;
+        state = that.state;
+        switch (that.kind())
+        {
+            case symbol_kind::S_ASSIGN_EXPR:      // ASSIGN_EXPR
+            case symbol_kind::S_EXPR:             // EXPR
+            case symbol_kind::S_NOCOMMA_EXPR:     // NOCOMMA_EXPR
+            case symbol_kind::S_LOGICAL_OR_EXPR:  // LOGICAL_OR_EXPR
+                value.copy<FE::AST::ExprNode*>(that.value);
+                break;
 
-      case symbol_kind::S_PROGRAM: // PROGRAM
-        value.copy< FE::AST::Root* > (that.value);
-        break;
+            case symbol_kind::S_PROGRAM:  // PROGRAM
+                value.copy<FE::AST::Root*>(that.value);
+                break;
 
-      case symbol_kind::S_STMT: // STMT
-      case symbol_kind::S_CONTINUE_STMT: // CONTINUE_STMT
-      case symbol_kind::S_EXPR_STMT: // EXPR_STMT
-      case symbol_kind::S_VAR_DECL_STMT: // VAR_DECL_STMT
-      case symbol_kind::S_FUNC_BODY: // FUNC_BODY
-      case symbol_kind::S_FUNC_DECL_STMT: // FUNC_DECL_STMT
-      case symbol_kind::S_FOR_STMT: // FOR_STMT
-      case symbol_kind::S_IF_STMT: // IF_STMT
-        value.copy< FE::AST::StmtNode* > (that.value);
-        break;
+            case symbol_kind::S_STMT:            // STMT
+            case symbol_kind::S_CONTINUE_STMT:   // CONTINUE_STMT
+            case symbol_kind::S_EXPR_STMT:       // EXPR_STMT
+            case symbol_kind::S_VAR_DECL_STMT:   // VAR_DECL_STMT
+            case symbol_kind::S_FUNC_BODY:       // FUNC_BODY
+            case symbol_kind::S_FUNC_DECL_STMT:  // FUNC_DECL_STMT
+            case symbol_kind::S_FOR_STMT:        // FOR_STMT
+            case symbol_kind::S_IF_STMT:         // IF_STMT
+                value.copy<FE::AST::StmtNode*>(that.value);
+                break;
 
-      case symbol_kind::S_TYPE: // TYPE
-        value.copy< FE::AST::Type* > (that.value);
-        break;
+            case symbol_kind::S_TYPE:  // TYPE
+                value.copy<FE::AST::Type*>(that.value);
+                break;
 
-      case symbol_kind::S_VAR_DECLARATION: // VAR_DECLARATION
-        value.copy< FE::AST::VarDeclaration* > (that.value);
-        break;
+            case symbol_kind::S_VAR_DECLARATION:  // VAR_DECLARATION
+                value.copy<FE::AST::VarDeclaration*>(that.value);
+                break;
 
-      case symbol_kind::S_VAR_DECLARATOR: // VAR_DECLARATOR
-        value.copy< FE::AST::VarDeclarator* > (that.value);
-        break;
+            case symbol_kind::S_VAR_DECLARATOR:  // VAR_DECLARATOR
+                value.copy<FE::AST::VarDeclarator*>(that.value);
+                break;
 
-      case symbol_kind::S_INT_CONST: // INT_CONST
-        value.copy< int > (that.value);
-        break;
+            case symbol_kind::S_FLOAT_CONST:  // FLOAT_CONST
+                value.copy<float>(that.value);
+                break;
 
-      case symbol_kind::S_STR_CONST: // STR_CONST
-      case symbol_kind::S_ERR_TOKEN: // ERR_TOKEN
-      case symbol_kind::S_SLASH_COMMENT: // SLASH_COMMENT
-      case symbol_kind::S_IDENT: // IDENT
-        value.copy< std::string > (that.value);
-        break;
+            case symbol_kind::S_INT_CONST:  // INT_CONST
+                value.copy<int>(that.value);
+                break;
 
-      case symbol_kind::S_PARAM_DECLARATOR_LIST: // PARAM_DECLARATOR_LIST
-        value.copy< std::vector<FE::AST::ParamDeclarator*>* > (that.value);
-        break;
+            case symbol_kind::S_LL_CONST:  // LL_CONST
+                value.copy<long long>(that.value);
+                break;
 
-      case symbol_kind::S_STMT_LIST: // STMT_LIST
-        value.copy< std::vector<FE::AST::StmtNode*>* > (that.value);
-        break;
+            case symbol_kind::S_STR_CONST:      // STR_CONST
+            case symbol_kind::S_ERR_TOKEN:      // ERR_TOKEN
+            case symbol_kind::S_SLASH_COMMENT:  // SLASH_COMMENT
+            case symbol_kind::S_IDENT:          // IDENT
+            case symbol_kind::S_MULTI_COMMENT:  // MULTI_COMMENT
+                value.copy<std::string>(that.value);
+                break;
 
-      case symbol_kind::S_VAR_DECLARATOR_LIST: // VAR_DECLARATOR_LIST
-        value.copy< std::vector<FE::AST::VarDeclarator*>* > (that.value);
-        break;
+            case symbol_kind::S_PARAM_DECLARATOR_LIST:  // PARAM_DECLARATOR_LIST
+                value.copy<std::vector<FE::AST::ParamDeclarator*>*>(that.value);
+                break;
 
-      default:
-        break;
+            case symbol_kind::S_STMT_LIST:  // STMT_LIST
+                value.copy<std::vector<FE::AST::StmtNode*>*>(that.value);
+                break;
+
+            case symbol_kind::S_VAR_DECLARATOR_LIST:  // VAR_DECLARATOR_LIST
+                value.copy<std::vector<FE::AST::VarDeclarator*>*>(that.value);
+                break;
+
+            default: break;
+        }
+
+        location = that.location;
+        return *this;
     }
 
-    location = that.location;
-    return *this;
-  }
-
-   YaccParser ::stack_symbol_type&
-   YaccParser ::stack_symbol_type::operator= (stack_symbol_type& that)
-  {
-    state = that.state;
-    switch (that.kind ())
+    YaccParser ::stack_symbol_type& YaccParser ::stack_symbol_type::operator=(stack_symbol_type& that)
     {
-      case symbol_kind::S_ASSIGN_EXPR: // ASSIGN_EXPR
-      case symbol_kind::S_EXPR: // EXPR
-      case symbol_kind::S_NOCOMMA_EXPR: // NOCOMMA_EXPR
-      case symbol_kind::S_LOGICAL_OR_EXPR: // LOGICAL_OR_EXPR
-        value.move< FE::AST::ExprNode* > (that.value);
-        break;
+        state = that.state;
+        switch (that.kind())
+        {
+            case symbol_kind::S_ASSIGN_EXPR:      // ASSIGN_EXPR
+            case symbol_kind::S_EXPR:             // EXPR
+            case symbol_kind::S_NOCOMMA_EXPR:     // NOCOMMA_EXPR
+            case symbol_kind::S_LOGICAL_OR_EXPR:  // LOGICAL_OR_EXPR
+                value.move<FE::AST::ExprNode*>(that.value);
+                break;
 
-      case symbol_kind::S_PROGRAM: // PROGRAM
-        value.move< FE::AST::Root* > (that.value);
-        break;
+            case symbol_kind::S_PROGRAM:  // PROGRAM
+                value.move<FE::AST::Root*>(that.value);
+                break;
 
-      case symbol_kind::S_STMT: // STMT
-      case symbol_kind::S_CONTINUE_STMT: // CONTINUE_STMT
-      case symbol_kind::S_EXPR_STMT: // EXPR_STMT
-      case symbol_kind::S_VAR_DECL_STMT: // VAR_DECL_STMT
-      case symbol_kind::S_FUNC_BODY: // FUNC_BODY
-      case symbol_kind::S_FUNC_DECL_STMT: // FUNC_DECL_STMT
-      case symbol_kind::S_FOR_STMT: // FOR_STMT
-      case symbol_kind::S_IF_STMT: // IF_STMT
-        value.move< FE::AST::StmtNode* > (that.value);
-        break;
+            case symbol_kind::S_STMT:            // STMT
+            case symbol_kind::S_CONTINUE_STMT:   // CONTINUE_STMT
+            case symbol_kind::S_EXPR_STMT:       // EXPR_STMT
+            case symbol_kind::S_VAR_DECL_STMT:   // VAR_DECL_STMT
+            case symbol_kind::S_FUNC_BODY:       // FUNC_BODY
+            case symbol_kind::S_FUNC_DECL_STMT:  // FUNC_DECL_STMT
+            case symbol_kind::S_FOR_STMT:        // FOR_STMT
+            case symbol_kind::S_IF_STMT:         // IF_STMT
+                value.move<FE::AST::StmtNode*>(that.value);
+                break;
 
-      case symbol_kind::S_TYPE: // TYPE
-        value.move< FE::AST::Type* > (that.value);
-        break;
+            case symbol_kind::S_TYPE:  // TYPE
+                value.move<FE::AST::Type*>(that.value);
+                break;
 
-      case symbol_kind::S_VAR_DECLARATION: // VAR_DECLARATION
-        value.move< FE::AST::VarDeclaration* > (that.value);
-        break;
+            case symbol_kind::S_VAR_DECLARATION:  // VAR_DECLARATION
+                value.move<FE::AST::VarDeclaration*>(that.value);
+                break;
 
-      case symbol_kind::S_VAR_DECLARATOR: // VAR_DECLARATOR
-        value.move< FE::AST::VarDeclarator* > (that.value);
-        break;
+            case symbol_kind::S_VAR_DECLARATOR:  // VAR_DECLARATOR
+                value.move<FE::AST::VarDeclarator*>(that.value);
+                break;
 
-      case symbol_kind::S_INT_CONST: // INT_CONST
-        value.move< int > (that.value);
-        break;
+            case symbol_kind::S_FLOAT_CONST:  // FLOAT_CONST
+                value.move<float>(that.value);
+                break;
 
-      case symbol_kind::S_STR_CONST: // STR_CONST
-      case symbol_kind::S_ERR_TOKEN: // ERR_TOKEN
-      case symbol_kind::S_SLASH_COMMENT: // SLASH_COMMENT
-      case symbol_kind::S_IDENT: // IDENT
-        value.move< std::string > (that.value);
-        break;
+            case symbol_kind::S_INT_CONST:  // INT_CONST
+                value.move<int>(that.value);
+                break;
 
-      case symbol_kind::S_PARAM_DECLARATOR_LIST: // PARAM_DECLARATOR_LIST
-        value.move< std::vector<FE::AST::ParamDeclarator*>* > (that.value);
-        break;
+            case symbol_kind::S_LL_CONST:  // LL_CONST
+                value.move<long long>(that.value);
+                break;
 
-      case symbol_kind::S_STMT_LIST: // STMT_LIST
-        value.move< std::vector<FE::AST::StmtNode*>* > (that.value);
-        break;
+            case symbol_kind::S_STR_CONST:      // STR_CONST
+            case symbol_kind::S_ERR_TOKEN:      // ERR_TOKEN
+            case symbol_kind::S_SLASH_COMMENT:  // SLASH_COMMENT
+            case symbol_kind::S_IDENT:          // IDENT
+            case symbol_kind::S_MULTI_COMMENT:  // MULTI_COMMENT
+                value.move<std::string>(that.value);
+                break;
 
-      case symbol_kind::S_VAR_DECLARATOR_LIST: // VAR_DECLARATOR_LIST
-        value.move< std::vector<FE::AST::VarDeclarator*>* > (that.value);
-        break;
+            case symbol_kind::S_PARAM_DECLARATOR_LIST:  // PARAM_DECLARATOR_LIST
+                value.move<std::vector<FE::AST::ParamDeclarator*>*>(that.value);
+                break;
 
-      default:
-        break;
+            case symbol_kind::S_STMT_LIST:  // STMT_LIST
+                value.move<std::vector<FE::AST::StmtNode*>*>(that.value);
+                break;
+
+            case symbol_kind::S_VAR_DECLARATOR_LIST:  // VAR_DECLARATOR_LIST
+                value.move<std::vector<FE::AST::VarDeclarator*>*>(that.value);
+                break;
+
+            default: break;
+        }
+
+        location = that.location;
+        // that is emptied.
+        that.state = empty_state;
+        return *this;
     }
-
-    location = that.location;
-    // that is emptied.
-    that.state = empty_state;
-    return *this;
-  }
 #endif
 
-  template <typename Base>
-  void
-   YaccParser ::yy_destroy_ (const char* yymsg, basic_symbol<Base>& yysym) const
-  {
-    if (yymsg)
-      YY_SYMBOL_PRINT (yymsg, yysym);
-  }
+    template <typename Base>
+    void YaccParser ::yy_destroy_(const char* yymsg, basic_symbol<Base>& yysym) const
+    {
+        if (yymsg) YY_SYMBOL_PRINT(yymsg, yysym);
+    }
 
 #if YYDEBUG
-  template <typename Base>
-  void
-   YaccParser ::yy_print_ (std::ostream& yyo, const basic_symbol<Base>& yysym) const
-  {
-    std::ostream& yyoutput = yyo;
-    YY_USE (yyoutput);
-    if (yysym.empty ())
-      yyo << "empty symbol";
-    else
-      {
-        symbol_kind_type yykind = yysym.kind ();
-        yyo << (yykind < YYNTOKENS ? "token" : "nterm")
-            << ' ' << yysym.name () << " ("
-            << yysym.location << ": ";
-        YY_USE (yykind);
-        yyo << ')';
-      }
-  }
+    template <typename Base>
+    void YaccParser ::yy_print_(std::ostream& yyo, const basic_symbol<Base>& yysym) const
+    {
+        std::ostream& yyoutput = yyo;
+        YY_USE(yyoutput);
+        if (yysym.empty())
+            yyo << "empty symbol";
+        else
+        {
+            symbol_kind_type yykind = yysym.kind();
+            yyo << (yykind < YYNTOKENS ? "token" : "nterm") << ' ' << yysym.name() << " (" << yysym.location << ": ";
+            YY_USE(yykind);
+            yyo << ')';
+        }
+    }
 #endif
 
-  void
-   YaccParser ::yypush_ (const char* m, YY_MOVE_REF (stack_symbol_type) sym)
-  {
-    if (m)
-      YY_SYMBOL_PRINT (m, sym);
-    yystack_.push (YY_MOVE (sym));
-  }
+    void YaccParser ::yypush_(const char* m, YY_MOVE_REF(stack_symbol_type) sym)
+    {
+        if (m) YY_SYMBOL_PRINT(m, sym);
+        yystack_.push(YY_MOVE(sym));
+    }
 
-  void
-   YaccParser ::yypush_ (const char* m, state_type s, YY_MOVE_REF (symbol_type) sym)
-  {
+    void YaccParser ::yypush_(const char* m, state_type s, YY_MOVE_REF(symbol_type) sym)
+    {
 #if 201103L <= YY_CPLUSPLUS
-    yypush_ (m, stack_symbol_type (s, std::move (sym)));
+        yypush_(m, stack_symbol_type(s, std::move(sym)));
 #else
-    stack_symbol_type ss (s, sym);
-    yypush_ (m, ss);
+        stack_symbol_type ss(s, sym);
+        yypush_(m, ss);
 #endif
-  }
+    }
 
-  void
-   YaccParser ::yypop_ (int n) YY_NOEXCEPT
-  {
-    yystack_.pop (n);
-  }
+    void YaccParser ::yypop_(int n) YY_NOEXCEPT { yystack_.pop(n); }
 
 #if YYDEBUG
-  std::ostream&
-   YaccParser ::debug_stream () const
-  {
-    return *yycdebug_;
-  }
+    std::ostream& YaccParser ::debug_stream() const { return *yycdebug_; }
 
-  void
-   YaccParser ::set_debug_stream (std::ostream& o)
-  {
-    yycdebug_ = &o;
-  }
+    void YaccParser ::set_debug_stream(std::ostream& o) { yycdebug_ = &o; }
 
+    YaccParser ::debug_level_type YaccParser ::debug_level() const { return yydebug_; }
 
-   YaccParser ::debug_level_type
-   YaccParser ::debug_level () const
-  {
-    return yydebug_;
-  }
+    void YaccParser ::set_debug_level(debug_level_type l) { yydebug_ = l; }
+#endif  // YYDEBUG
 
-  void
-   YaccParser ::set_debug_level (debug_level_type l)
-  {
-    yydebug_ = l;
-  }
-#endif // YYDEBUG
+    YaccParser ::state_type YaccParser ::yy_lr_goto_state_(state_type yystate, int yysym)
+    {
+        int yyr = yypgoto_[yysym - YYNTOKENS] + yystate;
+        if (0 <= yyr && yyr <= yylast_ && yycheck_[yyr] == yystate)
+            return yytable_[yyr];
+        else
+            return yydefgoto_[yysym - YYNTOKENS];
+    }
 
-   YaccParser ::state_type
-   YaccParser ::yy_lr_goto_state_ (state_type yystate, int yysym)
-  {
-    int yyr = yypgoto_[yysym - YYNTOKENS] + yystate;
-    if (0 <= yyr && yyr <= yylast_ && yycheck_[yyr] == yystate)
-      return yytable_[yyr];
-    else
-      return yydefgoto_[yysym - YYNTOKENS];
-  }
+    bool YaccParser ::yy_pact_value_is_default_(int yyvalue) YY_NOEXCEPT { return yyvalue == yypact_ninf_; }
 
-  bool
-   YaccParser ::yy_pact_value_is_default_ (int yyvalue) YY_NOEXCEPT
-  {
-    return yyvalue == yypact_ninf_;
-  }
+    bool YaccParser ::yy_table_value_is_error_(int yyvalue) YY_NOEXCEPT { return yyvalue == yytable_ninf_; }
 
-  bool
-   YaccParser ::yy_table_value_is_error_ (int yyvalue) YY_NOEXCEPT
-  {
-    return yyvalue == yytable_ninf_;
-  }
+    int YaccParser ::operator()() { return parse(); }
 
-  int
-   YaccParser ::operator() ()
-  {
-    return parse ();
-  }
+    int YaccParser ::parse()
+    {
+        int yyn;
+        /// Length of the RHS of the rule being reduced.
+        int yylen = 0;
 
-  int
-   YaccParser ::parse ()
-  {
-    int yyn;
-    /// Length of the RHS of the rule being reduced.
-    int yylen = 0;
+        // Error handling.
+        int yynerrs_     = 0;
+        int yyerrstatus_ = 0;
 
-    // Error handling.
-    int yynerrs_ = 0;
-    int yyerrstatus_ = 0;
+        /// The lookahead symbol.
+        symbol_type yyla;
 
-    /// The lookahead symbol.
-    symbol_type yyla;
+        /// The locations where the error started and ended.
+        stack_symbol_type yyerror_range[3];
 
-    /// The locations where the error started and ended.
-    stack_symbol_type yyerror_range[3];
+        /// The return value of parse ().
+        int yyresult;
 
-    /// The return value of parse ().
-    int yyresult;
-
-#if YY_EXCEPTIONS
-    try
-#endif // YY_EXCEPTIONS
-      {
-    YYCDEBUG << "Starting parse\n";
-
-
-    /* Initialize the stack.  The initial state will be set in
-       yynewstate, since the latter expects the semantical and the
-       location values to have been already stored, initialize these
-       stacks with a primary value.  */
-    yystack_.clear ();
-    yypush_ (YY_NULLPTR, 0, YY_MOVE (yyla));
-
-  /*-----------------------------------------------.
-  | yynewstate -- push a new symbol on the stack.  |
-  `-----------------------------------------------*/
-  yynewstate:
-    YYCDEBUG << "Entering state " << int (yystack_[0].state) << '\n';
-    YY_STACK_PRINT ();
-
-    // Accept?
-    if (yystack_[0].state == yyfinal_)
-      YYACCEPT;
-
-    goto yybackup;
-
-
-  /*-----------.
-  | yybackup.  |
-  `-----------*/
-  yybackup:
-    // Try to take a decision without lookahead.
-    yyn = yypact_[+yystack_[0].state];
-    if (yy_pact_value_is_default_ (yyn))
-      goto yydefault;
-
-    // Read a lookahead token.
-    if (yyla.empty ())
-      {
-        YYCDEBUG << "Reading a token\n";
 #if YY_EXCEPTIONS
         try
-#endif // YY_EXCEPTIONS
-          {
-            symbol_type yylookahead (yylex (scanner, parser));
-            yyla.move (yylookahead);
-          }
-#if YY_EXCEPTIONS
-        catch (const syntax_error& yyexc)
-          {
-            YYCDEBUG << "Caught exception: " << yyexc.what() << '\n';
-            error (yyexc);
-            goto yyerrlab1;
-          }
-#endif // YY_EXCEPTIONS
-      }
-    YY_SYMBOL_PRINT ("Next token is", yyla);
-
-    if (yyla.kind () == symbol_kind::S_YYerror)
-    {
-      // The scanner already issued an error message, process directly
-      // to error recovery.  But do not keep the error token as
-      // lookahead, it is too special and may lead us to an endless
-      // loop in error recovery. */
-      yyla.kind_ = symbol_kind::S_YYUNDEF;
-      goto yyerrlab1;
-    }
-
-    /* If the proper action on seeing token YYLA.TYPE is to reduce or
-       to detect an error, take that action.  */
-    yyn += yyla.kind ();
-    if (yyn < 0 || yylast_ < yyn || yycheck_[yyn] != yyla.kind ())
-      {
-        goto yydefault;
-      }
-
-    // Reduce or error.
-    yyn = yytable_[yyn];
-    if (yyn <= 0)
-      {
-        if (yy_table_value_is_error_ (yyn))
-          goto yyerrlab;
-        yyn = -yyn;
-        goto yyreduce;
-      }
-
-    // Count tokens shifted since error; after three, turn off error status.
-    if (yyerrstatus_)
-      --yyerrstatus_;
-
-    // Shift the lookahead token.
-    yypush_ ("Shifting", state_type (yyn), YY_MOVE (yyla));
-    goto yynewstate;
-
-
-  /*-----------------------------------------------------------.
-  | yydefault -- do the default action for the current state.  |
-  `-----------------------------------------------------------*/
-  yydefault:
-    yyn = yydefact_[+yystack_[0].state];
-    if (yyn == 0)
-      goto yyerrlab;
-    goto yyreduce;
-
-
-  /*-----------------------------.
-  | yyreduce -- do a reduction.  |
-  `-----------------------------*/
-  yyreduce:
-    yylen = yyr2_[yyn];
-    {
-      stack_symbol_type yylhs;
-      yylhs.state = yy_lr_goto_state_ (yystack_[yylen].state, yyr1_[yyn]);
-      /* Variants are always initialized to an empty instance of the
-         correct type. The default '$$ = $1' action is NOT applied
-         when using variants.  */
-      switch (yyr1_[yyn])
-    {
-      case symbol_kind::S_ASSIGN_EXPR: // ASSIGN_EXPR
-      case symbol_kind::S_EXPR: // EXPR
-      case symbol_kind::S_NOCOMMA_EXPR: // NOCOMMA_EXPR
-      case symbol_kind::S_LOGICAL_OR_EXPR: // LOGICAL_OR_EXPR
-        yylhs.value.emplace< FE::AST::ExprNode* > ();
-        break;
-
-      case symbol_kind::S_PROGRAM: // PROGRAM
-        yylhs.value.emplace< FE::AST::Root* > ();
-        break;
-
-      case symbol_kind::S_STMT: // STMT
-      case symbol_kind::S_CONTINUE_STMT: // CONTINUE_STMT
-      case symbol_kind::S_EXPR_STMT: // EXPR_STMT
-      case symbol_kind::S_VAR_DECL_STMT: // VAR_DECL_STMT
-      case symbol_kind::S_FUNC_BODY: // FUNC_BODY
-      case symbol_kind::S_FUNC_DECL_STMT: // FUNC_DECL_STMT
-      case symbol_kind::S_FOR_STMT: // FOR_STMT
-      case symbol_kind::S_IF_STMT: // IF_STMT
-        yylhs.value.emplace< FE::AST::StmtNode* > ();
-        break;
-
-      case symbol_kind::S_TYPE: // TYPE
-        yylhs.value.emplace< FE::AST::Type* > ();
-        break;
-
-      case symbol_kind::S_VAR_DECLARATION: // VAR_DECLARATION
-        yylhs.value.emplace< FE::AST::VarDeclaration* > ();
-        break;
-
-      case symbol_kind::S_VAR_DECLARATOR: // VAR_DECLARATOR
-        yylhs.value.emplace< FE::AST::VarDeclarator* > ();
-        break;
-
-      case symbol_kind::S_INT_CONST: // INT_CONST
-        yylhs.value.emplace< int > ();
-        break;
-
-      case symbol_kind::S_STR_CONST: // STR_CONST
-      case symbol_kind::S_ERR_TOKEN: // ERR_TOKEN
-      case symbol_kind::S_SLASH_COMMENT: // SLASH_COMMENT
-      case symbol_kind::S_IDENT: // IDENT
-        yylhs.value.emplace< std::string > ();
-        break;
-
-      case symbol_kind::S_PARAM_DECLARATOR_LIST: // PARAM_DECLARATOR_LIST
-        yylhs.value.emplace< std::vector<FE::AST::ParamDeclarator*>* > ();
-        break;
-
-      case symbol_kind::S_STMT_LIST: // STMT_LIST
-        yylhs.value.emplace< std::vector<FE::AST::StmtNode*>* > ();
-        break;
-
-      case symbol_kind::S_VAR_DECLARATOR_LIST: // VAR_DECLARATOR_LIST
-        yylhs.value.emplace< std::vector<FE::AST::VarDeclarator*>* > ();
-        break;
-
-      default:
-        break;
-    }
-
-
-      // Default location.
-      {
-        stack_type::slice range (yystack_, yylen);
-        YYLLOC_DEFAULT (yylhs.location, range, yylen);
-        yyerror_range[1].location = yylhs.location;
-      }
-
-      // Perform the reduction.
-      YY_REDUCE_PRINT (yyn);
-#if YY_EXCEPTIONS
-      try
-#endif // YY_EXCEPTIONS
+#endif  // YY_EXCEPTIONS
         {
-          switch (yyn)
+            YYCDEBUG << "Starting parse\n";
+
+            /* Initialize the stack.  The initial state will be set in
+               yynewstate, since the latter expects the semantical and the
+               location values to have been already stored, initialize these
+               stacks with a primary value.  */
+            yystack_.clear();
+            yypush_(YY_NULLPTR, 0, YY_MOVE(yyla));
+
+        /*-----------------------------------------------.
+        | yynewstate -- push a new symbol on the stack.  |
+        `-----------------------------------------------*/
+        yynewstate:
+            YYCDEBUG << "Entering state " << int(yystack_[0].state) << '\n';
+            YY_STACK_PRINT();
+
+            // Accept?
+            if (yystack_[0].state == yyfinal_) YYACCEPT;
+
+            goto yybackup;
+
+        /*-----------.
+        | yybackup.  |
+        `-----------*/
+        yybackup:
+            // Try to take a decision without lookahead.
+            yyn = yypact_[+yystack_[0].state];
+            if (yy_pact_value_is_default_(yyn)) goto yydefault;
+
+            // Read a lookahead token.
+            if (yyla.empty())
             {
-  case 2: // PROGRAM: STMT_LIST
-#line 134 "frontend/parser/yacc.y"
-              {
-        yylhs.value.as < FE::AST::Root* > () = new Root(yystack_[0].value.as < std::vector<FE::AST::StmtNode*>* > ());
-        parser.ast = yylhs.value.as < FE::AST::Root* > ();
-    }
-#line 842 "frontend/parser/yacc.cpp"
-    break;
+                YYCDEBUG << "Reading a token\n";
+#if YY_EXCEPTIONS
+                try
+#endif  // YY_EXCEPTIONS
+                {
+                    symbol_type yylookahead(yylex(scanner, parser));
+                    yyla.move(yylookahead);
+                }
+#if YY_EXCEPTIONS
+                catch (const syntax_error& yyexc)
+                {
+                    YYCDEBUG << "Caught exception: " << yyexc.what() << '\n';
+                    error(yyexc);
+                    goto yyerrlab1;
+                }
+#endif  // YY_EXCEPTIONS
+            }
+            YY_SYMBOL_PRINT("Next token is", yyla);
 
-  case 3: // PROGRAM: PROGRAM END
-#line 138 "frontend/parser/yacc.y"
-                  {
-        YYACCEPT;
-    }
-#line 850 "frontend/parser/yacc.cpp"
-    break;
+            if (yyla.kind() == symbol_kind::S_YYerror)
+            {
+                // The scanner already issued an error message, process directly
+                // to error recovery.  But do not keep the error token as
+                // lookahead, it is too special and may lead us to an endless
+                // loop in error recovery. */
+                yyla.kind_ = symbol_kind::S_YYUNDEF;
+                goto yyerrlab1;
+            }
 
-  case 4: // STMT_LIST: STMT
-#line 144 "frontend/parser/yacc.y"
-         {
-        yylhs.value.as < std::vector<FE::AST::StmtNode*>* > () = new std::vector<StmtNode*>();
-        if (yystack_[0].value.as < FE::AST::StmtNode* > ()) yylhs.value.as < std::vector<FE::AST::StmtNode*>* > ()->push_back(yystack_[0].value.as < FE::AST::StmtNode* > ());
-    }
-#line 859 "frontend/parser/yacc.cpp"
-    break;
+            /* If the proper action on seeing token YYLA.TYPE is to reduce or
+               to detect an error, take that action.  */
+            yyn += yyla.kind();
+            if (yyn < 0 || yylast_ < yyn || yycheck_[yyn] != yyla.kind()) { goto yydefault; }
 
-  case 5: // STMT_LIST: STMT_LIST STMT
-#line 148 "frontend/parser/yacc.y"
-                     {
-        yylhs.value.as < std::vector<FE::AST::StmtNode*>* > () = yystack_[1].value.as < std::vector<FE::AST::StmtNode*>* > ();
-        if (yystack_[0].value.as < FE::AST::StmtNode* > ()) yylhs.value.as < std::vector<FE::AST::StmtNode*>* > ()->push_back(yystack_[0].value.as < FE::AST::StmtNode* > ());
-    }
-#line 868 "frontend/parser/yacc.cpp"
-    break;
+            // Reduce or error.
+            yyn = yytable_[yyn];
+            if (yyn <= 0)
+            {
+                if (yy_table_value_is_error_(yyn)) goto yyerrlab;
+                yyn = -yyn;
+                goto yyreduce;
+            }
 
-  case 6: // STMT: EXPR_STMT
-#line 155 "frontend/parser/yacc.y"
-              {
-        yylhs.value.as < FE::AST::StmtNode* > () = yystack_[0].value.as < FE::AST::StmtNode* > ();
-    }
-#line 876 "frontend/parser/yacc.cpp"
-    break;
+            // Count tokens shifted since error; after three, turn off error status.
+            if (yyerrstatus_) --yyerrstatus_;
 
-  case 7: // STMT: VAR_DECL_STMT
-#line 158 "frontend/parser/yacc.y"
+            // Shift the lookahead token.
+            yypush_("Shifting", state_type(yyn), YY_MOVE(yyla));
+            goto yynewstate;
+
+        /*-----------------------------------------------------------.
+        | yydefault -- do the default action for the current state.  |
+        `-----------------------------------------------------------*/
+        yydefault:
+            yyn = yydefact_[+yystack_[0].state];
+            if (yyn == 0) goto yyerrlab;
+            goto yyreduce;
+
+        /*-----------------------------.
+        | yyreduce -- do a reduction.  |
+        `-----------------------------*/
+        yyreduce:
+            yylen = yyr2_[yyn];
+            {
+                stack_symbol_type yylhs;
+                yylhs.state = yy_lr_goto_state_(yystack_[yylen].state, yyr1_[yyn]);
+                /* Variants are always initialized to an empty instance of the
+                   correct type. The default '$$ = $1' action is NOT applied
+                   when using variants.  */
+                switch (yyr1_[yyn])
+                {
+                    case symbol_kind::S_ASSIGN_EXPR:      // ASSIGN_EXPR
+                    case symbol_kind::S_EXPR:             // EXPR
+                    case symbol_kind::S_NOCOMMA_EXPR:     // NOCOMMA_EXPR
+                    case symbol_kind::S_LOGICAL_OR_EXPR:  // LOGICAL_OR_EXPR
+                        yylhs.value.emplace<FE::AST::ExprNode*>();
+                        break;
+
+                    case symbol_kind::S_PROGRAM:  // PROGRAM
+                        yylhs.value.emplace<FE::AST::Root*>();
+                        break;
+
+                    case symbol_kind::S_STMT:            // STMT
+                    case symbol_kind::S_CONTINUE_STMT:   // CONTINUE_STMT
+                    case symbol_kind::S_EXPR_STMT:       // EXPR_STMT
+                    case symbol_kind::S_VAR_DECL_STMT:   // VAR_DECL_STMT
+                    case symbol_kind::S_FUNC_BODY:       // FUNC_BODY
+                    case symbol_kind::S_FUNC_DECL_STMT:  // FUNC_DECL_STMT
+                    case symbol_kind::S_FOR_STMT:        // FOR_STMT
+                    case symbol_kind::S_IF_STMT:         // IF_STMT
+                        yylhs.value.emplace<FE::AST::StmtNode*>();
+                        break;
+
+                    case symbol_kind::S_TYPE:  // TYPE
+                        yylhs.value.emplace<FE::AST::Type*>();
+                        break;
+
+                    case symbol_kind::S_VAR_DECLARATION:  // VAR_DECLARATION
+                        yylhs.value.emplace<FE::AST::VarDeclaration*>();
+                        break;
+
+                    case symbol_kind::S_VAR_DECLARATOR:  // VAR_DECLARATOR
+                        yylhs.value.emplace<FE::AST::VarDeclarator*>();
+                        break;
+
+                    case symbol_kind::S_FLOAT_CONST:  // FLOAT_CONST
+                        yylhs.value.emplace<float>();
+                        break;
+
+                    case symbol_kind::S_INT_CONST:  // INT_CONST
+                        yylhs.value.emplace<int>();
+                        break;
+
+                    case symbol_kind::S_LL_CONST:  // LL_CONST
+                        yylhs.value.emplace<long long>();
+                        break;
+
+                    case symbol_kind::S_STR_CONST:      // STR_CONST
+                    case symbol_kind::S_ERR_TOKEN:      // ERR_TOKEN
+                    case symbol_kind::S_SLASH_COMMENT:  // SLASH_COMMENT
+                    case symbol_kind::S_IDENT:          // IDENT
+                    case symbol_kind::S_MULTI_COMMENT:  // MULTI_COMMENT
+                        yylhs.value.emplace<std::string>();
+                        break;
+
+                    case symbol_kind::S_PARAM_DECLARATOR_LIST:  // PARAM_DECLARATOR_LIST
+                        yylhs.value.emplace<std::vector<FE::AST::ParamDeclarator*>*>();
+                        break;
+
+                    case symbol_kind::S_STMT_LIST:  // STMT_LIST
+                        yylhs.value.emplace<std::vector<FE::AST::StmtNode*>*>();
+                        break;
+
+                    case symbol_kind::S_VAR_DECLARATOR_LIST:  // VAR_DECLARATOR_LIST
+                        yylhs.value.emplace<std::vector<FE::AST::VarDeclarator*>*>();
+                        break;
+
+                    default: break;
+                }
+
+                // Default location.
+                {
+                    stack_type::slice range(yystack_, yylen);
+                    YYLLOC_DEFAULT(yylhs.location, range, yylen);
+                    yyerror_range[1].location = yylhs.location;
+                }
+
+                // Perform the reduction.
+                YY_REDUCE_PRINT(yyn);
+#if YY_EXCEPTIONS
+                try
+#endif  // YY_EXCEPTIONS
+                {
+                    switch (yyn)
                     {
-        yylhs.value.as < FE::AST::StmtNode* > () = yystack_[0].value.as < FE::AST::StmtNode* > ();
-    }
-#line 884 "frontend/parser/yacc.cpp"
-    break;
+                        case 2:  // PROGRAM: STMT_LIST
+#line 159 "frontend/parser/yacc.y"
+                        {
+                            yylhs.value.as<FE::AST::Root*>() =
+                                new Root(yystack_[0].value.as<std::vector<FE::AST::StmtNode*>*>());
+                            parser.ast = yylhs.value.as<FE::AST::Root*>();
+                        }
+#line 887 "frontend/parser/yacc.cpp"
+                        break;
 
-  case 8: // STMT: FUNC_DECL_STMT
-#line 161 "frontend/parser/yacc.y"
-                     {
-        yylhs.value.as < FE::AST::StmtNode* > () = yystack_[0].value.as < FE::AST::StmtNode* > ();
-    }
-#line 892 "frontend/parser/yacc.cpp"
-    break;
+                        case 3:  // PROGRAM: PROGRAM END
+#line 163 "frontend/parser/yacc.y"
+                        {
+                            YYACCEPT;
+                        }
+#line 895 "frontend/parser/yacc.cpp"
+                        break;
 
-  case 9: // STMT: FOR_STMT
-#line 164 "frontend/parser/yacc.y"
-               {
-        yylhs.value.as < FE::AST::StmtNode* > () = yystack_[0].value.as < FE::AST::StmtNode* > ();
-    }
-#line 900 "frontend/parser/yacc.cpp"
-    break;
+                        case 4:  // STMT_LIST: STMT
+#line 169 "frontend/parser/yacc.y"
+                        {
+                            yylhs.value.as<std::vector<FE::AST::StmtNode*>*>() = new std::vector<StmtNode*>();
+                            if (yystack_[0].value.as<FE::AST::StmtNode*>())
+                                yylhs.value.as<std::vector<FE::AST::StmtNode*>*>()->push_back(
+                                    yystack_[0].value.as<FE::AST::StmtNode*>());
+                        }
+#line 904 "frontend/parser/yacc.cpp"
+                        break;
 
-  case 10: // STMT: IF_STMT
-#line 167 "frontend/parser/yacc.y"
-              {
-        yylhs.value.as < FE::AST::StmtNode* > () = yystack_[0].value.as < FE::AST::StmtNode* > ();
-    }
-#line 908 "frontend/parser/yacc.cpp"
-    break;
-
-  case 11: // STMT: CONTINUE_STMT
-#line 170 "frontend/parser/yacc.y"
-                    {
-        yylhs.value.as < FE::AST::StmtNode* > () = yystack_[0].value.as < FE::AST::StmtNode* > ();
-    }
-#line 916 "frontend/parser/yacc.cpp"
-    break;
-
-  case 12: // STMT: SEMICOLON
+                        case 5:  // STMT_LIST: STMT_LIST STMT
 #line 173 "frontend/parser/yacc.y"
-                {
-        yylhs.value.as < FE::AST::StmtNode* > () = nullptr;
-    }
-#line 924 "frontend/parser/yacc.cpp"
-    break;
+                        {
+                            yylhs.value.as<std::vector<FE::AST::StmtNode*>*>() =
+                                yystack_[1].value.as<std::vector<FE::AST::StmtNode*>*>();
+                            if (yystack_[0].value.as<FE::AST::StmtNode*>())
+                                yylhs.value.as<std::vector<FE::AST::StmtNode*>*>()->push_back(
+                                    yystack_[0].value.as<FE::AST::StmtNode*>());
+                        }
+#line 913 "frontend/parser/yacc.cpp"
+                        break;
 
-  case 13: // STMT: SLASH_COMMENT
-#line 176 "frontend/parser/yacc.y"
-                    {
-        yylhs.value.as < FE::AST::StmtNode* > () = nullptr;
-    }
-#line 932 "frontend/parser/yacc.cpp"
-    break;
+                        case 6:  // STMT: EXPR_STMT
+#line 180 "frontend/parser/yacc.y"
+                        {
+                            yylhs.value.as<FE::AST::StmtNode*>() = yystack_[0].value.as<FE::AST::StmtNode*>();
+                        }
+#line 921 "frontend/parser/yacc.cpp"
+                        break;
 
-  case 14: // CONTINUE_STMT: CONTINUE SEMICOLON
+                        case 7:  // STMT: VAR_DECL_STMT
 #line 183 "frontend/parser/yacc.y"
-                       {
-        yylhs.value.as < FE::AST::StmtNode* > () = new ContinueStmt(yystack_[1].location.begin.line, yystack_[1].location.begin.column);
-    }
-#line 940 "frontend/parser/yacc.cpp"
-    break;
+                        {
+                            yylhs.value.as<FE::AST::StmtNode*>() = yystack_[0].value.as<FE::AST::StmtNode*>();
+                        }
+#line 929 "frontend/parser/yacc.cpp"
+                        break;
 
-  case 15: // EXPR_STMT: EXPR SEMICOLON
+                        case 8:  // STMT: FUNC_DECL_STMT
+#line 186 "frontend/parser/yacc.y"
+                        {
+                            yylhs.value.as<FE::AST::StmtNode*>() = yystack_[0].value.as<FE::AST::StmtNode*>();
+                        }
+#line 937 "frontend/parser/yacc.cpp"
+                        break;
+
+                        case 9:  // STMT: FOR_STMT
 #line 189 "frontend/parser/yacc.y"
-                   {
-        yylhs.value.as < FE::AST::StmtNode* > () = new ExprStmt(yystack_[1].value.as < FE::AST::ExprNode* > (), yystack_[1].location.begin.line, yystack_[1].location.begin.column);
-    }
-#line 948 "frontend/parser/yacc.cpp"
-    break;
+                        {
+                            yylhs.value.as<FE::AST::StmtNode*>() = yystack_[0].value.as<FE::AST::StmtNode*>();
+                        }
+#line 945 "frontend/parser/yacc.cpp"
+                        break;
 
-  case 16: // VAR_DECLARATION: TYPE VAR_DECLARATOR_LIST
+                        case 10:  // STMT: IF_STMT
+#line 192 "frontend/parser/yacc.y"
+                        {
+                            yylhs.value.as<FE::AST::StmtNode*>() = yystack_[0].value.as<FE::AST::StmtNode*>();
+                        }
+#line 953 "frontend/parser/yacc.cpp"
+                        break;
+
+                        case 11:  // STMT: CONTINUE_STMT
 #line 195 "frontend/parser/yacc.y"
-                             {
-        yylhs.value.as < FE::AST::VarDeclaration* > () = new VarDeclaration(yystack_[1].value.as < FE::AST::Type* > (), yystack_[0].value.as < std::vector<FE::AST::VarDeclarator*>* > (), false, yystack_[1].location.begin.line, yystack_[1].location.begin.column);
-    }
-#line 956 "frontend/parser/yacc.cpp"
-    break;
+                        {
+                            yylhs.value.as<FE::AST::StmtNode*>() = yystack_[0].value.as<FE::AST::StmtNode*>();
+                        }
+#line 961 "frontend/parser/yacc.cpp"
+                        break;
 
-  case 17: // VAR_DECLARATION: CONST TYPE VAR_DECLARATOR_LIST
+                        case 12:  // STMT: SEMICOLON
 #line 198 "frontend/parser/yacc.y"
-                                     {
-        yylhs.value.as < FE::AST::VarDeclaration* > () = new VarDeclaration(yystack_[1].value.as < FE::AST::Type* > (), yystack_[0].value.as < std::vector<FE::AST::VarDeclarator*>* > (), true, yystack_[2].location.begin.line, yystack_[2].location.begin.column);
-    }
-#line 964 "frontend/parser/yacc.cpp"
-    break;
+                        {
+                            yylhs.value.as<FE::AST::StmtNode*>() = nullptr;
+                        }
+#line 969 "frontend/parser/yacc.cpp"
+                        break;
 
-  case 19: // FUNC_BODY: LBRACE RBRACE
+                        case 13:  // STMT: SLASH_COMMENT
+#line 201 "frontend/parser/yacc.y"
+                        {
+                            yylhs.value.as<FE::AST::StmtNode*>() = nullptr;
+                        }
+#line 977 "frontend/parser/yacc.cpp"
+                        break;
+
+                        case 14:  // CONTINUE_STMT: CONTINUE SEMICOLON
 #line 208 "frontend/parser/yacc.y"
-                  {
-        yylhs.value.as < FE::AST::StmtNode* > () = nullptr;
-    }
-#line 972 "frontend/parser/yacc.cpp"
-    break;
+                        {
+                            yylhs.value.as<FE::AST::StmtNode*>() =
+                                new ContinueStmt(yystack_[1].location.begin.line, yystack_[1].location.begin.column);
+                        }
+#line 985 "frontend/parser/yacc.cpp"
+                        break;
 
-  case 20: // FUNC_BODY: LBRACE STMT_LIST RBRACE
-#line 211 "frontend/parser/yacc.y"
-                              {
-        if (!yystack_[1].value.as < std::vector<FE::AST::StmtNode*>* > () || yystack_[1].value.as < std::vector<FE::AST::StmtNode*>* > ()->empty())
-        {
-            yylhs.value.as < FE::AST::StmtNode* > () = nullptr;
-            delete yystack_[1].value.as < std::vector<FE::AST::StmtNode*>* > ();
-        }
-        else if (yystack_[1].value.as < std::vector<FE::AST::StmtNode*>* > ()->size() == 1)
-        {
-            yylhs.value.as < FE::AST::StmtNode* > () = (*yystack_[1].value.as < std::vector<FE::AST::StmtNode*>* > ())[0];
-            delete yystack_[1].value.as < std::vector<FE::AST::StmtNode*>* > ();
-        }
-        else yylhs.value.as < FE::AST::StmtNode* > () = new BlockStmt(yystack_[1].value.as < std::vector<FE::AST::StmtNode*>* > (), yystack_[2].location.begin.line, yystack_[2].location.begin.column);
-    }
-#line 990 "frontend/parser/yacc.cpp"
-    break;
+                        case 15:  // EXPR_STMT: EXPR SEMICOLON
+#line 214 "frontend/parser/yacc.y"
+                        {
+                            yylhs.value.as<FE::AST::StmtNode*>() =
+                                new ExprStmt(yystack_[1].value.as<FE::AST::ExprNode*>(),
+                                    yystack_[1].location.begin.line,
+                                    yystack_[1].location.begin.column);
+                        }
+#line 993 "frontend/parser/yacc.cpp"
+                        break;
 
-  case 21: // FUNC_DECL_STMT: TYPE IDENT LPAREN PARAM_DECLARATOR_LIST RPAREN FUNC_BODY
-#line 227 "frontend/parser/yacc.y"
-                                                             {
-        Entry* entry = Entry::getEntry(yystack_[4].value.as < std::string > ());
-        yylhs.value.as < FE::AST::StmtNode* > () = new FuncDeclStmt(yystack_[5].value.as < FE::AST::Type* > (), entry, yystack_[2].value.as < std::vector<FE::AST::ParamDeclarator*>* > (), yystack_[0].value.as < FE::AST::StmtNode* > (), yystack_[5].location.begin.line, yystack_[5].location.begin.column);
-    }
-#line 999 "frontend/parser/yacc.cpp"
-    break;
+                        case 16:  // VAR_DECLARATION: TYPE VAR_DECLARATOR_LIST
+#line 220 "frontend/parser/yacc.y"
+                        {
+                            yylhs.value.as<FE::AST::VarDeclaration*>() =
+                                new VarDeclaration(yystack_[1].value.as<FE::AST::Type*>(),
+                                    yystack_[0].value.as<std::vector<FE::AST::VarDeclarator*>*>(),
+                                    false,
+                                    yystack_[1].location.begin.line,
+                                    yystack_[1].location.begin.column);
+                        }
+#line 1001 "frontend/parser/yacc.cpp"
+                        break;
 
-  case 22: // FOR_STMT: FOR LPAREN VAR_DECLARATION SEMICOLON EXPR SEMICOLON EXPR RPAREN STMT
-#line 234 "frontend/parser/yacc.y"
-                                                                         {
-        VarDeclStmt* initStmt = new VarDeclStmt(yystack_[6].value.as < FE::AST::VarDeclaration* > (), yystack_[6].location.begin.line, yystack_[6].location.begin.column);
-        yylhs.value.as < FE::AST::StmtNode* > () = new ForStmt(initStmt, yystack_[4].value.as < FE::AST::ExprNode* > (), yystack_[2].value.as < FE::AST::ExprNode* > (), yystack_[0].value.as < FE::AST::StmtNode* > (), yystack_[8].location.begin.line, yystack_[8].location.begin.column);
-    }
-#line 1008 "frontend/parser/yacc.cpp"
-    break;
+                        case 17:  // VAR_DECLARATION: CONST TYPE VAR_DECLARATOR_LIST
+#line 223 "frontend/parser/yacc.y"
+                        {
+                            yylhs.value.as<FE::AST::VarDeclaration*>() =
+                                new VarDeclaration(yystack_[1].value.as<FE::AST::Type*>(),
+                                    yystack_[0].value.as<std::vector<FE::AST::VarDeclarator*>*>(),
+                                    true,
+                                    yystack_[2].location.begin.line,
+                                    yystack_[2].location.begin.column);
+                        }
+#line 1009 "frontend/parser/yacc.cpp"
+                        break;
 
-  case 23: // FOR_STMT: FOR LPAREN EXPR SEMICOLON EXPR SEMICOLON EXPR RPAREN STMT
-#line 238 "frontend/parser/yacc.y"
-                                                                {
-        StmtNode* initStmt = new ExprStmt(yystack_[6].value.as < FE::AST::ExprNode* > (), yystack_[6].value.as < FE::AST::ExprNode* > ()->line_num, yystack_[6].value.as < FE::AST::ExprNode* > ()->col_num);
-        yylhs.value.as < FE::AST::StmtNode* > () = new ForStmt(initStmt, yystack_[4].value.as < FE::AST::ExprNode* > (), yystack_[2].value.as < FE::AST::ExprNode* > (), yystack_[0].value.as < FE::AST::StmtNode* > (), yystack_[8].location.begin.line, yystack_[8].location.begin.column);
-    }
+                        case 19:  // FUNC_BODY: LBRACE RBRACE
+#line 233 "frontend/parser/yacc.y"
+                        {
+                            yylhs.value.as<FE::AST::StmtNode*>() = nullptr;
+                        }
 #line 1017 "frontend/parser/yacc.cpp"
-    break;
+                        break;
 
-  case 25: // PARAM_DECLARATOR_LIST: %empty
-#line 266 "frontend/parser/yacc.y"
-                {
-        yylhs.value.as < std::vector<FE::AST::ParamDeclarator*>* > () = new std::vector<ParamDeclarator*>();
-    }
-#line 1025 "frontend/parser/yacc.cpp"
-    break;
+                        case 20:  // FUNC_BODY: LBRACE STMT_LIST RBRACE
+#line 236 "frontend/parser/yacc.y"
+                        {
+                            if (!yystack_[1].value.as<std::vector<FE::AST::StmtNode*>*>() ||
+                                yystack_[1].value.as<std::vector<FE::AST::StmtNode*>*>()->empty())
+                            {
+                                yylhs.value.as<FE::AST::StmtNode*>() = nullptr;
+                                delete yystack_[1].value.as<std::vector<FE::AST::StmtNode*>*>();
+                            }
+                            else if (yystack_[1].value.as<std::vector<FE::AST::StmtNode*>*>()->size() == 1)
+                            {
+                                yylhs.value.as<FE::AST::StmtNode*>() =
+                                    (*yystack_[1].value.as<std::vector<FE::AST::StmtNode*>*>())[0];
+                                delete yystack_[1].value.as<std::vector<FE::AST::StmtNode*>*>();
+                            }
+                            else
+                                yylhs.value.as<FE::AST::StmtNode*>() =
+                                    new BlockStmt(yystack_[1].value.as<std::vector<FE::AST::StmtNode*>*>(),
+                                        yystack_[2].location.begin.line,
+                                        yystack_[2].location.begin.column);
+                        }
+#line 1035 "frontend/parser/yacc.cpp"
+                        break;
 
-  case 27: // VAR_DECLARATOR_LIST: VAR_DECLARATOR
-#line 277 "frontend/parser/yacc.y"
-                   {
-        yylhs.value.as < std::vector<FE::AST::VarDeclarator*>* > () = new std::vector<VarDeclarator*>();
-        yylhs.value.as < std::vector<FE::AST::VarDeclarator*>* > ()->push_back(yystack_[0].value.as < FE::AST::VarDeclarator* > ());
-    }
-#line 1034 "frontend/parser/yacc.cpp"
-    break;
+                        case 21:  // FUNC_DECL_STMT: TYPE IDENT LPAREN PARAM_DECLARATOR_LIST RPAREN FUNC_BODY
+#line 252 "frontend/parser/yacc.y"
+                        {
+                            Entry* entry = Entry::getEntry(yystack_[4].value.as<std::string>());
+                            yylhs.value.as<FE::AST::StmtNode*>() =
+                                new FuncDeclStmt(yystack_[5].value.as<FE::AST::Type*>(),
+                                    entry,
+                                    yystack_[2].value.as<std::vector<FE::AST::ParamDeclarator*>*>(),
+                                    yystack_[0].value.as<FE::AST::StmtNode*>(),
+                                    yystack_[5].location.begin.line,
+                                    yystack_[5].location.begin.column);
+                        }
+#line 1044 "frontend/parser/yacc.cpp"
+                        break;
 
-  case 28: // VAR_DECLARATOR_LIST: VAR_DECLARATOR_LIST COMMA VAR_DECLARATOR
-#line 281 "frontend/parser/yacc.y"
-                                               {
-        yylhs.value.as < std::vector<FE::AST::VarDeclarator*>* > () = yystack_[2].value.as < std::vector<FE::AST::VarDeclarator*>* > ();
-        yylhs.value.as < std::vector<FE::AST::VarDeclarator*>* > ()->push_back(yystack_[0].value.as < FE::AST::VarDeclarator* > ());
-    }
-#line 1043 "frontend/parser/yacc.cpp"
-    break;
+                        case 22:  // FOR_STMT: FOR LPAREN VAR_DECLARATION SEMICOLON EXPR SEMICOLON EXPR RPAREN STMT
+#line 259 "frontend/parser/yacc.y"
+                        {
+                            VarDeclStmt* initStmt = new VarDeclStmt(yystack_[6].value.as<FE::AST::VarDeclaration*>(),
+                                yystack_[6].location.begin.line,
+                                yystack_[6].location.begin.column);
+                            yylhs.value.as<FE::AST::StmtNode*>() = new ForStmt(initStmt,
+                                yystack_[4].value.as<FE::AST::ExprNode*>(),
+                                yystack_[2].value.as<FE::AST::ExprNode*>(),
+                                yystack_[0].value.as<FE::AST::StmtNode*>(),
+                                yystack_[8].location.begin.line,
+                                yystack_[8].location.begin.column);
+                        }
+#line 1053 "frontend/parser/yacc.cpp"
+                        break;
 
-  case 30: // EXPR: NOCOMMA_EXPR
-#line 318 "frontend/parser/yacc.y"
-                 {
-        yylhs.value.as < FE::AST::ExprNode* > () = yystack_[0].value.as < FE::AST::ExprNode* > ();
-    }
-#line 1051 "frontend/parser/yacc.cpp"
-    break;
+                        case 23:  // FOR_STMT: FOR LPAREN EXPR SEMICOLON EXPR SEMICOLON EXPR RPAREN STMT
+#line 263 "frontend/parser/yacc.y"
+                        {
+                            StmtNode* initStmt = new ExprStmt(yystack_[6].value.as<FE::AST::ExprNode*>(),
+                                yystack_[6].value.as<FE::AST::ExprNode*>()->line_num,
+                                yystack_[6].value.as<FE::AST::ExprNode*>()->col_num);
+                            yylhs.value.as<FE::AST::StmtNode*>() = new ForStmt(initStmt,
+                                yystack_[4].value.as<FE::AST::ExprNode*>(),
+                                yystack_[2].value.as<FE::AST::ExprNode*>(),
+                                yystack_[0].value.as<FE::AST::StmtNode*>(),
+                                yystack_[8].location.begin.line,
+                                yystack_[8].location.begin.column);
+                        }
+#line 1062 "frontend/parser/yacc.cpp"
+                        break;
 
-  case 31: // EXPR: EXPR COMMA NOCOMMA_EXPR
-#line 321 "frontend/parser/yacc.y"
-                              {
-        if (yystack_[2].value.as < FE::AST::ExprNode* > ()->isCommaExpr()) {
-            CommaExpr* ce = static_cast<CommaExpr*>(yystack_[2].value.as < FE::AST::ExprNode* > ());
-            ce->exprs->push_back(yystack_[0].value.as < FE::AST::ExprNode* > ());
-            yylhs.value.as < FE::AST::ExprNode* > () = ce;
-        } else {
-            auto vec = new std::vector<ExprNode*>();
-            vec->push_back(yystack_[2].value.as < FE::AST::ExprNode* > ());
-            vec->push_back(yystack_[0].value.as < FE::AST::ExprNode* > ());
-            yylhs.value.as < FE::AST::ExprNode* > () = new CommaExpr(vec, yystack_[2].value.as < FE::AST::ExprNode* > ()->line_num, yystack_[2].value.as < FE::AST::ExprNode* > ()->col_num);
-        }
-    }
-#line 1068 "frontend/parser/yacc.cpp"
-    break;
+                        case 25:  // PARAM_DECLARATOR_LIST: %empty
+#line 291 "frontend/parser/yacc.y"
+                        {
+                            yylhs.value.as<std::vector<FE::AST::ParamDeclarator*>*>() =
+                                new std::vector<ParamDeclarator*>();
+                        }
+#line 1070 "frontend/parser/yacc.cpp"
+                        break;
 
-  case 32: // NOCOMMA_EXPR: LOGICAL_OR_EXPR
-#line 336 "frontend/parser/yacc.y"
-                    {
-        yylhs.value.as < FE::AST::ExprNode* > () = yystack_[0].value.as < FE::AST::ExprNode* > ();
-    }
-#line 1076 "frontend/parser/yacc.cpp"
-    break;
+                        case 27:  // VAR_DECLARATOR_LIST: VAR_DECLARATOR
+#line 302 "frontend/parser/yacc.y"
+                        {
+                            yylhs.value.as<std::vector<FE::AST::VarDeclarator*>*>() = new std::vector<VarDeclarator*>();
+                            yylhs.value.as<std::vector<FE::AST::VarDeclarator*>*>()->push_back(
+                                yystack_[0].value.as<FE::AST::VarDeclarator*>());
+                        }
+#line 1079 "frontend/parser/yacc.cpp"
+                        break;
 
-  case 33: // NOCOMMA_EXPR: ASSIGN_EXPR
-#line 339 "frontend/parser/yacc.y"
-                  {
-        yylhs.value.as < FE::AST::ExprNode* > () = yystack_[0].value.as < FE::AST::ExprNode* > ();
-    }
-#line 1084 "frontend/parser/yacc.cpp"
-    break;
-
-
+                        case 28:  // VAR_DECLARATOR_LIST: VAR_DECLARATOR_LIST COMMA VAR_DECLARATOR
+#line 306 "frontend/parser/yacc.y"
+                        {
+                            yylhs.value.as<std::vector<FE::AST::VarDeclarator*>*>() =
+                                yystack_[2].value.as<std::vector<FE::AST::VarDeclarator*>*>();
+                            yylhs.value.as<std::vector<FE::AST::VarDeclarator*>*>()->push_back(
+                                yystack_[0].value.as<FE::AST::VarDeclarator*>());
+                        }
 #line 1088 "frontend/parser/yacc.cpp"
+                        break;
 
-            default:
-              break;
+                        case 30:  // EXPR: NOCOMMA_EXPR
+#line 343 "frontend/parser/yacc.y"
+                        {
+                            yylhs.value.as<FE::AST::ExprNode*>() = yystack_[0].value.as<FE::AST::ExprNode*>();
+                        }
+#line 1096 "frontend/parser/yacc.cpp"
+                        break;
+
+                        case 31:  // EXPR: EXPR COMMA NOCOMMA_EXPR
+#line 346 "frontend/parser/yacc.y"
+                        {
+                            if (yystack_[2].value.as<FE::AST::ExprNode*>()->isCommaExpr())
+                            {
+                                CommaExpr* ce = static_cast<CommaExpr*>(yystack_[2].value.as<FE::AST::ExprNode*>());
+                                ce->exprs->push_back(yystack_[0].value.as<FE::AST::ExprNode*>());
+                                yylhs.value.as<FE::AST::ExprNode*>() = ce;
+                            }
+                            else
+                            {
+                                auto vec = new std::vector<ExprNode*>();
+                                vec->push_back(yystack_[2].value.as<FE::AST::ExprNode*>());
+                                vec->push_back(yystack_[0].value.as<FE::AST::ExprNode*>());
+                                yylhs.value.as<FE::AST::ExprNode*>() = new CommaExpr(vec,
+                                    yystack_[2].value.as<FE::AST::ExprNode*>()->line_num,
+                                    yystack_[2].value.as<FE::AST::ExprNode*>()->col_num);
+                            }
+                        }
+#line 1113 "frontend/parser/yacc.cpp"
+                        break;
+
+                        case 32:  // NOCOMMA_EXPR: LOGICAL_OR_EXPR
+#line 361 "frontend/parser/yacc.y"
+                        {
+                            yylhs.value.as<FE::AST::ExprNode*>() = yystack_[0].value.as<FE::AST::ExprNode*>();
+                        }
+#line 1121 "frontend/parser/yacc.cpp"
+                        break;
+
+                        case 33:  // NOCOMMA_EXPR: ASSIGN_EXPR
+#line 364 "frontend/parser/yacc.y"
+                        {
+                            yylhs.value.as<FE::AST::ExprNode*>() = yystack_[0].value.as<FE::AST::ExprNode*>();
+                        }
+#line 1129 "frontend/parser/yacc.cpp"
+                        break;
+
+#line 1133 "frontend/parser/yacc.cpp"
+
+                        default: break;
+                    }
+                }
+#if YY_EXCEPTIONS
+                catch (const syntax_error& yyexc)
+                {
+                    YYCDEBUG << "Caught exception: " << yyexc.what() << '\n';
+                    error(yyexc);
+                    YYERROR;
+                }
+#endif  // YY_EXCEPTIONS
+                YY_SYMBOL_PRINT("-> $$ =", yylhs);
+                yypop_(yylen);
+                yylen = 0;
+
+                // Shift the result of the reduction.
+                yypush_(YY_NULLPTR, YY_MOVE(yylhs));
             }
+            goto yynewstate;
+
+        /*--------------------------------------.
+        | yyerrlab -- here on detecting error.  |
+        `--------------------------------------*/
+        yyerrlab:
+            // If not already recovering from an error, report this error.
+            if (!yyerrstatus_)
+            {
+                ++yynerrs_;
+                context     yyctx(*this, yyla);
+                std::string msg = yysyntax_error_(yyctx);
+                error(yyla.location, YY_MOVE(msg));
+            }
+
+            yyerror_range[1].location = yyla.location;
+            if (yyerrstatus_ == 3)
+            {
+                /* If just tried and failed to reuse lookahead token after an
+                   error, discard it.  */
+
+                // Return failure if at end of input.
+                if (yyla.kind() == symbol_kind::S_YYEOF)
+                    YYABORT;
+                else if (!yyla.empty())
+                {
+                    yy_destroy_("Error: discarding", yyla);
+                    yyla.clear();
+                }
+            }
+
+            // Else will try to reuse lookahead token after shifting the error token.
+            goto yyerrlab1;
+
+        /*---------------------------------------------------.
+        | yyerrorlab -- error raised explicitly by YYERROR.  |
+        `---------------------------------------------------*/
+        yyerrorlab:
+            /* Pacify compilers when the user code never invokes YYERROR and
+               the label yyerrorlab therefore never appears in user code.  */
+            if (false) YYERROR;
+
+            /* Do not reclaim the symbols of the rule whose action triggered
+               this YYERROR.  */
+            yypop_(yylen);
+            yylen = 0;
+            YY_STACK_PRINT();
+            goto yyerrlab1;
+
+        /*-------------------------------------------------------------.
+        | yyerrlab1 -- common code for both syntax error and YYERROR.  |
+        `-------------------------------------------------------------*/
+        yyerrlab1:
+            yyerrstatus_ = 3;  // Each real token shifted decrements this.
+            // Pop stack until we find a state that shifts the error token.
+            for (;;)
+            {
+                yyn = yypact_[+yystack_[0].state];
+                if (!yy_pact_value_is_default_(yyn))
+                {
+                    yyn += symbol_kind::S_YYerror;
+                    if (0 <= yyn && yyn <= yylast_ && yycheck_[yyn] == symbol_kind::S_YYerror)
+                    {
+                        yyn = yytable_[yyn];
+                        if (0 < yyn) break;
+                    }
+                }
+
+                // Pop the current state because it cannot handle the error token.
+                if (yystack_.size() == 1) YYABORT;
+
+                yyerror_range[1].location = yystack_[0].location;
+                yy_destroy_("Error: popping", yystack_[0]);
+                yypop_();
+                YY_STACK_PRINT();
+            }
+            {
+                stack_symbol_type error_token;
+
+                yyerror_range[2].location = yyla.location;
+                YYLLOC_DEFAULT(error_token.location, yyerror_range, 2);
+
+                // Shift the error token.
+                error_token.state = state_type(yyn);
+                yypush_("Shifting", YY_MOVE(error_token));
+            }
+            goto yynewstate;
+
+        /*-------------------------------------.
+        | yyacceptlab -- YYACCEPT comes here.  |
+        `-------------------------------------*/
+        yyacceptlab:
+            yyresult = 0;
+            goto yyreturn;
+
+        /*-----------------------------------.
+        | yyabortlab -- YYABORT comes here.  |
+        `-----------------------------------*/
+        yyabortlab:
+            yyresult = 1;
+            goto yyreturn;
+
+        /*-----------------------------------------------------.
+        | yyreturn -- parsing is finished, return the result.  |
+        `-----------------------------------------------------*/
+        yyreturn:
+            if (!yyla.empty()) yy_destroy_("Cleanup: discarding lookahead", yyla);
+
+            /* Do not reclaim the symbols of the rule whose action triggered
+               this YYABORT or YYACCEPT.  */
+            yypop_(yylen);
+            YY_STACK_PRINT();
+            while (1 < yystack_.size())
+            {
+                yy_destroy_("Cleanup: popping", yystack_[0]);
+                yypop_();
+            }
+
+            return yyresult;
         }
 #if YY_EXCEPTIONS
-      catch (const syntax_error& yyexc)
+        catch (...)
         {
-          YYCDEBUG << "Caught exception: " << yyexc.what() << '\n';
-          error (yyexc);
-          YYERROR;
+            YYCDEBUG << "Exception caught: cleaning lookahead and stack\n";
+            // Do not try to display the values of the reclaimed symbols,
+            // as their printers might throw an exception.
+            if (!yyla.empty()) yy_destroy_(YY_NULLPTR, yyla);
+
+            while (1 < yystack_.size())
+            {
+                yy_destroy_(YY_NULLPTR, yystack_[0]);
+                yypop_();
+            }
+            throw;
         }
-#endif // YY_EXCEPTIONS
-      YY_SYMBOL_PRINT ("-> $$ =", yylhs);
-      yypop_ (yylen);
-      yylen = 0;
-
-      // Shift the result of the reduction.
-      yypush_ (YY_NULLPTR, YY_MOVE (yylhs));
+#endif  // YY_EXCEPTIONS
     }
-    goto yynewstate;
 
+    void YaccParser ::error(const syntax_error& yyexc) { error(yyexc.location, yyexc.what()); }
 
-  /*--------------------------------------.
-  | yyerrlab -- here on detecting error.  |
-  `--------------------------------------*/
-  yyerrlab:
-    // If not already recovering from an error, report this error.
-    if (!yyerrstatus_)
-      {
-        ++yynerrs_;
-        context yyctx (*this, yyla);
-        std::string msg = yysyntax_error_ (yyctx);
-        error (yyla.location, YY_MOVE (msg));
-      }
-
-
-    yyerror_range[1].location = yyla.location;
-    if (yyerrstatus_ == 3)
-      {
-        /* If just tried and failed to reuse lookahead token after an
-           error, discard it.  */
-
-        // Return failure if at end of input.
-        if (yyla.kind () == symbol_kind::S_YYEOF)
-          YYABORT;
-        else if (!yyla.empty ())
-          {
-            yy_destroy_ ("Error: discarding", yyla);
-            yyla.clear ();
-          }
-      }
-
-    // Else will try to reuse lookahead token after shifting the error token.
-    goto yyerrlab1;
-
-
-  /*---------------------------------------------------.
-  | yyerrorlab -- error raised explicitly by YYERROR.  |
-  `---------------------------------------------------*/
-  yyerrorlab:
-    /* Pacify compilers when the user code never invokes YYERROR and
-       the label yyerrorlab therefore never appears in user code.  */
-    if (false)
-      YYERROR;
-
-    /* Do not reclaim the symbols of the rule whose action triggered
-       this YYERROR.  */
-    yypop_ (yylen);
-    yylen = 0;
-    YY_STACK_PRINT ();
-    goto yyerrlab1;
-
-
-  /*-------------------------------------------------------------.
-  | yyerrlab1 -- common code for both syntax error and YYERROR.  |
-  `-------------------------------------------------------------*/
-  yyerrlab1:
-    yyerrstatus_ = 3;   // Each real token shifted decrements this.
-    // Pop stack until we find a state that shifts the error token.
-    for (;;)
-      {
-        yyn = yypact_[+yystack_[0].state];
-        if (!yy_pact_value_is_default_ (yyn))
-          {
-            yyn += symbol_kind::S_YYerror;
-            if (0 <= yyn && yyn <= yylast_
-                && yycheck_[yyn] == symbol_kind::S_YYerror)
-              {
-                yyn = yytable_[yyn];
-                if (0 < yyn)
-                  break;
-              }
-          }
-
-        // Pop the current state because it cannot handle the error token.
-        if (yystack_.size () == 1)
-          YYABORT;
-
-        yyerror_range[1].location = yystack_[0].location;
-        yy_destroy_ ("Error: popping", yystack_[0]);
-        yypop_ ();
-        YY_STACK_PRINT ();
-      }
+    /* Return YYSTR after stripping away unnecessary quotes and
+       backslashes, so that it's suitable for yyerror.  The heuristic is
+       that double-quoting is unnecessary unless the string contains an
+       apostrophe, a comma, or backslash (other than backslash-backslash).
+       YYSTR is taken from yytname.  */
+    std::string YaccParser ::yytnamerr_(const char* yystr)
     {
-      stack_symbol_type error_token;
-
-      yyerror_range[2].location = yyla.location;
-      YYLLOC_DEFAULT (error_token.location, yyerror_range, 2);
-
-      // Shift the error token.
-      error_token.state = state_type (yyn);
-      yypush_ ("Shifting", YY_MOVE (error_token));
-    }
-    goto yynewstate;
-
-
-  /*-------------------------------------.
-  | yyacceptlab -- YYACCEPT comes here.  |
-  `-------------------------------------*/
-  yyacceptlab:
-    yyresult = 0;
-    goto yyreturn;
-
-
-  /*-----------------------------------.
-  | yyabortlab -- YYABORT comes here.  |
-  `-----------------------------------*/
-  yyabortlab:
-    yyresult = 1;
-    goto yyreturn;
-
-
-  /*-----------------------------------------------------.
-  | yyreturn -- parsing is finished, return the result.  |
-  `-----------------------------------------------------*/
-  yyreturn:
-    if (!yyla.empty ())
-      yy_destroy_ ("Cleanup: discarding lookahead", yyla);
-
-    /* Do not reclaim the symbols of the rule whose action triggered
-       this YYABORT or YYACCEPT.  */
-    yypop_ (yylen);
-    YY_STACK_PRINT ();
-    while (1 < yystack_.size ())
-      {
-        yy_destroy_ ("Cleanup: popping", yystack_[0]);
-        yypop_ ();
-      }
-
-    return yyresult;
-  }
-#if YY_EXCEPTIONS
-    catch (...)
-      {
-        YYCDEBUG << "Exception caught: cleaning lookahead and stack\n";
-        // Do not try to display the values of the reclaimed symbols,
-        // as their printers might throw an exception.
-        if (!yyla.empty ())
-          yy_destroy_ (YY_NULLPTR, yyla);
-
-        while (1 < yystack_.size ())
-          {
-            yy_destroy_ (YY_NULLPTR, yystack_[0]);
-            yypop_ ();
-          }
-        throw;
-      }
-#endif // YY_EXCEPTIONS
-  }
-
-  void
-   YaccParser ::error (const syntax_error& yyexc)
-  {
-    error (yyexc.location, yyexc.what ());
-  }
-
-  /* Return YYSTR after stripping away unnecessary quotes and
-     backslashes, so that it's suitable for yyerror.  The heuristic is
-     that double-quoting is unnecessary unless the string contains an
-     apostrophe, a comma, or backslash (other than backslash-backslash).
-     YYSTR is taken from yytname.  */
-  std::string
-   YaccParser ::yytnamerr_ (const char *yystr)
-  {
-    if (*yystr == '"')
-      {
-        std::string yyr;
-        char const *yyp = yystr;
-
-        for (;;)
-          switch (*++yyp)
-            {
-            case '\'':
-            case ',':
-              goto do_not_strip_quotes;
-
-            case '\\':
-              if (*++yyp != '\\')
-                goto do_not_strip_quotes;
-              else
-                goto append;
-
-            append:
-            default:
-              yyr += *yyp;
-              break;
-
-            case '"':
-              return yyr;
-            }
-      do_not_strip_quotes: ;
-      }
-
-    return yystr;
-  }
-
-  std::string
-   YaccParser ::symbol_name (symbol_kind_type yysymbol)
-  {
-    return yytnamerr_ (yytname_[yysymbol]);
-  }
-
-
-
-  //  YaccParser ::context.
-   YaccParser ::context::context (const  YaccParser & yyparser, const symbol_type& yyla)
-    : yyparser_ (yyparser)
-    , yyla_ (yyla)
-  {}
-
-  int
-   YaccParser ::context::expected_tokens (symbol_kind_type yyarg[], int yyargn) const
-  {
-    // Actual number of expected tokens
-    int yycount = 0;
-
-    const int yyn = yypact_[+yyparser_.yystack_[0].state];
-    if (!yy_pact_value_is_default_ (yyn))
-      {
-        /* Start YYX at -YYN if negative to avoid negative indexes in
-           YYCHECK.  In other words, skip the first -YYN actions for
-           this state because they are default actions.  */
-        const int yyxbegin = yyn < 0 ? -yyn : 0;
-        // Stay within bounds of both yycheck and yytname.
-        const int yychecklim = yylast_ - yyn + 1;
-        const int yyxend = yychecklim < YYNTOKENS ? yychecklim : YYNTOKENS;
-        for (int yyx = yyxbegin; yyx < yyxend; ++yyx)
-          if (yycheck_[yyx + yyn] == yyx && yyx != symbol_kind::S_YYerror
-              && !yy_table_value_is_error_ (yytable_[yyx + yyn]))
-            {
-              if (!yyarg)
-                ++yycount;
-              else if (yycount == yyargn)
-                return 0;
-              else
-                yyarg[yycount++] = YY_CAST (symbol_kind_type, yyx);
-            }
-      }
-
-    if (yyarg && yycount == 0 && 0 < yyargn)
-      yyarg[0] = symbol_kind::S_YYEMPTY;
-    return yycount;
-  }
-
-
-
-
-
-
-  int
-   YaccParser ::yy_syntax_error_arguments_ (const context& yyctx,
-                                                 symbol_kind_type yyarg[], int yyargn) const
-  {
-    /* There are many possibilities here to consider:
-       - If this state is a consistent state with a default action, then
-         the only way this function was invoked is if the default action
-         is an error action.  In that case, don't check for expected
-         tokens because there are none.
-       - The only way there can be no lookahead present (in yyla) is
-         if this state is a consistent state with a default action.
-         Thus, detecting the absence of a lookahead is sufficient to
-         determine that there is no unexpected or expected token to
-         report.  In that case, just report a simple "syntax error".
-       - Don't assume there isn't a lookahead just because this state is
-         a consistent state with a default action.  There might have
-         been a previous inconsistent state, consistent state with a
-         non-default action, or user semantic action that manipulated
-         yyla.  (However, yyla is currently not documented for users.)
-       - Of course, the expected token list depends on states to have
-         correct lookahead information, and it depends on the parser not
-         to perform extra reductions after fetching a lookahead from the
-         scanner and before detecting a syntax error.  Thus, state merging
-         (from LALR or IELR) and default reductions corrupt the expected
-         token list.  However, the list is correct for canonical LR with
-         one exception: it will still contain any token that will not be
-         accepted due to an error action in a later state.
-    */
-
-    if (!yyctx.lookahead ().empty ())
-      {
-        if (yyarg)
-          yyarg[0] = yyctx.token ();
-        int yyn = yyctx.expected_tokens (yyarg ? yyarg + 1 : yyarg, yyargn - 1);
-        return yyn + 1;
-      }
-    return 0;
-  }
-
-  // Generate an error message.
-  std::string
-   YaccParser ::yysyntax_error_ (const context& yyctx) const
-  {
-    // Its maximum.
-    enum { YYARGS_MAX = 5 };
-    // Arguments of yyformat.
-    symbol_kind_type yyarg[YYARGS_MAX];
-    int yycount = yy_syntax_error_arguments_ (yyctx, yyarg, YYARGS_MAX);
-
-    char const* yyformat = YY_NULLPTR;
-    switch (yycount)
-      {
-#define YYCASE_(N, S)                         \
-        case N:                               \
-          yyformat = S;                       \
-        break
-      default: // Avoid compiler warnings.
-        YYCASE_ (0, YY_("syntax error"));
-        YYCASE_ (1, YY_("syntax error, unexpected %s"));
-        YYCASE_ (2, YY_("syntax error, unexpected %s, expecting %s"));
-        YYCASE_ (3, YY_("syntax error, unexpected %s, expecting %s or %s"));
-        YYCASE_ (4, YY_("syntax error, unexpected %s, expecting %s or %s or %s"));
-        YYCASE_ (5, YY_("syntax error, unexpected %s, expecting %s or %s or %s or %s"));
-#undef YYCASE_
-      }
-
-    std::string yyres;
-    // Argument number.
-    std::ptrdiff_t yyi = 0;
-    for (char const* yyp = yyformat; *yyp; ++yyp)
-      if (yyp[0] == '%' && yyp[1] == 's' && yyi < yycount)
+        if (*yystr == '"')
         {
-          yyres += symbol_name (yyarg[yyi++]);
-          ++yyp;
+            std::string yyr;
+            char const* yyp = yystr;
+
+            for (;;) switch (*++yyp)
+                {
+                    case '\'':
+                    case ',': goto do_not_strip_quotes;
+
+                    case '\\':
+                        if (*++yyp != '\\')
+                            goto do_not_strip_quotes;
+                        else
+                            goto append;
+
+                    append:
+                    default: yyr += *yyp; break;
+
+                    case '"': return yyr;
+                }
+        do_not_strip_quotes:;
         }
-      else
-        yyres += *yyp;
-    return yyres;
-  }
 
+        return yystr;
+    }
 
-  const signed char  YaccParser ::yypact_ninf_ = -20;
+    std::string YaccParser ::symbol_name(symbol_kind_type yysymbol) { return yytnamerr_(yytname_[yysymbol]); }
 
-  const signed char  YaccParser ::yytable_ninf_ = -19;
+    //  YaccParser ::context.
+    YaccParser ::context::context(const YaccParser& yyparser, const symbol_type& yyla)
+        : yyparser_(yyparser), yyla_(yyla)
+    {}
 
-  const signed char
-   YaccParser ::yypact_[] =
-  {
-      32,   -20,   -19,   -12,   -20,     1,    29,   -20,   -20,   -20,
-     -20,   -20,   -20,   -20,   -20,   -14,   -20,   -20,    13,     3,
-     -20,   -20,   -20,   -20,   -20,   -20,     8,   -20,     5,    12,
-     -20,   -20,   -20,   -20,   -20,   -20,   -20,    16,    11,    16,
-      33,    35,   -20,    14,   -20,   -20,   -20,    -1,   -20,    -8,
-       0,   -20,     4,    32,    32,   -20,   -20,   -20
-  };
+    int YaccParser ::context::expected_tokens(symbol_kind_type yyarg[], int yyargn) const
+    {
+        // Actual number of expected tokens
+        int yycount = 0;
 
-  const signed char
-   YaccParser ::yydefact_[] =
-  {
-      18,    13,     0,     0,    12,     0,     2,     4,    11,     6,
-       7,     8,     9,    10,    33,     0,    30,    32,     0,    29,
-      14,     1,     3,     5,    15,    29,     0,    35,     0,     0,
-      26,    31,    25,    26,    29,    29,    27,    16,     0,    17,
-       0,     0,    26,     0,    29,    29,    28,    18,    21,     0,
-       0,    19,    18,    18,    18,    20,    22,    23
-  };
+        const int yyn = yypact_[+yyparser_.yystack_[0].state];
+        if (!yy_pact_value_is_default_(yyn))
+        {
+            /* Start YYX at -YYN if negative to avoid negative indexes in
+               YYCHECK.  In other words, skip the first -YYN actions for
+               this state because they are default actions.  */
+            const int yyxbegin = yyn < 0 ? -yyn : 0;
+            // Stay within bounds of both yycheck and yytname.
+            const int yychecklim = yylast_ - yyn + 1;
+            const int yyxend     = yychecklim < YYNTOKENS ? yychecklim : YYNTOKENS;
+            for (int yyx = yyxbegin; yyx < yyxend; ++yyx)
+                if (yycheck_[yyx + yyn] == yyx && yyx != symbol_kind::S_YYerror &&
+                    !yy_table_value_is_error_(yytable_[yyx + yyn]))
+                {
+                    if (!yyarg)
+                        ++yycount;
+                    else if (yycount == yyargn)
+                        return 0;
+                    else
+                        yyarg[yycount++] = YY_CAST(symbol_kind_type, yyx);
+                }
+        }
 
-  const signed char
-   YaccParser ::yypgoto_[] =
-  {
-     -20,   -20,    -4,    -6,   -20,   -20,   -20,   -20,   -20,   -20,
-     -20,   -20,   -20,     9,    24,   -20,   -17,    20,   -20,   -15
-  };
+        if (yyarg && yycount == 0 && 0 < yyargn) yyarg[0] = symbol_kind::S_YYEMPTY;
+        return yycount;
+    }
 
-  const signed char
-   YaccParser ::yydefgoto_[] =
-  {
-       0,     5,     6,     7,     8,     9,    28,    10,    48,    11,
-      12,    13,    38,    36,    37,    14,    15,    16,    17,    18
-  };
+    int YaccParser ::yy_syntax_error_arguments_(const context& yyctx, symbol_kind_type yyarg[], int yyargn) const
+    {
+        /* There are many possibilities here to consider:
+           - If this state is a consistent state with a default action, then
+             the only way this function was invoked is if the default action
+             is an error action.  In that case, don't check for expected
+             tokens because there are none.
+           - The only way there can be no lookahead present (in yyla) is
+             if this state is a consistent state with a default action.
+             Thus, detecting the absence of a lookahead is sufficient to
+             determine that there is no unexpected or expected token to
+             report.  In that case, just report a simple "syntax error".
+           - Don't assume there isn't a lookahead just because this state is
+             a consistent state with a default action.  There might have
+             been a previous inconsistent state, consistent state with a
+             non-default action, or user semantic action that manipulated
+             yyla.  (However, yyla is currently not documented for users.)
+           - Of course, the expected token list depends on states to have
+             correct lookahead information, and it depends on the parser not
+             to perform extra reductions after fetching a lookahead from the
+             scanner and before detecting a syntax error.  Thus, state merging
+             (from LALR or IELR) and default reductions corrupt the expected
+             token list.  However, the list is correct for canonical LR with
+             one exception: it will still contain any token that will not be
+             accepted due to an error action in a later state.
+        */
 
-  const signed char
-   YaccParser ::yytable_[] =
-  {
-      23,    21,    29,    19,    30,     1,    24,    25,    20,     2,
-       1,     3,    33,    25,     2,    53,     3,    40,    41,     4,
-      26,    25,    27,    54,     4,    34,    51,    49,    50,    22,
-      32,    55,    35,    25,    43,     1,   -18,    42,     1,     2,
-      47,     3,     2,    52,     3,    31,    23,    56,    57,     4,
-     -18,    46,     4,    44,    25,    45,    25,    39
-  };
+        if (!yyctx.lookahead().empty())
+        {
+            if (yyarg) yyarg[0] = yyctx.token();
+            int yyn = yyctx.expected_tokens(yyarg ? yyarg + 1 : yyarg, yyargn - 1);
+            return yyn + 1;
+        }
+        return 0;
+    }
 
-  const signed char
-   YaccParser ::yycheck_[] =
-  {
-       6,     0,    19,    22,    19,     6,    20,    21,    20,    10,
-       6,    12,    27,    21,    10,    23,    12,    34,    35,    20,
-       7,    21,    19,    23,    20,    20,    27,    44,    45,    28,
-      22,    27,    20,    21,    23,     6,     7,    21,     6,    10,
-      26,    12,    10,    47,    12,    25,    52,    53,    54,    20,
-      21,    42,    20,    20,    21,    20,    21,    33
-  };
+    // Generate an error message.
+    std::string YaccParser ::yysyntax_error_(const context& yyctx) const
+    {
+        // Its maximum.
+        enum
+        {
+            YYARGS_MAX = 5
+        };
+        // Arguments of yyformat.
+        symbol_kind_type yyarg[YYARGS_MAX];
+        int              yycount = yy_syntax_error_arguments_(yyctx, yyarg, YYARGS_MAX);
 
-  const signed char
-   YaccParser ::yystos_[] =
-  {
-       0,     6,    10,    12,    20,    31,    32,    33,    34,    35,
-      37,    39,    40,    41,    45,    46,    47,    48,    49,    22,
-      20,     0,    28,    33,    20,    21,     7,    19,    36,    46,
-      49,    47,    22,    49,    20,    20,    43,    44,    42,    44,
-      46,    46,    21,    23,    20,    20,    43,    26,    38,    46,
-      46,    27,    32,    23,    23,    27,    33,    33
-  };
+        char const* yyformat = YY_NULLPTR;
+        switch (yycount)
+        {
+#define YYCASE_(N, S) \
+    case N: yyformat = S; break
+            default:  // Avoid compiler warnings.
+                YYCASE_(0, YY_("syntax error"));
+                YYCASE_(1, YY_("syntax error, unexpected %s"));
+                YYCASE_(2, YY_("syntax error, unexpected %s, expecting %s"));
+                YYCASE_(3, YY_("syntax error, unexpected %s, expecting %s or %s"));
+                YYCASE_(4, YY_("syntax error, unexpected %s, expecting %s or %s or %s"));
+                YYCASE_(5, YY_("syntax error, unexpected %s, expecting %s or %s or %s or %s"));
+#undef YYCASE_
+        }
 
-  const signed char
-   YaccParser ::yyr1_[] =
-  {
-       0,    30,    31,    31,    32,    32,    33,    33,    33,    33,
-      33,    33,    33,    33,    34,    35,    36,    36,    37,    38,
-      38,    39,    40,    40,    41,    42,    43,    44,    44,    45,
-      46,    46,    47,    47,    48,    49
-  };
+        std::string yyres;
+        // Argument number.
+        std::ptrdiff_t yyi = 0;
+        for (char const* yyp = yyformat; *yyp; ++yyp)
+            if (yyp[0] == '%' && yyp[1] == 's' && yyi < yycount)
+            {
+                yyres += symbol_name(yyarg[yyi++]);
+                ++yyp;
+            }
+            else
+                yyres += *yyp;
+        return yyres;
+    }
 
-  const signed char
-   YaccParser ::yyr2_[] =
-  {
-       0,     2,     1,     2,     1,     2,     1,     1,     1,     1,
-       1,     1,     1,     1,     2,     2,     2,     3,     0,     2,
-       3,     6,     9,     9,     0,     0,     0,     1,     3,     0,
-       1,     3,     1,     1,     0,     0
-  };
+    const signed char YaccParser ::yypact_ninf_ = -20;
 
+    const signed char YaccParser ::yytable_ninf_ = -19;
+
+    const signed char YaccParser ::yypact_[] = {32,
+        -20,
+        -19,
+        -12,
+        -20,
+        1,
+        29,
+        -20,
+        -20,
+        -20,
+        -20,
+        -20,
+        -20,
+        -20,
+        -20,
+        -14,
+        -20,
+        -20,
+        13,
+        3,
+        -20,
+        -20,
+        -20,
+        -20,
+        -20,
+        -20,
+        8,
+        -20,
+        5,
+        12,
+        -20,
+        -20,
+        -20,
+        -20,
+        -20,
+        -20,
+        -20,
+        16,
+        11,
+        16,
+        33,
+        35,
+        -20,
+        14,
+        -20,
+        -20,
+        -20,
+        -1,
+        -20,
+        -8,
+        0,
+        -20,
+        4,
+        32,
+        32,
+        -20,
+        -20,
+        -20};
+
+    const signed char YaccParser ::yydefact_[] = {18,
+        13,
+        0,
+        0,
+        12,
+        0,
+        2,
+        4,
+        11,
+        6,
+        7,
+        8,
+        9,
+        10,
+        33,
+        0,
+        30,
+        32,
+        0,
+        29,
+        14,
+        1,
+        3,
+        5,
+        15,
+        29,
+        0,
+        35,
+        0,
+        0,
+        26,
+        31,
+        25,
+        26,
+        29,
+        29,
+        27,
+        16,
+        0,
+        17,
+        0,
+        0,
+        26,
+        0,
+        29,
+        29,
+        28,
+        18,
+        21,
+        0,
+        0,
+        19,
+        18,
+        18,
+        18,
+        20,
+        22,
+        23};
+
+    const signed char YaccParser ::yypgoto_[] = {
+        -20, -20, -4, -6, -20, -20, -20, -20, -20, -20, -20, -20, -20, 9, 24, -20, -17, 20, -20, -15};
+
+    const signed char YaccParser ::yydefgoto_[] = {
+        0, 5, 6, 7, 8, 9, 28, 10, 48, 11, 12, 13, 38, 36, 37, 14, 15, 16, 17, 18};
+
+    const signed char YaccParser ::yytable_[] = {23,
+        21,
+        29,
+        19,
+        30,
+        1,
+        24,
+        25,
+        20,
+        2,
+        1,
+        3,
+        33,
+        25,
+        2,
+        53,
+        3,
+        40,
+        41,
+        4,
+        26,
+        25,
+        27,
+        54,
+        4,
+        34,
+        51,
+        49,
+        50,
+        22,
+        32,
+        55,
+        35,
+        25,
+        43,
+        1,
+        -18,
+        42,
+        1,
+        2,
+        47,
+        3,
+        2,
+        52,
+        3,
+        31,
+        23,
+        56,
+        57,
+        4,
+        -18,
+        46,
+        4,
+        44,
+        25,
+        45,
+        25,
+        39};
+
+    const signed char YaccParser ::yycheck_[] = {6,
+        0,
+        19,
+        22,
+        19,
+        6,
+        20,
+        21,
+        20,
+        10,
+        6,
+        12,
+        27,
+        21,
+        10,
+        23,
+        12,
+        34,
+        35,
+        20,
+        7,
+        21,
+        19,
+        23,
+        20,
+        20,
+        27,
+        44,
+        45,
+        28,
+        22,
+        27,
+        20,
+        21,
+        23,
+        6,
+        7,
+        21,
+        6,
+        10,
+        26,
+        12,
+        10,
+        47,
+        12,
+        25,
+        52,
+        53,
+        54,
+        20,
+        21,
+        42,
+        20,
+        20,
+        21,
+        20,
+        21,
+        33};
+
+    const signed char YaccParser ::yystos_[] = {0,
+        6,
+        10,
+        12,
+        20,
+        61,
+        62,
+        63,
+        64,
+        65,
+        67,
+        69,
+        70,
+        71,
+        75,
+        76,
+        77,
+        78,
+        79,
+        22,
+        20,
+        0,
+        28,
+        63,
+        20,
+        21,
+        7,
+        19,
+        66,
+        76,
+        79,
+        77,
+        22,
+        79,
+        20,
+        20,
+        73,
+        74,
+        72,
+        74,
+        76,
+        76,
+        21,
+        23,
+        20,
+        20,
+        73,
+        26,
+        68,
+        76,
+        76,
+        27,
+        62,
+        23,
+        23,
+        27,
+        63,
+        63};
+
+    const signed char YaccParser ::yyr1_[] = {0,
+        60,
+        61,
+        61,
+        62,
+        62,
+        63,
+        63,
+        63,
+        63,
+        63,
+        63,
+        63,
+        63,
+        64,
+        65,
+        66,
+        66,
+        67,
+        68,
+        68,
+        69,
+        70,
+        70,
+        71,
+        72,
+        73,
+        74,
+        74,
+        75,
+        76,
+        76,
+        77,
+        77,
+        78,
+        79};
+
+    const signed char YaccParser ::yyr2_[] = {
+        0, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 3, 0, 2, 3, 6, 9, 9, 0, 0, 0, 1, 3, 0, 1, 3, 1, 1, 0, 0};
 
 #if YYDEBUG || 1
-  // YYTNAME[SYMBOL-NUM] -- String name of the symbol SYMBOL-NUM.
-  // First, the terminals, then, starting at \a YYNTOKENS, nonterminals.
-  const char*
-  const  YaccParser ::yytname_[] =
-  {
-  "\"end of file\"", "error", "\"invalid token\"", "INT_CONST",
-  "STR_CONST", "ERR_TOKEN", "SLASH_COMMENT", "IDENT", "IF", "ELSE", "FOR",
-  "WHILE", "CONTINUE", "BREAK", "SWITCH", "CASE", "GOTO", "DO", "RETURN",
-  "CONST", "SEMICOLON", "COMMA", "LPAREN", "RPAREN", "LBRACKET",
-  "RBRACKET", "LBRACE", "RBRACE", "END", "THEN", "$accept", "PROGRAM",
-  "STMT_LIST", "STMT", "CONTINUE_STMT", "EXPR_STMT", "VAR_DECLARATION",
-  "VAR_DECL_STMT", "FUNC_BODY", "FUNC_DECL_STMT", "FOR_STMT", "IF_STMT",
-  "PARAM_DECLARATOR_LIST", "VAR_DECLARATOR", "VAR_DECLARATOR_LIST",
-  "ASSIGN_EXPR", "EXPR", "NOCOMMA_EXPR", "LOGICAL_OR_EXPR", "TYPE", YY_NULLPTR
-  };
+    // YYTNAME[SYMBOL-NUM] -- String name of the symbol SYMBOL-NUM.
+    // First, the terminals, then, starting at \a YYNTOKENS, nonterminals.
+    const char* const YaccParser ::yytname_[] = {"\"end of file\"",
+        "error",
+        "\"invalid token\"",
+        "INT_CONST",
+        "STR_CONST",
+        "ERR_TOKEN",
+        "SLASH_COMMENT",
+        "IDENT",
+        "IF",
+        "ELSE",
+        "FOR",
+        "WHILE",
+        "CONTINUE",
+        "BREAK",
+        "SWITCH",
+        "CASE",
+        "GOTO",
+        "DO",
+        "RETURN",
+        "CONST",
+        "SEMICOLON",
+        "COMMA",
+        "LPAREN",
+        "RPAREN",
+        "LBRACKET",
+        "RBRACKET",
+        "LBRACE",
+        "RBRACE",
+        "END",
+        "LL_CONST",
+        "DEFAULT",
+        "COLON",
+        "INT",
+        "FLOAT",
+        "VOID",
+        "MULTI_COMMENT",
+        "FLOAT_CONST",
+        "PLUS",
+        "MINUS",
+        "STAR",
+        "DIV",
+        "MOD",
+        "EQ",
+        "NE",
+        "LT",
+        "GT",
+        "LE",
+        "GE",
+        "AND",
+        "OR",
+        "NOT",
+        "INC",
+        "DEC",
+        "ASSIGN",
+        "PLUS_ASSIGN",
+        "MINUS_ASSIGN",
+        "MUL_ASSIGN",
+        "DIV_ASSIGN",
+        "MOD_ASSIGN",
+        "THEN",
+        "$accept",
+        "PROGRAM",
+        "STMT_LIST",
+        "STMT",
+        "CONTINUE_STMT",
+        "EXPR_STMT",
+        "VAR_DECLARATION",
+        "VAR_DECL_STMT",
+        "FUNC_BODY",
+        "FUNC_DECL_STMT",
+        "FOR_STMT",
+        "IF_STMT",
+        "PARAM_DECLARATOR_LIST",
+        "VAR_DECLARATOR",
+        "VAR_DECLARATOR_LIST",
+        "ASSIGN_EXPR",
+        "EXPR",
+        "NOCOMMA_EXPR",
+        "LOGICAL_OR_EXPR",
+        "TYPE",
+        YY_NULLPTR};
 #endif
 
-
 #if YYDEBUG
-  const short
-   YaccParser ::yyrline_[] =
-  {
-       0,   134,   134,   138,   144,   148,   155,   158,   161,   164,
-     167,   170,   173,   176,   183,   189,   195,   198,   203,   208,
-     211,   227,   234,   238,   244,   266,   272,   277,   281,   302,
-     318,   321,   336,   339,   344,   442
-  };
+    const short YaccParser ::yyrline_[] = {0,
+        159,
+        159,
+        163,
+        169,
+        173,
+        180,
+        183,
+        186,
+        189,
+        192,
+        195,
+        198,
+        201,
+        208,
+        214,
+        220,
+        223,
+        228,
+        233,
+        236,
+        252,
+        259,
+        263,
+        269,
+        291,
+        297,
+        302,
+        306,
+        327,
+        343,
+        346,
+        361,
+        364,
+        369,
+        467};
 
-  void
-   YaccParser ::yy_stack_print_ () const
-  {
-    *yycdebug_ << "Stack now";
-    for (stack_type::const_iterator
-           i = yystack_.begin (),
-           i_end = yystack_.end ();
-         i != i_end; ++i)
-      *yycdebug_ << ' ' << int (i->state);
-    *yycdebug_ << '\n';
-  }
+    void YaccParser ::yy_stack_print_() const
+    {
+        *yycdebug_ << "Stack now";
+        for (stack_type::const_iterator i = yystack_.begin(), i_end = yystack_.end(); i != i_end; ++i)
+            *yycdebug_ << ' ' << int(i->state);
+        *yycdebug_ << '\n';
+    }
 
-  void
-   YaccParser ::yy_reduce_print_ (int yyrule) const
-  {
-    int yylno = yyrline_[yyrule];
-    int yynrhs = yyr2_[yyrule];
-    // Print the symbols being reduced, and their result.
-    *yycdebug_ << "Reducing stack by rule " << yyrule - 1
-               << " (line " << yylno << "):\n";
-    // The symbols being reduced.
-    for (int yyi = 0; yyi < yynrhs; yyi++)
-      YY_SYMBOL_PRINT ("   $" << yyi + 1 << " =",
-                       yystack_[(yynrhs) - (yyi + 1)]);
-  }
-#endif // YYDEBUG
-
+    void YaccParser ::yy_reduce_print_(int yyrule) const
+    {
+        int yylno  = yyrline_[yyrule];
+        int yynrhs = yyr2_[yyrule];
+        // Print the symbols being reduced, and their result.
+        *yycdebug_ << "Reducing stack by rule " << yyrule - 1 << " (line " << yylno << "):\n";
+        // The symbols being reduced.
+        for (int yyi = 0; yyi < yynrhs; yyi++)
+            YY_SYMBOL_PRINT("   $" << yyi + 1 << " =", yystack_[(yynrhs) - (yyi + 1)]);
+    }
+#endif  // YYDEBUG
 
 #line 4 "frontend/parser/yacc.y"
-} //  FE 
-#line 1591 "frontend/parser/yacc.cpp"
+}  // namespace FE
+#line 1640 "frontend/parser/yacc.cpp"
 
-#line 450 "frontend/parser/yacc.y"
-
+#line 475 "frontend/parser/yacc.y"
 
 void FE::YaccParser::error(const FE::location& location, const std::string& message)
 {

@@ -28,6 +28,14 @@ namespace FE
                     result.ival = token.value.as<int>();
                     result.type = Token::TokenType::T_INT;
                     break;
+                case kind::S_LL_CONST:
+                    result.lval = token.value.as<long long>();
+                    result.type = Token::TokenType::T_LL;
+                    break;
+                case kind::S_FLOAT_CONST:
+                    result.fval = token.value.as<float>();
+                    result.type = Token::TokenType::T_FLOAT;
+                    break;
                 case kind::S_IDENT:
                 case kind::S_SLASH_COMMENT:
                 case kind::S_ERR_TOKEN:
