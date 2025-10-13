@@ -530,7 +530,7 @@ namespace FE
                 TOKEN_PLUS          = 292,  // PLUS
                 TOKEN_MINUS         = 293,  // MINUS
                 TOKEN_STAR          = 294,  // STAR
-                TOKEN_DIV           = 295,  // DIV
+                TOKEN_SLASH         = 295,  // SLASH
                 TOKEN_MOD           = 296,  // MOD
                 TOKEN_EQ            = 297,  // EQ
                 TOKEN_NE            = 298,  // NE
@@ -608,7 +608,7 @@ namespace FE
                 S_PLUS                  = 37,  // PLUS
                 S_MINUS                 = 38,  // MINUS
                 S_STAR                  = 39,  // STAR
-                S_DIV                   = 40,  // DIV
+                S_SLASH                 = 40,  // SLASH
                 S_MOD                   = 41,  // MOD
                 S_EQ                    = 42,  // EQ
                 S_NE                    = 43,  // NE
@@ -1411,9 +1411,9 @@ namespace FE
         static symbol_type make_STAR(const location_type& l) { return symbol_type(token::TOKEN_STAR, l); }
 #endif
 #if 201103L <= YY_CPLUSPLUS
-        static symbol_type make_DIV(location_type l) { return symbol_type(token::TOKEN_DIV, std::move(l)); }
+        static symbol_type make_SLASH(location_type l) { return symbol_type(token::TOKEN_SLASH, std::move(l)); }
 #else
-        static symbol_type make_DIV(const location_type& l) { return symbol_type(token::TOKEN_DIV, l); }
+        static symbol_type make_SLASH(const location_type& l) { return symbol_type(token::TOKEN_SLASH, l); }
 #endif
 #if 201103L <= YY_CPLUSPLUS
         static symbol_type make_MOD(location_type l) { return symbol_type(token::TOKEN_MOD, std::move(l)); }

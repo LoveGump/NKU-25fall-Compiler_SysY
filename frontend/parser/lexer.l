@@ -100,7 +100,7 @@ TODO(Lab1)：参考SysY2022的定义，实现更多的词法，如浮点数、�
 "+"       { RETT(PLUS, loc); }
 "-"       { RETT(MINUS, loc); }
 "*"       { RETT(STAR, loc); }
-"/"       { RETT(DIV, loc); }
+"/"       { RETT(SLASH, loc); }
 "%"       { RETT(MOD, loc); }
 
 
@@ -127,9 +127,46 @@ TODO(Lab1)：参考SysY2022的定义，实现更多的词法，如浮点数、�
 ":"       { RETT(COLON, loc); }
 
 
-([0-9]*\.[0-9]+([eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+) {
+
+[0-9]+"."[0-9]*([eE][-+]?[0-9]+)? {
     float fval = convertToFloatDec(yytext);
     return YaccParser::make_FLOAT_CONST(fval, loc);
+}
+"."[0-9]+([eE][-+]?[0-9]+)? {
+    float fval = convertToFloatDec(yytext);
+    return YaccParser::make_FLOAT_CONST(fval, loc);
+}
+[0-9]+[eE][-+]?[0-9]+ {
+    float fval = convertToFloatDec(yytext);
+    return YaccParser::make_FLOAT_CONST(fval, loc);
+}
+
+0[xX][0-9a-fA-F]+"."[0-9a-fA-F]*[pP][-+]?[0-9]+ {
+    try {
+        float fval = convertToFloatHex(yytext);
+        return YaccParser::make_FLOAT_CONST(fval, loc);
+    } catch (...) {
+        auto str = std::string(yytext);
+        return YaccParser::make_ERR_TOKEN(str, loc);
+    }
+}
+0[xX]"."[0-9a-fA-F]+[pP][-+]?[0-9]+ {
+    try {
+        float fval = convertToFloatHex(yytext);
+        return YaccParser::make_FLOAT_CONST(fval, loc);
+    } catch (...) {
+        auto str = std::string(yytext);
+        return YaccParser::make_ERR_TOKEN(str, loc);
+    }
+}
+0[xX][0-9a-fA-F]+[pP][-+]?[0-9]+ {
+    try {
+        float fval = convertToFloatHex(yytext);
+        return YaccParser::make_FLOAT_CONST(fval, loc);
+    } catch (...) {
+        auto str = std::string(yytext);
+        return YaccParser::make_ERR_TOKEN(str, loc);
+    }
 }
 
 [A-Za-z_]+[A-Za-z0-9_]* {

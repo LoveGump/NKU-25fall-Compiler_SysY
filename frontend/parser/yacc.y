@@ -84,7 +84,7 @@
 // 浮点数字面量
 %token <float> FLOAT_CONST
 // 运算符 + - * / %
-%token PLUS MINUS STAR DIV MOD 
+%token PLUS MINUS STAR SLASH MOD 
 // 关系运算符 == != < > <= >=
 %token EQ NE LT GT LE GE
 // 逻辑运算符 && || !

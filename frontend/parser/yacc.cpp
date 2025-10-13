@@ -1791,7 +1791,7 @@ namespace FE
         "PLUS",
         "MINUS",
         "STAR",
-        "DIV",
+        "SLASH",
         "MOD",
         "EQ",
         "NE",
