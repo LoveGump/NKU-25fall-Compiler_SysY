@@ -9,7 +9,7 @@ namespace FE
 {
     class Parser : public iParser<Parser>
     {
-        friend iParser<Parser>;
+        friend iParser<Parser>;// 让基类可以访问派生类的私有成员
 
       private:
         Scanner    _scanner;

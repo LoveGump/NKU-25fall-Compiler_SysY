@@ -19,13 +19,13 @@ namespace FE
     class Scanner : public yyFlexLexer
     {
       private:
-        Parser& _parser;
+        Parser& _parser;// 引用 Parser 对象以便报告错误等
 
       public:
-        Scanner(Parser& parser) : _parser(parser) {}
+        Scanner(Parser& parser) : _parser(parser) {} // 构造函数，初始化引用
         virtual ~Scanner() {}
 
-        virtual YaccParser::symbol_type nextToken();
+        virtual YaccParser::symbol_type nextToken();// 重载 nextToken 方法以返回 YaccParser 所需的符号类型
     };
 }  // namespace FE
 
