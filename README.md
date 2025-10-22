@@ -80,9 +80,9 @@ python3 test.py --group [Basic|Advanced] --stage [llvm|riscv|arm] --opt [0|1|2]
 - main.cpp : 主函数，你需要了解框架的整体流程以及全局变量, 后续每次实验都需要进行阅读或者编写
 - frontend/parser/scanner.h : 定义了词法分析的扫描器类
 - frontend/parser/parser.h & parser.cpp : 这部分代码描述了词法分析的流程，有助于帮助你完整理解词法分析的工作原理
-- frontend/parser/yacc.h : 只需按说明阅读部分代码，该部分定义了你在词法分析时返回token类型的接口
 - frontend/parser/yacc.y : 只需要阅读开头%token的定义即可，你在词法分析中需要return的枚举类型均来自于该文件开头定义的%token
 - interfaces/frontend/token.h : 定义了Token类
+
 
 需要阅读并编写的代码：
 
@@ -100,6 +100,10 @@ Makefile 中默认选项会默认根据 yacc.y, lexer.l 来更新实现文件（
 - interfaces/frontend/symbol/symbol_entry.h: 符号表项定义。Lab2 中我们暂时还不需要实现符号表，但已经可以开始为一些符号名构建符号表项了。
 - frontend/ast/（不含/visitor） ： 分类定义了语法树的节点类
 - frontend/ast/visitor/printer/ ： 定义了语法树的打印过程，了解即可
+
+__注意：同样的，你只需要将绝大多数注意力放在yacc.y上。__
+
+__同样，如果你没有找到lexer/yacc.h/cpp，这是完全正常的，你只需要使用Makefile进行生成即可。__
 
 需要阅读并编写的代码：
 
