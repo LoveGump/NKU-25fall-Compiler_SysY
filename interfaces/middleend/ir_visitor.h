@@ -31,8 +31,8 @@ namespace ME
 
     using NonInstTypeSet = TypeList<Module, Function, Block>;
     using InstTypeSet    = TypeList<LoadInst, StoreInst, ArithmeticInst, IcmpInst, FcmpInst, AllocaInst, BrCondInst,
-           BrUncondInst, GlbVarDeclInst, CallInst, FuncDeclInst, FuncDefInst, RetInst, GEPInst, FP2SIInst, SI2FPInst,
-           ZextInst, PhiInst>;
+        BrUncondInst, GlbVarDeclInst, CallInst, FuncDeclInst, FuncDefInst, RetInst, GEPInst, FP2SIInst, SI2FPInst,
+        ZextInst, PhiInst>;
     using TypeSet        = type_list_utils::Concat_t<NonInstTypeSet, InstTypeSet>;
 
     template <typename... Ts>

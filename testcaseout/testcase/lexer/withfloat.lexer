@@ -1,0 +1,926 @@
+Token                         Lexeme                        Property                      Line    Column  
+IDENT                         Token                         Token                         1       0       
+IDENT                         Lexeme                        Lexeme                        1       30      
+IDENT                         Property                      Property                      1       60      
+IDENT                         Line                          Line                          1       90      
+IDENT                         Column                        Column                        1       98      
+IDENT                         FLOAT                         FLOAT                         2       0       
+FLOAT                         float                                                       2       30      
+INT_CONST                     1                             1                             2       90      
+INT_CONST                     0                             0                             2       98      
+IDENT                         IDENT                         IDENT                         3       0       
+IDENT                         testDecimalFloats             testDecimalFloats             3       30      
+IDENT                         testDecimalFloats             testDecimalFloats             3       60      
+INT_CONST                     1                             1                             3       90      
+INT_CONST                     6                             6                             3       98      
+IDENT                         LPAREN                        LPAREN                        4       0       
+LPAREN                        (                                                           4       30      
+INT_CONST                     1                             1                             4       90      
+INT_CONST                     23                            23                            4       98      
+IDENT                         RPAREN                        RPAREN                        5       0       
+RPAREN                        )                                                           5       30      
+INT_CONST                     1                             1                             5       90      
+INT_CONST                     24                            24                            5       98      
+IDENT                         LBRACE                        LBRACE                        6       0       
+LBRACE                        {                                                           6       30      
+INT_CONST                     2                             2                             6       90      
+INT_CONST                     0                             0                             6       98      
+IDENT                         FLOAT                         FLOAT                         7       0       
+FLOAT                         float                                                       7       30      
+INT_CONST                     3                             3                             7       90      
+INT_CONST                     4                             4                             7       98      
+IDENT                         IDENT                         IDENT                         8       0       
+IDENT                         a                             a                             8       30      
+IDENT                         a                             a                             8       60      
+INT_CONST                     3                             3                             8       90      
+INT_CONST                     10                            10                            8       98      
+IDENT                         ASSIGN                        ASSIGN                        9       0       
+ASSIGN                        =                                                           9       30      
+INT_CONST                     3                             3                             9       90      
+INT_CONST                     12                            12                            9       98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   10      0       
+FLOAT_CONST                   3.14                          3.14                          10      30      
+FLOAT_CONST                   3.14                          3.14                          10      60      
+INT_CONST                     3                             3                             10      90      
+INT_CONST                     14                            14                            10      98      
+IDENT                         SEMICOLON                     SEMICOLON                     11      0       
+SEMICOLON                     ;                                                           11      30      
+INT_CONST                     3                             3                             11      90      
+INT_CONST                     18                            18                            11      98      
+IDENT                         FLOAT                         FLOAT                         12      0       
+FLOAT                         float                                                       12      30      
+INT_CONST                     4                             4                             12      90      
+INT_CONST                     4                             4                             12      98      
+IDENT                         IDENT                         IDENT                         13      0       
+IDENT                         b                             b                             13      30      
+IDENT                         b                             b                             13      60      
+INT_CONST                     4                             4                             13      90      
+INT_CONST                     10                            10                            13      98      
+IDENT                         ASSIGN                        ASSIGN                        14      0       
+ASSIGN                        =                                                           14      30      
+INT_CONST                     4                             4                             14      90      
+INT_CONST                     12                            12                            14      98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   15      0       
+FLOAT_CONST                   0.5                           0.5                           15      30      
+FLOAT_CONST                   0.5                           0.5                           15      60      
+INT_CONST                     4                             4                             15      90      
+INT_CONST                     14                            14                            15      98      
+IDENT                         SEMICOLON                     SEMICOLON                     16      0       
+SEMICOLON                     ;                                                           16      30      
+INT_CONST                     4                             4                             16      90      
+INT_CONST                     17                            17                            16      98      
+IDENT                         FLOAT                         FLOAT                         17      0       
+FLOAT                         float                                                       17      30      
+INT_CONST                     5                             5                             17      90      
+INT_CONST                     4                             4                             17      98      
+IDENT                         IDENT                         IDENT                         18      0       
+IDENT                         c                             c                             18      30      
+IDENT                         c                             c                             18      60      
+INT_CONST                     5                             5                             18      90      
+INT_CONST                     10                            10                            18      98      
+IDENT                         ASSIGN                        ASSIGN                        19      0       
+ASSIGN                        =                                                           19      30      
+INT_CONST                     5                             5                             19      90      
+INT_CONST                     12                            12                            19      98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   20      0       
+FLOAT_CONST                   123.456                       123.456                       20      30      
+FLOAT_CONST                   123.456                       123.456                       20      60      
+INT_CONST                     5                             5                             20      90      
+INT_CONST                     14                            14                            20      98      
+IDENT                         SEMICOLON                     SEMICOLON                     21      0       
+SEMICOLON                     ;                                                           21      30      
+INT_CONST                     5                             5                             21      90      
+INT_CONST                     21                            21                            21      98      
+IDENT                         FLOAT                         FLOAT                         22      0       
+FLOAT                         float                                                       22      30      
+INT_CONST                     6                             6                             22      90      
+INT_CONST                     4                             4                             22      98      
+IDENT                         IDENT                         IDENT                         23      0       
+IDENT                         d                             d                             23      30      
+IDENT                         d                             d                             23      60      
+INT_CONST                     6                             6                             23      90      
+INT_CONST                     10                            10                            23      98      
+IDENT                         ASSIGN                        ASSIGN                        24      0       
+ASSIGN                        =                                                           24      30      
+INT_CONST                     6                             6                             24      90      
+INT_CONST                     12                            12                            24      98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   25      0       
+FLOAT_CONST                   .5                            0.5                           25      30      
+FLOAT_CONST                   0.5                           0.5                           25      60      
+INT_CONST                     6                             6                             25      90      
+INT_CONST                     14                            14                            25      98      
+IDENT                         SEMICOLON                     SEMICOLON                     26      0       
+SEMICOLON                     ;                                                           26      30      
+INT_CONST                     6                             6                             26      90      
+INT_CONST                     16                            16                            26      98      
+IDENT                         FLOAT                         FLOAT                         27      0       
+FLOAT                         float                                                       27      30      
+INT_CONST                     7                             7                             27      90      
+INT_CONST                     4                             4                             27      98      
+IDENT                         IDENT                         IDENT                         28      0       
+IDENT                         e                             e                             28      30      
+IDENT                         e                             e                             28      60      
+INT_CONST                     7                             7                             28      90      
+INT_CONST                     10                            10                            28      98      
+IDENT                         ASSIGN                        ASSIGN                        29      0       
+ASSIGN                        =                                                           29      30      
+INT_CONST                     7                             7                             29      90      
+INT_CONST                     12                            12                            29      98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   30      0       
+FLOAT_CONST                   5.                            5                             30      30      
+INT_CONST                     5                             5                             30      60      
+INT_CONST                     7                             7                             30      90      
+INT_CONST                     14                            14                            30      98      
+IDENT                         SEMICOLON                     SEMICOLON                     31      0       
+SEMICOLON                     ;                                                           31      30      
+INT_CONST                     7                             7                             31      90      
+INT_CONST                     16                            16                            31      98      
+IDENT                         FLOAT                         FLOAT                         32      0       
+FLOAT                         float                                                       32      30      
+INT_CONST                     9                             9                             32      90      
+INT_CONST                     4                             4                             32      98      
+IDENT                         IDENT                         IDENT                         33      0       
+IDENT                         f                             f                             33      30      
+IDENT                         f                             f                             33      60      
+INT_CONST                     9                             9                             33      90      
+INT_CONST                     10                            10                            33      98      
+IDENT                         ASSIGN                        ASSIGN                        34      0       
+ASSIGN                        =                                                           34      30      
+INT_CONST                     9                             9                             34      90      
+INT_CONST                     12                            12                            34      98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   35      0       
+FLOAT_CONST                   1e10                          1e+10                         35      30      
+FLOAT_CONST                   1e+10                         1e+10                         35      60      
+INT_CONST                     9                             9                             35      90      
+INT_CONST                     14                            14                            35      98      
+IDENT                         SEMICOLON                     SEMICOLON                     36      0       
+SEMICOLON                     ;                                                           36      30      
+INT_CONST                     9                             9                             36      90      
+INT_CONST                     18                            18                            36      98      
+IDENT                         FLOAT                         FLOAT                         37      0       
+FLOAT                         float                                                       37      30      
+INT_CONST                     10                            10                            37      90      
+INT_CONST                     4                             4                             37      98      
+IDENT                         IDENT                         IDENT                         38      0       
+IDENT                         g                             g                             38      30      
+IDENT                         g                             g                             38      60      
+INT_CONST                     10                            10                            38      90      
+INT_CONST                     10                            10                            38      98      
+IDENT                         ASSIGN                        ASSIGN                        39      0       
+ASSIGN                        =                                                           39      30      
+INT_CONST                     10                            10                            39      90      
+INT_CONST                     12                            12                            39      98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   40      0       
+FLOAT_CONST                   1.5e10                        1.5e+10                       40      30      
+FLOAT_CONST                   1.5e+10                       1.5e+10                       40      60      
+INT_CONST                     10                            10                            40      90      
+INT_CONST                     14                            14                            40      98      
+IDENT                         SEMICOLON                     SEMICOLON                     41      0       
+SEMICOLON                     ;                                                           41      30      
+INT_CONST                     10                            10                            41      90      
+INT_CONST                     20                            20                            41      98      
+IDENT                         FLOAT                         FLOAT                         42      0       
+FLOAT                         float                                                       42      30      
+INT_CONST                     11                            11                            42      90      
+INT_CONST                     4                             4                             42      98      
+IDENT                         IDENT                         IDENT                         43      0       
+IDENT                         h                             h                             43      30      
+IDENT                         h                             h                             43      60      
+INT_CONST                     11                            11                            43      90      
+INT_CONST                     10                            10                            43      98      
+IDENT                         ASSIGN                        ASSIGN                        44      0       
+ASSIGN                        =                                                           44      30      
+INT_CONST                     11                            11                            44      90      
+INT_CONST                     12                            12                            44      98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   45      0       
+FLOAT_CONST                   2.5e-3                        0.0025                        45      30      
+FLOAT_CONST                   0.0025                        0.0025                        45      60      
+INT_CONST                     11                            11                            45      90      
+INT_CONST                     14                            14                            45      98      
+IDENT                         SEMICOLON                     SEMICOLON                     46      0       
+SEMICOLON                     ;                                                           46      30      
+INT_CONST                     11                            11                            46      90      
+INT_CONST                     20                            20                            46      98      
+IDENT                         FLOAT                         FLOAT                         47      0       
+FLOAT                         float                                                       47      30      
+INT_CONST                     12                            12                            47      90      
+INT_CONST                     4                             4                             47      98      
+IDENT                         IDENT                         IDENT                         48      0       
+IDENT                         i                             i                             48      30      
+IDENT                         i                             i                             48      60      
+INT_CONST                     12                            12                            48      90      
+INT_CONST                     10                            10                            48      98      
+IDENT                         ASSIGN                        ASSIGN                        49      0       
+ASSIGN                        =                                                           49      30      
+INT_CONST                     12                            12                            49      90      
+INT_CONST                     12                            12                            49      98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   50      0       
+FLOAT_CONST                   .5E+5                         50000                         50      30      
+INT_CONST                     50000                         50000                         50      60      
+INT_CONST                     12                            12                            50      90      
+INT_CONST                     14                            14                            50      98      
+IDENT                         SEMICOLON                     SEMICOLON                     51      0       
+SEMICOLON                     ;                                                           51      30      
+INT_CONST                     12                            12                            51      90      
+INT_CONST                     19                            19                            51      98      
+IDENT                         FLOAT                         FLOAT                         52      0       
+FLOAT                         float                                                       52      30      
+INT_CONST                     13                            13                            52      90      
+INT_CONST                     4                             4                             52      98      
+IDENT                         IDENT                         IDENT                         53      0       
+IDENT                         j                             j                             53      30      
+IDENT                         j                             j                             53      60      
+INT_CONST                     13                            13                            53      90      
+INT_CONST                     10                            10                            53      98      
+IDENT                         ASSIGN                        ASSIGN                        54      0       
+ASSIGN                        =                                                           54      30      
+INT_CONST                     13                            13                            54      90      
+INT_CONST                     12                            12                            54      98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   55      0       
+FLOAT_CONST                   3.e-10                        3e-10                         55      30      
+FLOAT_CONST                   3e-10                         3e-10                         55      60      
+INT_CONST                     13                            13                            55      90      
+INT_CONST                     14                            14                            55      98      
+IDENT                         SEMICOLON                     SEMICOLON                     56      0       
+SEMICOLON                     ;                                                           56      30      
+INT_CONST                     13                            13                            56      90      
+INT_CONST                     20                            20                            56      98      
+IDENT                         RETURN                        RETURN                        57      0       
+RETURN                        return                                                      57      30      
+INT_CONST                     15                            15                            57      90      
+INT_CONST                     4                             4                             57      98      
+IDENT                         IDENT                         IDENT                         58      0       
+IDENT                         a                             a                             58      30      
+IDENT                         a                             a                             58      60      
+INT_CONST                     15                            15                            58      90      
+INT_CONST                     11                            11                            58      98      
+IDENT                         PLUS                          PLUS                          59      0       
+PLUS                          +                                                           59      30      
+INT_CONST                     15                            15                            59      90      
+INT_CONST                     13                            13                            59      98      
+IDENT                         IDENT                         IDENT                         60      0       
+IDENT                         b                             b                             60      30      
+IDENT                         b                             b                             60      60      
+INT_CONST                     15                            15                            60      90      
+INT_CONST                     15                            15                            60      98      
+IDENT                         PLUS                          PLUS                          61      0       
+PLUS                          +                                                           61      30      
+INT_CONST                     15                            15                            61      90      
+INT_CONST                     17                            17                            61      98      
+IDENT                         IDENT                         IDENT                         62      0       
+IDENT                         c                             c                             62      30      
+IDENT                         c                             c                             62      60      
+INT_CONST                     15                            15                            62      90      
+INT_CONST                     19                            19                            62      98      
+IDENT                         PLUS                          PLUS                          63      0       
+PLUS                          +                                                           63      30      
+INT_CONST                     15                            15                            63      90      
+INT_CONST                     21                            21                            63      98      
+IDENT                         IDENT                         IDENT                         64      0       
+IDENT                         d                             d                             64      30      
+IDENT                         d                             d                             64      60      
+INT_CONST                     15                            15                            64      90      
+INT_CONST                     23                            23                            64      98      
+IDENT                         PLUS                          PLUS                          65      0       
+PLUS                          +                                                           65      30      
+INT_CONST                     15                            15                            65      90      
+INT_CONST                     25                            25                            65      98      
+IDENT                         IDENT                         IDENT                         66      0       
+IDENT                         e                             e                             66      30      
+IDENT                         e                             e                             66      60      
+INT_CONST                     15                            15                            66      90      
+INT_CONST                     27                            27                            66      98      
+IDENT                         PLUS                          PLUS                          67      0       
+PLUS                          +                                                           67      30      
+INT_CONST                     15                            15                            67      90      
+INT_CONST                     29                            29                            67      98      
+IDENT                         IDENT                         IDENT                         68      0       
+IDENT                         f                             f                             68      30      
+IDENT                         f                             f                             68      60      
+INT_CONST                     15                            15                            68      90      
+INT_CONST                     31                            31                            68      98      
+IDENT                         PLUS                          PLUS                          69      0       
+PLUS                          +                                                           69      30      
+INT_CONST                     15                            15                            69      90      
+INT_CONST                     33                            33                            69      98      
+IDENT                         IDENT                         IDENT                         70      0       
+IDENT                         g                             g                             70      30      
+IDENT                         g                             g                             70      60      
+INT_CONST                     15                            15                            70      90      
+INT_CONST                     35                            35                            70      98      
+IDENT                         PLUS                          PLUS                          71      0       
+PLUS                          +                                                           71      30      
+INT_CONST                     15                            15                            71      90      
+INT_CONST                     37                            37                            71      98      
+IDENT                         IDENT                         IDENT                         72      0       
+IDENT                         h                             h                             72      30      
+IDENT                         h                             h                             72      60      
+INT_CONST                     15                            15                            72      90      
+INT_CONST                     39                            39                            72      98      
+IDENT                         PLUS                          PLUS                          73      0       
+PLUS                          +                                                           73      30      
+INT_CONST                     15                            15                            73      90      
+INT_CONST                     41                            41                            73      98      
+IDENT                         IDENT                         IDENT                         74      0       
+IDENT                         i                             i                             74      30      
+IDENT                         i                             i                             74      60      
+INT_CONST                     15                            15                            74      90      
+INT_CONST                     43                            43                            74      98      
+IDENT                         PLUS                          PLUS                          75      0       
+PLUS                          +                                                           75      30      
+INT_CONST                     15                            15                            75      90      
+INT_CONST                     45                            45                            75      98      
+IDENT                         IDENT                         IDENT                         76      0       
+IDENT                         j                             j                             76      30      
+IDENT                         j                             j                             76      60      
+INT_CONST                     15                            15                            76      90      
+INT_CONST                     47                            47                            76      98      
+IDENT                         SEMICOLON                     SEMICOLON                     77      0       
+SEMICOLON                     ;                                                           77      30      
+INT_CONST                     15                            15                            77      90      
+INT_CONST                     48                            48                            77      98      
+IDENT                         RBRACE                        RBRACE                        78      0       
+RBRACE                        }                                                           78      30      
+INT_CONST                     16                            16                            78      90      
+INT_CONST                     0                             0                             78      98      
+IDENT                         FLOAT                         FLOAT                         79      0       
+FLOAT                         float                                                       79      30      
+INT_CONST                     18                            18                            79      90      
+INT_CONST                     0                             0                             79      98      
+IDENT                         IDENT                         IDENT                         80      0       
+IDENT                         testHexFloats                 testHexFloats                 80      30      
+IDENT                         testHexFloats                 testHexFloats                 80      60      
+INT_CONST                     18                            18                            80      90      
+INT_CONST                     6                             6                             80      98      
+IDENT                         LPAREN                        LPAREN                        81      0       
+LPAREN                        (                                                           81      30      
+INT_CONST                     18                            18                            81      90      
+INT_CONST                     19                            19                            81      98      
+IDENT                         RPAREN                        RPAREN                        82      0       
+RPAREN                        )                                                           82      30      
+INT_CONST                     18                            18                            82      90      
+INT_CONST                     20                            20                            82      98      
+IDENT                         LBRACE                        LBRACE                        83      0       
+LBRACE                        {                                                           83      30      
+INT_CONST                     19                            19                            83      90      
+INT_CONST                     0                             0                             83      98      
+IDENT                         FLOAT                         FLOAT                         84      0       
+FLOAT                         float                                                       84      30      
+INT_CONST                     20                            20                            84      90      
+INT_CONST                     4                             4                             84      98      
+IDENT                         IDENT                         IDENT                         85      0       
+IDENT                         a                             a                             85      30      
+IDENT                         a                             a                             85      60      
+INT_CONST                     20                            20                            85      90      
+INT_CONST                     10                            10                            85      98      
+IDENT                         ASSIGN                        ASSIGN                        86      0       
+ASSIGN                        =                                                           86      30      
+INT_CONST                     20                            20                            86      90      
+INT_CONST                     12                            12                            86      98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   87      0       
+FLOAT_CONST                   0x1.8p0                       1.5                           87      30      
+FLOAT_CONST                   1.5                           1.5                           87      60      
+INT_CONST                     20                            20                            87      90      
+INT_CONST                     14                            14                            87      98      
+IDENT                         SEMICOLON                     SEMICOLON                     88      0       
+SEMICOLON                     ;                                                           88      30      
+INT_CONST                     20                            20                            88      90      
+INT_CONST                     21                            21                            88      98      
+IDENT                         FLOAT                         FLOAT                         89      0       
+FLOAT                         float                                                       89      30      
+INT_CONST                     21                            21                            89      90      
+INT_CONST                     4                             4                             89      98      
+IDENT                         IDENT                         IDENT                         90      0       
+IDENT                         b                             b                             90      30      
+IDENT                         b                             b                             90      60      
+INT_CONST                     21                            21                            90      90      
+INT_CONST                     10                            10                            90      98      
+IDENT                         ASSIGN                        ASSIGN                        91      0       
+ASSIGN                        =                                                           91      30      
+INT_CONST                     21                            21                            91      90      
+INT_CONST                     12                            12                            91      98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   92      0       
+FLOAT_CONST                   0xA.Bp2                       42.75                         92      30      
+FLOAT_CONST                   42.75                         42.75                         92      60      
+INT_CONST                     21                            21                            92      90      
+INT_CONST                     14                            14                            92      98      
+IDENT                         SEMICOLON                     SEMICOLON                     93      0       
+SEMICOLON                     ;                                                           93      30      
+INT_CONST                     21                            21                            93      90      
+INT_CONST                     21                            21                            93      98      
+IDENT                         FLOAT                         FLOAT                         94      0       
+FLOAT                         float                                                       94      30      
+INT_CONST                     22                            22                            94      90      
+INT_CONST                     4                             4                             94      98      
+IDENT                         IDENT                         IDENT                         95      0       
+IDENT                         c                             c                             95      30      
+IDENT                         c                             c                             95      60      
+INT_CONST                     22                            22                            95      90      
+INT_CONST                     10                            10                            95      98      
+IDENT                         ASSIGN                        ASSIGN                        96      0       
+ASSIGN                        =                                                           96      30      
+INT_CONST                     22                            22                            96      90      
+INT_CONST                     12                            12                            96      98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   97      0       
+FLOAT_CONST                   0x1.0p-3                      0.125                         97      30      
+FLOAT_CONST                   0.125                         0.125                         97      60      
+INT_CONST                     22                            22                            97      90      
+INT_CONST                     14                            14                            97      98      
+IDENT                         SEMICOLON                     SEMICOLON                     98      0       
+SEMICOLON                     ;                                                           98      30      
+INT_CONST                     22                            22                            98      90      
+INT_CONST                     22                            22                            98      98      
+IDENT                         FLOAT                         FLOAT                         99      0       
+FLOAT                         float                                                       99      30      
+INT_CONST                     23                            23                            99      90      
+INT_CONST                     4                             4                             99      98      
+IDENT                         IDENT                         IDENT                         100     0       
+IDENT                         d                             d                             100     30      
+IDENT                         d                             d                             100     60      
+INT_CONST                     23                            23                            100     90      
+INT_CONST                     10                            10                            100     98      
+IDENT                         ASSIGN                        ASSIGN                        101     0       
+ASSIGN                        =                                                           101     30      
+INT_CONST                     23                            23                            101     90      
+INT_CONST                     12                            12                            101     98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   102     0       
+FLOAT_CONST                   0xF.Fp10                      16320                         102     30      
+INT_CONST                     16320                         16320                         102     60      
+INT_CONST                     23                            23                            102     90      
+INT_CONST                     14                            14                            102     98      
+IDENT                         SEMICOLON                     SEMICOLON                     103     0       
+SEMICOLON                     ;                                                           103     30      
+INT_CONST                     23                            23                            103     90      
+INT_CONST                     22                            22                            103     98      
+IDENT                         FLOAT                         FLOAT                         104     0       
+FLOAT                         float                                                       104     30      
+INT_CONST                     25                            25                            104     90      
+INT_CONST                     4                             4                             104     98      
+IDENT                         IDENT                         IDENT                         105     0       
+IDENT                         e                             e                             105     30      
+IDENT                         e                             e                             105     60      
+INT_CONST                     25                            25                            105     90      
+INT_CONST                     10                            10                            105     98      
+IDENT                         ASSIGN                        ASSIGN                        106     0       
+ASSIGN                        =                                                           106     30      
+INT_CONST                     25                            25                            106     90      
+INT_CONST                     12                            12                            106     98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   107     0       
+FLOAT_CONST                   0x1p5                         32                            107     30      
+INT_CONST                     32                            32                            107     60      
+INT_CONST                     25                            25                            107     90      
+INT_CONST                     14                            14                            107     98      
+IDENT                         SEMICOLON                     SEMICOLON                     108     0       
+SEMICOLON                     ;                                                           108     30      
+INT_CONST                     25                            25                            108     90      
+INT_CONST                     19                            19                            108     98      
+IDENT                         FLOAT                         FLOAT                         109     0       
+FLOAT                         float                                                       109     30      
+INT_CONST                     26                            26                            109     90      
+INT_CONST                     4                             4                             109     98      
+IDENT                         IDENT                         IDENT                         110     0       
+IDENT                         f                             f                             110     30      
+IDENT                         f                             f                             110     60      
+INT_CONST                     26                            26                            110     90      
+INT_CONST                     10                            10                            110     98      
+IDENT                         ASSIGN                        ASSIGN                        111     0       
+ASSIGN                        =                                                           111     30      
+INT_CONST                     26                            26                            111     90      
+INT_CONST                     12                            12                            111     98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   112     0       
+FLOAT_CONST                   0xAp-2                        2.5                           112     30      
+FLOAT_CONST                   2.5                           2.5                           112     60      
+INT_CONST                     26                            26                            112     90      
+INT_CONST                     14                            14                            112     98      
+IDENT                         SEMICOLON                     SEMICOLON                     113     0       
+SEMICOLON                     ;                                                           113     30      
+INT_CONST                     26                            26                            113     90      
+INT_CONST                     20                            20                            113     98      
+IDENT                         RETURN                        RETURN                        114     0       
+RETURN                        return                                                      114     30      
+INT_CONST                     28                            28                            114     90      
+INT_CONST                     4                             4                             114     98      
+IDENT                         IDENT                         IDENT                         115     0       
+IDENT                         a                             a                             115     30      
+IDENT                         a                             a                             115     60      
+INT_CONST                     28                            28                            115     90      
+INT_CONST                     11                            11                            115     98      
+IDENT                         PLUS                          PLUS                          116     0       
+PLUS                          +                                                           116     30      
+INT_CONST                     28                            28                            116     90      
+INT_CONST                     13                            13                            116     98      
+IDENT                         IDENT                         IDENT                         117     0       
+IDENT                         b                             b                             117     30      
+IDENT                         b                             b                             117     60      
+INT_CONST                     28                            28                            117     90      
+INT_CONST                     15                            15                            117     98      
+IDENT                         PLUS                          PLUS                          118     0       
+PLUS                          +                                                           118     30      
+INT_CONST                     28                            28                            118     90      
+INT_CONST                     17                            17                            118     98      
+IDENT                         IDENT                         IDENT                         119     0       
+IDENT                         c                             c                             119     30      
+IDENT                         c                             c                             119     60      
+INT_CONST                     28                            28                            119     90      
+INT_CONST                     19                            19                            119     98      
+IDENT                         PLUS                          PLUS                          120     0       
+PLUS                          +                                                           120     30      
+INT_CONST                     28                            28                            120     90      
+INT_CONST                     21                            21                            120     98      
+IDENT                         IDENT                         IDENT                         121     0       
+IDENT                         d                             d                             121     30      
+IDENT                         d                             d                             121     60      
+INT_CONST                     28                            28                            121     90      
+INT_CONST                     23                            23                            121     98      
+IDENT                         PLUS                          PLUS                          122     0       
+PLUS                          +                                                           122     30      
+INT_CONST                     28                            28                            122     90      
+INT_CONST                     25                            25                            122     98      
+IDENT                         IDENT                         IDENT                         123     0       
+IDENT                         e                             e                             123     30      
+IDENT                         e                             e                             123     60      
+INT_CONST                     28                            28                            123     90      
+INT_CONST                     27                            27                            123     98      
+IDENT                         PLUS                          PLUS                          124     0       
+PLUS                          +                                                           124     30      
+INT_CONST                     28                            28                            124     90      
+INT_CONST                     29                            29                            124     98      
+IDENT                         IDENT                         IDENT                         125     0       
+IDENT                         f                             f                             125     30      
+IDENT                         f                             f                             125     60      
+INT_CONST                     28                            28                            125     90      
+INT_CONST                     31                            31                            125     98      
+IDENT                         SEMICOLON                     SEMICOLON                     126     0       
+SEMICOLON                     ;                                                           126     30      
+INT_CONST                     28                            28                            126     90      
+INT_CONST                     32                            32                            126     98      
+IDENT                         RBRACE                        RBRACE                        127     0       
+RBRACE                        }                                                           127     30      
+INT_CONST                     29                            29                            127     90      
+INT_CONST                     0                             0                             127     98      
+IDENT                         INT                           INT                           128     0       
+INT                           int                                                         128     30      
+INT_CONST                     31                            31                            128     90      
+INT_CONST                     0                             0                             128     98      
+IDENT                         IDENT                         IDENT                         129     0       
+IDENT                         main                          main                          129     30      
+IDENT                         main                          main                          129     60      
+INT_CONST                     31                            31                            129     90      
+INT_CONST                     4                             4                             129     98      
+IDENT                         LPAREN                        LPAREN                        130     0       
+LPAREN                        (                                                           130     30      
+INT_CONST                     31                            31                            130     90      
+INT_CONST                     8                             8                             130     98      
+IDENT                         RPAREN                        RPAREN                        131     0       
+RPAREN                        )                                                           131     30      
+INT_CONST                     31                            31                            131     90      
+INT_CONST                     9                             9                             131     98      
+IDENT                         LBRACE                        LBRACE                        132     0       
+LBRACE                        {                                                           132     30      
+INT_CONST                     32                            32                            132     90      
+INT_CONST                     0                             0                             132     98      
+IDENT                         FLOAT                         FLOAT                         133     0       
+FLOAT                         float                                                       133     30      
+INT_CONST                     33                            33                            133     90      
+INT_CONST                     4                             4                             133     98      
+IDENT                         IDENT                         IDENT                         134     0       
+IDENT                         pi                            pi                            134     30      
+IDENT                         pi                            pi                            134     60      
+INT_CONST                     33                            33                            134     90      
+INT_CONST                     10                            10                            134     98      
+IDENT                         ASSIGN                        ASSIGN                        135     0       
+ASSIGN                        =                                                           135     30      
+INT_CONST                     33                            33                            135     90      
+INT_CONST                     19                            19                            135     98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   136     0       
+FLOAT_CONST                   3.14159                       3.14159                       136     30      
+FLOAT_CONST                   3.14159                       3.14159                       136     60      
+INT_CONST                     33                            33                            136     90      
+INT_CONST                     21                            21                            136     98      
+IDENT                         SEMICOLON                     SEMICOLON                     137     0       
+SEMICOLON                     ;                                                           137     30      
+INT_CONST                     33                            33                            137     90      
+INT_CONST                     28                            28                            137     98      
+IDENT                         FLOAT                         FLOAT                         138     0       
+FLOAT                         float                                                       138     30      
+INT_CONST                     34                            34                            138     90      
+INT_CONST                     4                             4                             138     98      
+IDENT                         IDENT                         IDENT                         139     0       
+IDENT                         e_const                       e_const                       139     30      
+IDENT                         e_const                       e_const                       139     60      
+INT_CONST                     34                            34                            139     90      
+INT_CONST                     10                            10                            139     98      
+IDENT                         ASSIGN                        ASSIGN                        140     0       
+ASSIGN                        =                                                           140     30      
+INT_CONST                     34                            34                            140     90      
+INT_CONST                     19                            19                            140     98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   141     0       
+FLOAT_CONST                   2.71828                       2.71828                       141     30      
+FLOAT_CONST                   2.71828                       2.71828                       141     60      
+INT_CONST                     34                            34                            141     90      
+INT_CONST                     21                            21                            141     98      
+IDENT                         SEMICOLON                     SEMICOLON                     142     0       
+SEMICOLON                     ;                                                           142     30      
+INT_CONST                     34                            34                            142     90      
+INT_CONST                     28                            28                            142     98      
+IDENT                         FLOAT                         FLOAT                         143     0       
+FLOAT                         float                                                       143     30      
+INT_CONST                     35                            35                            143     90      
+INT_CONST                     4                             4                             143     98      
+IDENT                         IDENT                         IDENT                         144     0       
+IDENT                         small                         small                         144     30      
+IDENT                         small                         small                         144     60      
+INT_CONST                     35                            35                            144     90      
+INT_CONST                     10                            10                            144     98      
+IDENT                         ASSIGN                        ASSIGN                        145     0       
+ASSIGN                        =                                                           145     30      
+INT_CONST                     35                            35                            145     90      
+INT_CONST                     19                            19                            145     98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   146     0       
+FLOAT_CONST                   1e-10                         1e-10                         146     30      
+FLOAT_CONST                   1e-10                         1e-10                         146     60      
+INT_CONST                     35                            35                            146     90      
+INT_CONST                     21                            21                            146     98      
+IDENT                         SEMICOLON                     SEMICOLON                     147     0       
+SEMICOLON                     ;                                                           147     30      
+INT_CONST                     35                            35                            147     90      
+INT_CONST                     26                            26                            147     98      
+IDENT                         FLOAT                         FLOAT                         148     0       
+FLOAT                         float                                                       148     30      
+INT_CONST                     36                            36                            148     90      
+INT_CONST                     4                             4                             148     98      
+IDENT                         IDENT                         IDENT                         149     0       
+IDENT                         large                         large                         149     30      
+IDENT                         large                         large                         149     60      
+INT_CONST                     36                            36                            149     90      
+INT_CONST                     10                            10                            149     98      
+IDENT                         ASSIGN                        ASSIGN                        150     0       
+ASSIGN                        =                                                           150     30      
+INT_CONST                     36                            36                            150     90      
+INT_CONST                     19                            19                            150     98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   151     0       
+FLOAT_CONST                   1.0e20                        1e+20                         151     30      
+FLOAT_CONST                   1e+20                         1e+20                         151     60      
+INT_CONST                     36                            36                            151     90      
+INT_CONST                     21                            21                            151     98      
+IDENT                         SEMICOLON                     SEMICOLON                     152     0       
+SEMICOLON                     ;                                                           152     30      
+INT_CONST                     36                            36                            152     90      
+INT_CONST                     27                            27                            152     98      
+IDENT                         FLOAT                         FLOAT                         153     0       
+FLOAT                         float                                                       153     30      
+INT_CONST                     37                            37                            153     90      
+INT_CONST                     4                             4                             153     98      
+IDENT                         IDENT                         IDENT                         154     0       
+IDENT                         hex_half                      hex_half                      154     30      
+IDENT                         hex_half                      hex_half                      154     60      
+INT_CONST                     37                            37                            154     90      
+INT_CONST                     10                            10                            154     98      
+IDENT                         ASSIGN                        ASSIGN                        155     0       
+ASSIGN                        =                                                           155     30      
+INT_CONST                     37                            37                            155     90      
+INT_CONST                     19                            19                            155     98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   156     0       
+FLOAT_CONST                   0x1.0p-1                      0.5                           156     30      
+FLOAT_CONST                   0.5                           0.5                           156     60      
+INT_CONST                     37                            37                            156     90      
+INT_CONST                     21                            21                            156     98      
+IDENT                         SEMICOLON                     SEMICOLON                     157     0       
+SEMICOLON                     ;                                                           157     30      
+INT_CONST                     37                            37                            157     90      
+INT_CONST                     29                            29                            157     98      
+IDENT                         FLOAT                         FLOAT                         158     0       
+FLOAT                         float                                                       158     30      
+INT_CONST                     38                            38                            158     90      
+INT_CONST                     4                             4                             158     98      
+IDENT                         IDENT                         IDENT                         159     0       
+IDENT                         hex_two                       hex_two                       159     30      
+IDENT                         hex_two                       hex_two                       159     60      
+INT_CONST                     38                            38                            159     90      
+INT_CONST                     10                            10                            159     98      
+IDENT                         ASSIGN                        ASSIGN                        160     0       
+ASSIGN                        =                                                           160     30      
+INT_CONST                     38                            38                            160     90      
+INT_CONST                     19                            19                            160     98      
+IDENT                         FLOAT_CONST                   FLOAT_CONST                   161     0       
+FLOAT_CONST                   0x2.0p0                       2                             161     30      
+INT_CONST                     2                             2                             161     60      
+INT_CONST                     38                            38                            161     90      
+INT_CONST                     21                            21                            161     98      
+IDENT                         SEMICOLON                     SEMICOLON                     162     0       
+SEMICOLON                     ;                                                           162     30      
+INT_CONST                     38                            38                            162     90      
+INT_CONST                     28                            28                            162     98      
+IDENT                         FLOAT                         FLOAT                         163     0       
+FLOAT                         float                                                       163     30      
+INT_CONST                     40                            40                            163     90      
+INT_CONST                     4                             4                             163     98      
+IDENT                         IDENT                         IDENT                         164     0       
+IDENT                         sum                           sum                           164     30      
+IDENT                         sum                           sum                           164     60      
+INT_CONST                     40                            40                            164     90      
+INT_CONST                     10                            10                            164     98      
+IDENT                         ASSIGN                        ASSIGN                        165     0       
+ASSIGN                        =                                                           165     30      
+INT_CONST                     40                            40                            165     90      
+INT_CONST                     19                            19                            165     98      
+IDENT                         IDENT                         IDENT                         166     0       
+IDENT                         pi                            pi                            166     30      
+IDENT                         pi                            pi                            166     60      
+INT_CONST                     40                            40                            166     90      
+INT_CONST                     21                            21                            166     98      
+IDENT                         PLUS                          PLUS                          167     0       
+PLUS                          +                                                           167     30      
+INT_CONST                     40                            40                            167     90      
+INT_CONST                     24                            24                            167     98      
+IDENT                         IDENT                         IDENT                         168     0       
+IDENT                         e_const                       e_const                       168     30      
+IDENT                         e_const                       e_const                       168     60      
+INT_CONST                     40                            40                            168     90      
+INT_CONST                     26                            26                            168     98      
+IDENT                         SEMICOLON                     SEMICOLON                     169     0       
+SEMICOLON                     ;                                                           169     30      
+INT_CONST                     40                            40                            169     90      
+INT_CONST                     33                            33                            169     98      
+IDENT                         FLOAT                         FLOAT                         170     0       
+FLOAT                         float                                                       170     30      
+INT_CONST                     41                            41                            170     90      
+INT_CONST                     4                             4                             170     98      
+IDENT                         IDENT                         IDENT                         171     0       
+IDENT                         product                       product                       171     30      
+IDENT                         product                       product                       171     60      
+INT_CONST                     41                            41                            171     90      
+INT_CONST                     10                            10                            171     98      
+IDENT                         ASSIGN                        ASSIGN                        172     0       
+ASSIGN                        =                                                           172     30      
+INT_CONST                     41                            41                            172     90      
+INT_CONST                     19                            19                            172     98      
+IDENT                         IDENT                         IDENT                         173     0       
+IDENT                         small                         small                         173     30      
+IDENT                         small                         small                         173     60      
+INT_CONST                     41                            41                            173     90      
+INT_CONST                     21                            21                            173     98      
+IDENT                         STAR                          STAR                          174     0       
+STAR                          *                                                           174     30      
+INT_CONST                     41                            41                            174     90      
+INT_CONST                     27                            27                            174     98      
+IDENT                         IDENT                         IDENT                         175     0       
+IDENT                         large                         large                         175     30      
+IDENT                         large                         large                         175     60      
+INT_CONST                     41                            41                            175     90      
+INT_CONST                     29                            29                            175     98      
+IDENT                         SEMICOLON                     SEMICOLON                     176     0       
+SEMICOLON                     ;                                                           176     30      
+INT_CONST                     41                            41                            176     90      
+INT_CONST                     34                            34                            176     98      
+IDENT                         FLOAT                         FLOAT                         177     0       
+FLOAT                         float                                                       177     30      
+INT_CONST                     42                            42                            177     90      
+INT_CONST                     4                             4                             177     98      
+IDENT                         IDENT                         IDENT                         178     0       
+IDENT                         division                      division                      178     30      
+IDENT                         division                      division                      178     60      
+INT_CONST                     42                            42                            178     90      
+INT_CONST                     10                            10                            178     98      
+IDENT                         ASSIGN                        ASSIGN                        179     0       
+ASSIGN                        =                                                           179     30      
+INT_CONST                     42                            42                            179     90      
+INT_CONST                     19                            19                            179     98      
+IDENT                         IDENT                         IDENT                         180     0       
+IDENT                         hex_two                       hex_two                       180     30      
+IDENT                         hex_two                       hex_two                       180     60      
+INT_CONST                     42                            42                            180     90      
+INT_CONST                     21                            21                            180     98      
+IDENT                         SLASH                         SLASH                         181     0       
+SLASH                         /                                                           181     30      
+INT_CONST                     42                            42                            181     90      
+INT_CONST                     29                            29                            181     98      
+IDENT                         IDENT                         IDENT                         182     0       
+IDENT                         hex_half                      hex_half                      182     30      
+IDENT                         hex_half                      hex_half                      182     60      
+INT_CONST                     42                            42                            182     90      
+INT_CONST                     31                            31                            182     98      
+IDENT                         SEMICOLON                     SEMICOLON                     183     0       
+SEMICOLON                     ;                                                           183     30      
+INT_CONST                     42                            42                            183     90      
+INT_CONST                     39                            39                            183     98      
+IDENT                         FLOAT                         FLOAT                         184     0       
+FLOAT                         float                                                       184     30      
+INT_CONST                     44                            44                            184     90      
+INT_CONST                     4                             4                             184     98      
+IDENT                         IDENT                         IDENT                         185     0       
+IDENT                         result1                       result1                       185     30      
+IDENT                         result1                       result1                       185     60      
+INT_CONST                     44                            44                            185     90      
+INT_CONST                     10                            10                            185     98      
+IDENT                         ASSIGN                        ASSIGN                        186     0       
+ASSIGN                        =                                                           186     30      
+INT_CONST                     44                            44                            186     90      
+INT_CONST                     18                            18                            186     98      
+IDENT                         IDENT                         IDENT                         187     0       
+IDENT                         testDecimalFloats             testDecimalFloats             187     30      
+IDENT                         testDecimalFloats             testDecimalFloats             187     60      
+INT_CONST                     44                            44                            187     90      
+INT_CONST                     20                            20                            187     98      
+IDENT                         LPAREN                        LPAREN                        188     0       
+LPAREN                        (                                                           188     30      
+INT_CONST                     44                            44                            188     90      
+INT_CONST                     37                            37                            188     98      
+IDENT                         RPAREN                        RPAREN                        189     0       
+RPAREN                        )                                                           189     30      
+INT_CONST                     44                            44                            189     90      
+INT_CONST                     38                            38                            189     98      
+IDENT                         SEMICOLON                     SEMICOLON                     190     0       
+SEMICOLON                     ;                                                           190     30      
+INT_CONST                     44                            44                            190     90      
+INT_CONST                     39                            39                            190     98      
+IDENT                         FLOAT                         FLOAT                         191     0       
+FLOAT                         float                                                       191     30      
+INT_CONST                     45                            45                            191     90      
+INT_CONST                     4                             4                             191     98      
+IDENT                         IDENT                         IDENT                         192     0       
+IDENT                         result2                       result2                       192     30      
+IDENT                         result2                       result2                       192     60      
+INT_CONST                     45                            45                            192     90      
+INT_CONST                     10                            10                            192     98      
+IDENT                         ASSIGN                        ASSIGN                        193     0       
+ASSIGN                        =                                                           193     30      
+INT_CONST                     45                            45                            193     90      
+INT_CONST                     18                            18                            193     98      
+IDENT                         IDENT                         IDENT                         194     0       
+IDENT                         testHexFloats                 testHexFloats                 194     30      
+IDENT                         testHexFloats                 testHexFloats                 194     60      
+INT_CONST                     45                            45                            194     90      
+INT_CONST                     20                            20                            194     98      
+IDENT                         LPAREN                        LPAREN                        195     0       
+LPAREN                        (                                                           195     30      
+INT_CONST                     45                            45                            195     90      
+INT_CONST                     33                            33                            195     98      
+IDENT                         RPAREN                        RPAREN                        196     0       
+RPAREN                        )                                                           196     30      
+INT_CONST                     45                            45                            196     90      
+INT_CONST                     34                            34                            196     98      
+IDENT                         SEMICOLON                     SEMICOLON                     197     0       
+SEMICOLON                     ;                                                           197     30      
+INT_CONST                     45                            45                            197     90      
+INT_CONST                     35                            35                            197     98      
+IDENT                         IF                            IF                            198     0       
+IF                            if                                                          198     30      
+INT_CONST                     47                            47                            198     90      
+INT_CONST                     4                             4                             198     98      
+IDENT                         LPAREN                        LPAREN                        199     0       
+LPAREN                        (                                                           199     30      
+INT_CONST                     47                            47                            199     90      
+INT_CONST                     7                             7                             199     98      
+IDENT                         IDENT                         IDENT                         200     0       
+IDENT                         result1                       result1                       200     30      
+IDENT                         result1                       result1                       200     60      
+INT_CONST                     47                            47                            200     90      
+INT_CONST                     8                             8                             200     98      
+IDENT                         GT                            GT                            201     0       
+GT                            >                                                           201     30      
+INT_CONST                     47                            47                            201     90      
+INT_CONST                     16                            16                            201     98      
+IDENT                         IDENT                         IDENT                         202     0       
+IDENT                         result2                       result2                       202     30      
+IDENT                         result2                       result2                       202     60      
+INT_CONST                     47                            47                            202     90      
+INT_CONST                     18                            18                            202     98      
+IDENT                         RPAREN                        RPAREN                        203     0       
+RPAREN                        )                                                           203     30      
+INT_CONST                     47                            47                            203     90      
+INT_CONST                     25                            25                            203     98      
+IDENT                         RETURN                        RETURN                        204     0       
+RETURN                        return                                                      204     30      
+INT_CONST                     47                            47                            204     90      
+INT_CONST                     27                            27                            204     98      
+IDENT                         INT_CONST                     INT_CONST                     205     0       
+INT_CONST                     1                             1                             205     30      
+INT_CONST                     1                             1                             205     60      
+INT_CONST                     47                            47                            205     90      
+INT_CONST                     34                            34                            205     98      
+IDENT                         SEMICOLON                     SEMICOLON                     206     0       
+SEMICOLON                     ;                                                           206     30      
+INT_CONST                     47                            47                            206     90      
+INT_CONST                     35                            35                            206     98      
+IDENT                         ELSE                          ELSE                          207     0       
+ELSE                          else                                                        207     30      
+INT_CONST                     48                            48                            207     90      
+INT_CONST                     4                             4                             207     98      
+IDENT                         RETURN                        RETURN                        208     0       
+RETURN                        return                                                      208     30      
+INT_CONST                     48                            48                            208     90      
+INT_CONST                     9                             9                             208     98      
+IDENT                         INT_CONST                     INT_CONST                     209     0       
+INT_CONST                     0                             0                             209     30      
+INT_CONST                     0                             0                             209     60      
+INT_CONST                     48                            48                            209     90      
+INT_CONST                     16                            16                            209     98      
+IDENT                         SEMICOLON                     SEMICOLON                     210     0       
+SEMICOLON                     ;                                                           210     30      
+INT_CONST                     48                            48                            210     90      
+INT_CONST                     17                            17                            210     98      
+IDENT                         RBRACE                        RBRACE                        211     0       
+RBRACE                        }                                                           211     30      
+INT_CONST                     49                            49                            211     90      
+INT_CONST                     0                             0                             211     98      

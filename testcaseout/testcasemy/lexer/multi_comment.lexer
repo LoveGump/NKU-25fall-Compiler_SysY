@@ -1,0 +1,54 @@
+Token                         Lexeme                        Property                      Line    Column  
+INT                           int                                                         8       0       
+IDENT                         main                          main                          8       4       
+LPAREN                        (                                                           8       8       
+RPAREN                        )                                                           8       9       
+LBRACE                        {                                                           8       11      
+INT                           int                                                         10      4       
+IDENT                         a                             a                             10      8       
+ASSIGN                        =                                                           10      10      
+INT_CONST                     10                            10                            10      12      
+SEMICOLON                     ;                                                           10      14      
+FLOAT                         float                                                       11      4       
+IDENT                         b                             b                             11      10      
+ASSIGN                        =                                                           11      12      
+FLOAT_CONST                   3.14                          3.14                          11      14      
+SEMICOLON                     ;                                                           11      18      
+IDENT                         a                             a                             13      4       
+ASSIGN                        =                                                           13      6       
+IDENT                         a                             a                             13      8       
+PLUS                          +                                                           13      10      
+IDENT                         b                             b                             13      12      
+SEMICOLON                     ;                                                           13      13      
+IDENT                         b                             b                             14      4       
+ASSIGN                        =                                                           14      6       
+IDENT                         b                             b                             14      8       
+STAR                          *                                                           14      10      
+FLOAT_CONST                   2.0                           2                             14      12      
+SEMICOLON                     ;                                                           14      15      
+INT                           int                                                         17      4       
+IDENT                         c                             c                             17      8       
+ASSIGN                        =                                                           17      10      
+INT_CONST                     5                             5                             17      12      
+PLUS                          +                                                           17      33      
+INT_CONST                     7                             7                             17      35      
+SEMICOLON                     ;                                                           17      36      
+FLOAT                         float                                                       19      4       
+IDENT                         d                             d                             19      10      
+ASSIGN                        =                                                           19      12      
+FLOAT_CONST                   1.0                           1                             19      14      
+PLUS                          +                                                           21      8       
+FLOAT_CONST                   2.0                           2                             21      10      
+SEMICOLON                     ;                                                           21      13      
+IDENT                         a                             a                             24      4       
+ASSIGN                        =                                                           24      6       
+IDENT                         a                             a                             24      8       
+PLUS                          +                                                           24      10      
+INT_CONST                     1                             1                             24      12      
+PLUS                          +                                                           24      27      
+INT_CONST                     2                             2                             24      29      
+SEMICOLON                     ;                                                           24      43      
+RETURN                        return                                                      26      4       
+INT_CONST                     0                             0                             26      11      
+SEMICOLON                     ;                                                           26      12      
+RBRACE                        }                                                           27      0       

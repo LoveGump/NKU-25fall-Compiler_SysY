@@ -47,10 +47,10 @@ int main(int argc, char** argv)
     // 这一段程序的作用是解析输入参数
     string   inputFile     = "";
     string   outputFile    = "a.out";
-    string   step          = "-llvm"; // 默认编译到 llvm IR
+    string   step          = "-llvm";  // 默认编译到 llvm IR
     int      optimizeLevel = 0;
-    ostream* outStream     = &cout;// 默认输出到标准输出
-    ofstream outFile; // 如果指定了输出文件，则将输出重定向到该文件
+    ostream* outStream     = &cout;  // 默认输出到标准输出
+    ofstream outFile;                // 如果指定了输出文件，则将输出重定向到该文件
 
     for (int i = 1; i < argc; i++)
     {
@@ -71,7 +71,7 @@ int main(int argc, char** argv)
         else if (arg == "-O0") { optimizeLevel = 0; }
         else if (arg == "-O2") { optimizeLevel = 2; }
         else if (arg == "-O3") { optimizeLevel = 3; }
-        else if (arg[0] != '-') { inputFile = arg; }// 如果不是选项，则视为输入文件
+        else if (arg[0] != '-') { inputFile = arg; }  // 如果不是选项，则视为输入文件
         else
         {
             cerr << "Unknown option: " << arg << endl;
@@ -86,7 +86,7 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    if (!outputFile.empty())// 如果指定了输出文件，则重定向输出流
+    if (!outputFile.empty())  // 如果指定了输出文件，则重定向输出流
     {
         outFile.open(outputFile);
         if (!outFile)
@@ -103,7 +103,7 @@ int main(int argc, char** argv)
     cout << "Optimize level: " << optimizeLevel << endl;
 
     ifstream       in(inputFile);
-    istream*       inStream = &in;// 输入文件流，指针
+    istream*       inStream = &in;  // 输入文件流，指针
     FE::AST::Node* ast      = nullptr;
     int            ret      = 0;
 
@@ -139,13 +139,13 @@ int main(int argc, char** argv)
      * 在 `testcase/lexer/` 目录下提供了一些测试用例以及它们的预期输出，可以自行查看。
      */
     {
-        FE::Parser parser(inStream, outStream);// 构造一个Parser对象
+        FE::Parser parser(inStream, outStream);  // 构造一个Parser对象
 
         if (step == "-lexer")
         {
-            auto tokens = parser.parseTokens(); // 调用词法分析器
+            auto tokens = parser.parseTokens();  // 调用词法分析器
 
-            *outStream << left; // 左对齐
+            *outStream << left;  // 左对齐
             *outStream << setw(STR_PW) << "Token" << setw(STR_PW) << "Lexeme" << setw(STR_PW) << "Property"
                        << setw(INT_PW) << "Line" << setw(INT_PW) << "Column" << endl;
 
