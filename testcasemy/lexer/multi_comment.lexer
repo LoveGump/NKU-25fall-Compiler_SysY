@@ -24,7 +24,7 @@ IDENT                         b                             b                   
 ASSIGN                        =                                                           14      6       
 IDENT                         b                             b                             14      8       
 STAR                          *                                                           14      10      
-FLOAT_CONST                   2.0                           2.0                           14      12      
+FLOAT_CONST                   2.0                           2                             14      12      
 SEMICOLON                     ;                                                           14      15      
 INT                           int                                                         17      4       
 IDENT                         c                             c                             17      8       
@@ -36,9 +36,9 @@ SEMICOLON                     ;                                                 
 FLOAT                         float                                                       19      4       
 IDENT                         d                             d                             19      10      
 ASSIGN                        =                                                           19      12      
-FLOAT_CONST                   1.0                           1.0                           19      14      
+FLOAT_CONST                   1.0                           1                             19      14      
 PLUS                          +                                                           21      8       
-FLOAT_CONST                   2.0                           2.0                           21      10      
+FLOAT_CONST                   2.0                           2                             21      10      
 SEMICOLON                     ;                                                           21      13      
 IDENT                         a                             a                             24      4       
 ASSIGN                        =                                                           24      6       
