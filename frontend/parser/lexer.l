@@ -92,6 +92,7 @@ TODO(Lab1)：参考SysY2022的定义，实现更多的词法，如浮点数、�
 "//".*              { 
     auto str = std::string(yytext);
     // return YaccParser::make_SLASH_COMMENT(str, loc);  //思考为什么要把这一行注释掉
+    // 在NKU-Compiler2025/frontend/parser/yacc.y  202 有对单行注释的处理
     // 这里注释掉是因为单行注释不需要作为token返回给parser
 }
 
@@ -113,7 +114,8 @@ TODO(Lab1)：参考SysY2022的定义，实现更多的词法，如浮点数、�
     //TODO(Lab1)：实现多行注释的处理，包括修改上方的匹配规则
     auto str = std::string(yytext); // 获取匹配的注释字符串
     loc.lines(std::count(str.begin(), str.end(), '\n')); // 更新行号
-    // return YaccParser::make_MULTI_COMMENT(str, loc); // 返回多行注释的 token
+    // return YaccParser::make_MULTI_COMMENT(str, loc); 
+    // 多行注释也是不把其作为token
 }
 
 

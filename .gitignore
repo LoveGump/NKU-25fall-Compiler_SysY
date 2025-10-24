@@ -8,7 +8,5 @@ test_output
 .cache
 frontend/parser/location.hh
 frontend/parser/lexer.cpp
-frontend/parser/lexer.h
-frontend/parser/yacc.cpp
 frontend/parser/yacc.h
-compile_commands.json
+frontend/parser/yacc.cpp

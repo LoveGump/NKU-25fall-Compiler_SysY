@@ -28,10 +28,10 @@
     mem_track.sh 脚本可用于调用 valgrind 来检测内存泄漏问题
 */
 
-#define STR_PW 30
-#define INT_PW 8
-#define MIN_GAP 5
-#define STR_REAL_WIDTH (STR_PW - MIN_GAP)
+#define STR_PW 30                          // 字符串字段宽度
+#define INT_PW 8                           // 整数字段宽度
+#define MIN_GAP 5                          // 字段间最小间隔
+#define STR_REAL_WIDTH (STR_PW - MIN_GAP)  // 内容允许的最大可见长度
 
 using namespace std;
 
@@ -146,6 +146,7 @@ int main(int argc, char** argv)
             auto tokens = parser.parseTokens();  // 调用词法分析器
 
             *outStream << left;  // 左对齐
+            // tokenName 是抽象类别，lexeme 词素 具体的内容；Property 属性,这里是具体的值 , line 行号，column 列号
             *outStream << setw(STR_PW) << "Token" << setw(STR_PW) << "Lexeme" << setw(STR_PW) << "Property"
                        << setw(INT_PW) << "Line" << setw(INT_PW) << "Column" << endl;
 
@@ -160,6 +161,7 @@ int main(int argc, char** argv)
                     *outStream << setw(STR_PW) << token.lval;
                 else if (token.type == FE::Token::TokenType::T_FLOAT)
                     *outStream << setw(STR_PW) << token.fval;
+                // 存疑，这里的double和string SysY中是否存在
                 else if (token.type == FE::Token::TokenType::T_DOUBLE)
                     *outStream << setw(STR_PW) << token.dval;
                 else if (token.type == FE::Token::TokenType::T_STRING)

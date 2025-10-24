@@ -5,6 +5,7 @@
 
 namespace FE
 {
+    // 词法分析器生成的 Token 结构体
     struct Token
     {
         std::string token_name;     ///< 词法分析中使用的 token 名称

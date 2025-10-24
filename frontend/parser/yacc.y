@@ -95,7 +95,7 @@
 // 赋值 =  += -= *= /= %=
 %token ASSIGN PLUS_ASSIGN MINUS_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
 
-
+// 非终结符 EXPR 表示表达式 ；STMT 表示语句
 %nterm <FE::AST::Operator> UNARY_OP
 %nterm <FE::AST::Type*> TYPE
 %nterm <FE::AST::InitDecl*> INITIALIZER
@@ -155,7 +155,8 @@
 如果你不打算实现float、array这些进阶要求，可将对应部分删去。
 */
 
-//语法树匹配从这里开始
+// 语法树匹配从这里开始
+// 语法规则
 PROGRAM:
     STMT_LIST {
         $$ = new Root($1);

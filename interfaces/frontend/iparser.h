@@ -12,6 +12,7 @@ namespace FE
         class Root;
     }
 
+    // 语法分析器模版基类
     template <typename Derived>
     class iParser
     {
@@ -28,8 +29,10 @@ namespace FE
         void setOutStream(std::ostream* outStream) { this->outStream = outStream; }
 
       public:
+        // 词法分析接口
         std::vector<Token> parseTokens() { return static_cast<Derived*>(this)->parseTokens_impl(); }
-        AST::Root*         parseAST() { return static_cast<Derived*>(this)->parseAST_impl(); }
+        // 语法分析接口
+        AST::Root* parseAST() { return static_cast<Derived*>(this)->parseAST_impl(); }
     };
 }  // namespace FE
 

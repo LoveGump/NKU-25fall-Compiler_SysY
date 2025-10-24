@@ -13,6 +13,7 @@ namespace FE
         std::vector<Token> tokens;
         while (true)
         {
+            // 遇到终止token之前循环
             type token = _scanner.nextToken();
             if (token.kind() == kind::S_END) break;
 
@@ -28,6 +29,7 @@ namespace FE
                     result.ival = token.value.as<int>();
                     result.type = Token::TokenType::T_INT;
                     break;
+                // 添加对LL_CONST和FLOAT_CONST的处理
                 case kind::S_LL_CONST:
                     result.lval = token.value.as<long long>();
                     result.type = Token::TokenType::T_LL;
@@ -36,6 +38,8 @@ namespace FE
                     result.fval = token.value.as<float>();
                     result.type = Token::TokenType::T_FLOAT;
                     break;
+                // 标识符、单行注释、err 、字符串常量都使用同一种处理方式。
+                // 因为它们的值都存储为std::string类型
                 case kind::S_IDENT:
                 case kind::S_SLASH_COMMENT:
                 case kind::S_ERR_TOKEN:
