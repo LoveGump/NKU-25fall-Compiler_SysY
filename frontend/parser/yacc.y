@@ -67,7 +67,7 @@
 // 字符串： 字符串常量、错误token、单行注释 
 %token <std::string> STR_CONST ERR_TOKEN SLASH_COMMENT 
 // 标识符
-%token <std::string> IDENT 
+%token <std::string> IDENT
 // 关键字
 %token IF ELSE FOR WHILE CONTINUE BREAK SWITCH CASE GOTO DO RETURN CONST
 // 界符 ;         ,     (      )      [        ]          {        }
@@ -95,36 +95,64 @@
 // 赋值 =  += -= *= /= %=
 %token ASSIGN PLUS_ASSIGN MINUS_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
 
+// token 定义结束
+
 // 非终结符 EXPR 表示表达式 ；STMT 表示语句
-%nterm <FE::AST::Operator> UNARY_OP
-%nterm <FE::AST::Type*> TYPE
+// 一元运算符
+%nterm <FE::AST::Operator> UNARY_OP 
+// 类型
+%nterm <FE::AST::Type*> TYPE 
+// 变量初始化
 %nterm <FE::AST::InitDecl*> INITIALIZER
+// 变量初始化列表
 %nterm <std::vector<FE::AST::InitDecl*>*> INITIALIZER_LIST
+// 变量声明符
 %nterm <FE::AST::VarDeclarator*> VAR_DECLARATOR
+// 变量声明符列表
 %nterm <std::vector<FE::AST::VarDeclarator*>*> VAR_DECLARATOR_LIST
+// 变量声明
 %nterm <FE::AST::VarDeclaration*> VAR_DECLARATION
+// 变量声明语句
 %nterm <FE::AST::ParamDeclarator*> PARAM_DECLARATOR
+// 函数形参列表
 %nterm <std::vector<FE::AST::ParamDeclarator*>*> PARAM_DECLARATOR_LIST
 
+// 表达式相关非终结符
 %nterm <FE::AST::ExprNode*> LITERAL_EXPR
+// 基础表达式
 %nterm <FE::AST::ExprNode*> BASIC_EXPR
+// 函数调用表达式
 %nterm <FE::AST::ExprNode*> FUNC_CALL_EXPR
+// 一元表达式
 %nterm <FE::AST::ExprNode*> UNARY_EXPR
+// * /
 %nterm <FE::AST::ExprNode*> MULDIV_EXPR
+// +-
 %nterm <FE::AST::ExprNode*> ADDSUB_EXPR
+// 关系表达式：  < > <= >=
 %nterm <FE::AST::ExprNode*> RELATIONAL_EXPR
+// 等于表达式 == !=
 %nterm <FE::AST::ExprNode*> EQUALITY_EXPR
+// 逻辑与表达式 &&
 %nterm <FE::AST::ExprNode*> LOGICAL_AND_EXPR
+// 逻辑或表达式 ||
 %nterm <FE::AST::ExprNode*> LOGICAL_OR_EXPR
+// 赋值表达式=
 %nterm <FE::AST::ExprNode*> ASSIGN_EXPR
+// 非逗号表达式
 %nterm <FE::AST::ExprNode*> NOCOMMA_EXPR
 %nterm <FE::AST::ExprNode*> EXPR
+// 表达式列表
 %nterm <std::vector<FE::AST::ExprNode*>*> EXPR_LIST
 
+// 数组维度表达式
 %nterm <FE::AST::ExprNode*> ARRAY_DIMENSION_EXPR
+// 数组维度表达式列表
 %nterm <std::vector<FE::AST::ExprNode*>*> ARRAY_DIMENSION_EXPR_LIST
+// 左值表达式
 %nterm <FE::AST::ExprNode*> LEFT_VAL_EXPR
 
+// 表达式语句
 %nterm <FE::AST::StmtNode*> EXPR_STMT
 %nterm <FE::AST::StmtNode*> VAR_DECL_STMT
 %nterm <FE::AST::StmtNode*> BLOCK_STMT
@@ -136,17 +164,25 @@
 %nterm <FE::AST::StmtNode*> CONTINUE_STMT
 %nterm <FE::AST::StmtNode*> FOR_STMT
 %nterm <FE::AST::StmtNode*> FUNC_BODY
+// 一般语句
 %nterm <FE::AST::StmtNode*> STMT
-
+// 语句列表
 %nterm <std::vector<FE::AST::StmtNode*>*> STMT_LIST
+// 程序根节点
 %nterm <FE::AST::Root*> PROGRAM
 
+// 定义 语法分析的起始符号
 %start PROGRAM
 
 //THEN和ELSE用于处理if和else的移进-规约冲突
+// if_stmt:
+//      IF '(' expr ')' stmt %prec THEN
+//    | IF '(' expr ')' stmt ELSE stmt %prec ELSE
+//    ;
+// else部分会被规约到最近的未匹配的if上
 %precedence THEN
 %precedence ELSE
-// token 定义结束
+
 
 %%
 
@@ -157,6 +193,7 @@
 
 // 语法树匹配从这里开始
 // 语法规则
+// 
 PROGRAM:
     STMT_LIST {
         $$ = new Root($1);

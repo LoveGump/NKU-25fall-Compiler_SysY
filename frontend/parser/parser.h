@@ -9,6 +9,7 @@ namespace FE
 {
     //  CRTP（Curiously Recurring Template Pattern）
     // 基类通过模板参数引用派生类，从而允许基类调用派生类的实现。
+    // 避免虚函数开销，性能更高
     class Parser : public iParser<Parser>
     {
         friend iParser<Parser>;  // 让基类可以访问派生类的私有成员

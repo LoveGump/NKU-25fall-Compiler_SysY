@@ -10,7 +10,9 @@ namespace FE::AST
    */
     static Type* promoteType(Type* a, Type* b)
     {
-        Type_t kindA = a->getBaseType();
+        // 类型提升规则：float > long long > int
+        // 获取类型A、B的基本类型
+        Type_t kindA = a->getBaseType(); 
         Type_t kindB = b->getBaseType();
 
         if (kindA == Type_t::FLOAT || kindB == Type_t::FLOAT) return floatType;
@@ -20,13 +22,14 @@ namespace FE::AST
 
     static Type* getResultType(Type* operandType, Operator op)
     {
+        // 根据操作符确定结果类型
         if (op == Operator::GT || op == Operator::GE || op == Operator::LT || op == Operator::LE ||
             op == Operator::EQ || op == Operator::NEQ || op == Operator::AND || op == Operator::OR ||
             op == Operator::NOT)
-            return boolType;
+            return boolType; // 布尔
 
         if (op == Operator::ADD || op == Operator::SUB)
-            if (operandType->getBaseType() == Type_t::BOOL) return intType;
+            if (operandType->getBaseType() == Type_t::BOOL) return intType; // 布尔参与加减运算时提升为整型
 
         return operandType;
     }
@@ -34,8 +37,9 @@ namespace FE::AST
     template <typename T>
     static T getValue(const VarValue& val)
     {
+        // 根据 VarValue 的类型获取对应的值
         Type_t valType = val.type->getBaseType();
-
+        // constexpr if 语句用于在编译期选择合适的分支
         if constexpr (std::is_same_v<T, int>)
         {
             switch (valType)
@@ -87,6 +91,7 @@ namespace FE::AST
     template <typename T>
     static VarValue makeVarValue(T value)
     {
+        // 根据传入的值类型创建对应的 VarValue
         if constexpr (std::is_same_v<T, int>)
             return VarValue(static_cast<int>(value));
         else if constexpr (std::is_same_v<T, long long>)
@@ -101,9 +106,12 @@ namespace FE::AST
 
     static ExprValue handleIntegerResult(long long result, Type* preferredType, bool isConst)
     {
+        // 根据结果值和期望类型创建 ExprValue
         ExprValue exprVal;
         exprVal.isConstexpr = isConst;
 
+        // 有float类型参与运算时，结果提升为float，没有就看结果值范围决定使用int还是long long
+        // 对于本来就是longlong类型的操作数，结果依然保持为longlong类型
         if (preferredType->getBaseType() == Type_t::FLOAT)
             exprVal.value = VarValue(static_cast<float>(result));
         else if (result >= std::numeric_limits<int>::min() && result <= std::numeric_limits<int>::max() &&
@@ -119,6 +127,7 @@ namespace FE::AST
     static ExprValue performUnaryOp(const ExprValue& operand, Operator op, Type* resultType,
         std::vector<std::string>& errors, int lineNum, bool& hasError)
     {
+        // 执行一元操作符计算
         ExprValue result;
         result.isConstexpr = operand.isConstexpr;
         result.value.type  = resultType;
@@ -158,6 +167,7 @@ namespace FE::AST
     static ExprValue performBinaryOp(const ExprValue& lhs, const ExprValue& rhs, Operator op, Type* resultType,
         std::vector<std::string>& errors, int lineNum, bool& hasError)
     {
+        // 执行二元操作符计算
         ExprValue result;
         result.isConstexpr = lhs.isConstexpr && rhs.isConstexpr;
         result.value.type  = resultType;
@@ -268,6 +278,7 @@ namespace FE::AST
     static ExprValue dispatchUnaryOp(Type_t kind, const ExprValue& operand, Operator op, Type* resultType,
         std::vector<std::string>& errors, int lineNum, bool& hasError)
     {
+        // 处理一元操作符
         switch (kind)
         {
             case Type_t::BOOL:
@@ -287,6 +298,7 @@ namespace FE::AST
     static ExprValue dispatchBinaryOp(Type_t kind, const ExprValue& lhs, const ExprValue& rhs, Operator op,
         Type* resultType, std::vector<std::string>& errors, int lineNum, bool& hasError)
     {
+        // 处理二元操作符
         switch (kind)
         {
             case Type_t::BOOL:
@@ -305,6 +317,7 @@ namespace FE::AST
 
     ExprValue ASTChecker::typeInfer(const ExprValue& operand, Operator op, const Node& node, bool& hasError)
     {
+        // 一元操作符类型推断
         Type* operandType = operand.value.type;
         Type* resultType  = getResultType(operandType, op);
 
@@ -314,6 +327,7 @@ namespace FE::AST
     ExprValue ASTChecker::typeInfer(
         const ExprValue& lhs, const ExprValue& rhs, Operator op, const Node& node, bool& hasError)
     {
+        // 二元操作符类型推断
         Type* promotedType = promoteType(lhs.value.type, rhs.value.type);
         Type* resultType   = getResultType(promotedType, op);
 

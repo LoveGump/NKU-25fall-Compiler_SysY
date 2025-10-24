@@ -12,6 +12,7 @@
     using namespace FE;
 
     static location loc;
+    // loc记录了一个token的起始地址和终止地址
 
     // YY_USER_ACTION 宏会自动插入到每个规则的代码块开头
     // 如下方的 "int"               { RETT(INT, loc) }
@@ -19,6 +20,7 @@
     // "int"               { loc.step(); loc.columns(yyleng); RETT(INT, loc) }
     // 这样就能自动更新 loc 的位置
     // yyleng 是当前匹配的字符串的长度
+    // loc.step() 用于将位置向前移动一个字符
     #define YY_USER_ACTION      \
         loc.step();             \
         loc.columns(yyleng);
@@ -163,7 +165,7 @@ TODO(Lab1)：参考SysY2022的定义，实现更多的词法，如浮点数、�
     // ([eE][-+]?[0-9]+)?：匹配科学计数法部分
     try {
         float fval = convertToFloatDec(yytext);
-        return YaccParser::make_FLOAT_CONST(fval, loc);
+        return YaccParser::make_FLOAT_CONST(fval, loc);// 多参数 不匹配宏 
     } catch (const std::out_of_range& e) {
         auto str = std::string(yytext);
         return YaccParser::make_ERR_TOKEN(str, loc);
