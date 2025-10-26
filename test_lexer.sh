@@ -15,8 +15,8 @@ if ! make; then
 fi
 
 # 路径设置
-INPUT_DIR="testcasemy/lexer"
-OUTPUT_DIR="testcaseout/testcasemy/lexer"
+INPUT_DIR="testcase/lexer"
+OUTPUT_DIR="testcaseout/testcase/lexer"
 BIN="./bin/compiler"
 
 mkdir -p "$OUTPUT_DIR"

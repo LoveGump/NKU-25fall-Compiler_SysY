@@ -215,7 +215,6 @@
 
 // 语法树匹配从这里开始
 // 语法规则
-// 
 PROGRAM:
     STMT_LIST {
         // 规约动作: 将语句列表包装成根节点
@@ -227,7 +226,7 @@ PROGRAM:
     }
     | PROGRAM END {
         // 遇到文件结束符(EOF)，通知Bison接受输入并结束分析
-        YYACCEPT;
+        YYACCEPT; // 特殊宏 表示立即结束解析并返回成功结果
     }
     ;
 
@@ -245,7 +244,7 @@ STMT_LIST:
         if ($1) $$->push_back($1);
     }
     | STMT_LIST STMT {
-         // 递归情况: 在已有的语句列表后追加新语句
+        // 递归情况: 在已有的语句列表后追加新语句
         // $1: 已有的语句列表
         // $2: 新语句
         // 复用已有的vector，避免重新分配内存
@@ -273,8 +272,20 @@ STMT:
         // 变量声明语句: int a, b = 5;
         $$ = $1;
     }
+    | BLOCK_STMT{
+        // 补充：代码块语句: { stmt1; stmt2; ... }
+        $$ = $1;
+    }    
     | FUNC_DECL_STMT {
          // 函数定义语句: int func(int a) { ... }
+        $$ = $1;
+    }
+    | RETURN_STMT{
+        // 补充： return语句: return expr;
+        $$ = $1;
+    }
+    | WHILE_STMT{
+        // 补充： while循环语句: while (expr) stmt;
         $$ = $1;
     }
     | FOR_STMT {
@@ -283,6 +294,10 @@ STMT:
     }
     | IF_STMT {
         // if-else条件语句
+        $$ = $1;
+    }
+    | BREAK_STMT{
+        // 补充： break语句: break;
         $$ = $1;
     }
     | CONTINUE_STMT {
@@ -299,11 +314,17 @@ STMT:
         // 注释不生成AST节点，返回nullptr
         $$ = nullptr;
     }
-    //TODO(Lab2)：考虑更多语句类型，大概可能有以下这些？
-    // - BREAK_STMT: break语句，跳出循环
-    // - RETURN_STMT: return语句，返回函数值
-    // - WHILE_STMT: while循环
-    // - BLOCK_STMT: 代码块 { ... }
+    //TODO(Lab2)：考虑更多语句类型
+    ;
+
+// 补充：代码块语句: { stmt1; stmt2; ... }
+BLOCK_STMT:
+    LBRACE STMT_LIST RBRACE {
+        // 创建一个 BlockStmt，包含语句列表
+        // $2: std::vector<StmtNode*>* 类型，包含块内所有语句
+        // @1: 左大括号的位置信息（行号、列号）
+        $$ = new BlockStmt($2, @1.begin.line, @1.begin.column);
+    }
     ;
 
 //接下来是详细的具体语句
@@ -350,19 +371,15 @@ VAR_DECLARATION:
 // VAR_DECL_STMT: 完整的变量声明语句（含分号）
 VAR_DECL_STMT:
     /* TODO(Lab2): Implement variable declaration statement rule */
-
-    /* 
-     * 规则: VAR_DECLARATION SEMICOLON
-     *   VAR_DECLARATION SEMICOLON {
-     *       // $1 是 VarDeclaration* 类型
-     *       // 需要包装成 VarDeclStmt* 类型
-     *       $$ = new VarDeclStmt($1, @1.begin.line, @1.begin.column);
-     *   }
-     */
+    VAR_DECLARATION SEMICOLON {
+        // $1: 变量声明 (VarDeclaration*)
+        // 创建新的变量声明语句节点
+        $$ = new VarDeclStmt($1, @1.begin.line, @1.begin.column);
+    }
     ;
 
 // FUNC_BODY: 函数的代码块部分
-// 可以是空的 {} 或包含语句的 { stmt1; stmt2; ... }
+// 可以是 空语句{} 或  { stmt1; stmt2; ... }
 FUNC_BODY:
     LBRACE RBRACE {
         // 空函数体: void func() {}
@@ -375,6 +392,7 @@ FUNC_BODY:
         if (!$2 || $2->empty())
         {
             // 语句列表为空（可能只有注释或空语句）
+            // 考虑 注释不被识别为token ，只能为空
             $$ = nullptr;
             delete $2;
         }
@@ -395,11 +413,12 @@ FUNC_BODY:
 // 格式: 返回类型 函数名(参数列表) { 函数体 }
 FUNC_DECL_STMT:
     TYPE IDENT LPAREN PARAM_DECLARATOR_LIST RPAREN FUNC_BODY {
-         // $1: 返回类型 (Type*) - int/float/void
-        // $2: 函数名 (string)
+        // $1: 返回类型 (Type*) - int/float/void
+        // $2: 函数名 ( identifier string )
         // $4: 参数列表 (vector<ParamDeclarator*>*)
         // $6: 函数体 (StmtNode*)
-        Entry* entry = Entry::getEntry($2);
+        Entry* entry = Entry::getEntry($2);// 获取函数名对应的符号表项，可能已经存在
+        // FuncDeclStmt是函数定义的AST节点
         $$ = new FuncDeclStmt($1, entry, $4, $6, @1.begin.line, @1.begin.column);
     }
     ;
@@ -446,22 +465,24 @@ IF_STMT:
      * 
      * 解决方法: 使用 %prec THEN 和 %prec ELSE
      * 
-     * 
-     *   IF LPAREN EXPR RPAREN STMT %prec THEN {
-     *       // 无else分支的if语句
-     *       // $3: 条件表达式
-     *       // $5: then分支的语句
-     *       $$ = new IfStmt($3, $5, nullptr, @1.begin.line, @1.begin.column);
-     *   }
-     *   | IF LPAREN EXPR RPAREN STMT ELSE STMT {
-     *       // 有else分支的if语句
-     *       // $7: else分支的语句
-     *       $$ = new IfStmt($3, $5, $7, @1.begin.line, @1.begin.column);
-     *   }
      */
+    IF LPAREN EXPR RPAREN STMT %prec THEN {
+            // 无else分支的if语句
+            // $3: 条件表达式
+            // $5: then分支的语句
+           $$ = new IfStmt($3, $5, nullptr, @1.begin.line, @1.begin.column);
+    }
+    | IF LPAREN EXPR RPAREN STMT ELSE STMT {
+            // 有else分支的if语句
+            // $7: else分支的语句
+            $$ = new IfStmt($3, $5, $7, @1.begin.line, @1.begin.column);
+    }
+     
     ;
 
 //TODO(Lab2)：按照你补充的语句类型，实现这些语句的处理
+
+
 // - BREAK_STMT: BREAK SEMICOLON { $$ = new BreakStmt(...); }
 // - RETURN_STMT: RETURN EXPR SEMICOLON 或 RETURN SEMICOLON
 // - WHILE_STMT: WHILE LPAREN EXPR RPAREN STMT

@@ -11,3 +11,4 @@ frontend/parser/lexer.cpp
 frontend/parser/yacc.h
 frontend/parser/yacc.cpp
 index.html
+.vscode/
