@@ -452,12 +452,13 @@ PARAM_DECLARATOR:
         $$ = new ParamDeclarator($1, entry, dim, @1.begin.line, @1.begin.column);
     }
     //TODO(Lab2)：考虑函数形参更多情况
-    | TYPE IDENT LBRACKET RBRACKET ARRAY_DIMENSION_EXPR  {
+    | TYPE IDENT LBRACKET RBRACKET ARRAY_DIMENSION_EXPR_LIST  {//1
         // 多维数组参数: int arr[][10], float data[][20][30]
         // 第一维可省略，后续维度必须指定
         std::vector<ExprNode*>* dim = new std::vector<ExprNode*>();
         dim->emplace_back(new LiteralExpr(-1, @3.begin.line, @3.begin.column)); // 第一维省略
-        dim->push_back($5); // 后续维度
+        // $5 是 std::vector<ExprNode*>*，将其元素追加到 dim
+        dim->insert(dim->end(), $5->begin(), $5->end()); // 后续维度
         Entry* entry = Entry::getEntry($2);
         $$ = new ParamDeclarator($1, entry, dim, @1.begin.line, @1.begin.column);
     }
@@ -478,7 +479,7 @@ PARAM_DECLARATOR_LIST:
         $$ = new std::vector<ParamDeclarator*>();
     }
     //TODO(Lab2)：考虑函数形参列表的构成情况
-    | PARAM_DECLARATOR {
+    | PARAM_DECLARATOR {// 1
         // 单个参数: int a
         $$ = new std::vector<ParamDeclarator*>();
         $$->push_back($1);

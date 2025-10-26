@@ -40,8 +40,55 @@ ASTree
 |       |                       `-- literal int: 1
 |       `-- ReturnStmt
 |           `-- LeftValueExpr sum
-`-- FuncDecl main() -> int, line: 15
-    `-- BlockStmt, line: 16
+|-- FuncDecl max(int a[10], int n) -> int, line: 15
+|   `-- BlockStmt, line: 16
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: int
+|       |       `-- VarDeclarator
+|       |           `-- Var: 
+|       |               `-- LeftValueExpr i
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: int
+|       |       `-- VarDeclarator
+|       |           |-- Var: 
+|       |           |   `-- LeftValueExpr max
+|       |           `-- Init: 
+|       |               `-- Initializer
+|       |                   `-- LeftValueExpr a
+|       |                       `-- literal int: 0
+|       |-- ExprStmt line: 20
+|       |   `-- BinaryExpr =
+|       |       |-- LeftValueExpr i
+|       |       `-- literal int: 1
+|       |-- WhileStmt
+|       |   |-- Condition:
+|       |   |   `-- BinaryExpr <
+|       |   |       |-- LeftValueExpr i
+|       |   |       `-- LeftValueExpr n
+|       |   `-- Body:
+|       |       `-- BlockStmt, line: 22
+|       |           |-- IfStmt
+|       |           |   |-- Condition:
+|       |           |   |   `-- BinaryExpr >
+|       |           |   |       |-- LeftValueExpr a
+|       |           |   |       |   `-- LeftValueExpr i
+|       |           |   |       `-- LeftValueExpr max
+|       |           |   |-- Then:
+|       |           |   |   `-- ExprStmt line: 23
+|       |           |   |       `-- BinaryExpr =
+|       |           |   |           |-- LeftValueExpr max
+|       |           |   |           `-- LeftValueExpr a
+|       |           |   |               `-- LeftValueExpr i
+|       |           `-- ExprStmt line: 24
+|       |               `-- BinaryExpr =
+|       |                   |-- LeftValueExpr i
+|       |                   `-- BinaryExpr +
+|       |                       |-- LeftValueExpr i
+|       |                       `-- literal int: 1
+|       `-- ReturnStmt
+|           `-- LeftValueExpr max
+`-- FuncDecl main() -> int, line: 29
+    `-- BlockStmt, line: 30
         |-- VarDeclStmt
         |   `-- VarDeclaration, BaseType: int
         |       `-- VarDeclarator
@@ -69,8 +116,8 @@ ASTree
         |   |       |-- LeftValueExpr i
         |   |       `-- literal int: 10
         |   `-- Body:
-        |       `-- BlockStmt, line: 21
-        |           |-- ExprStmt line: 22
+        |       `-- BlockStmt, line: 35
+        |           |-- ExprStmt line: 36
         |           |   `-- BinaryExpr =
         |           |       |-- LeftValueExpr j
         |           |       `-- literal int: 0
@@ -80,8 +127,8 @@ ASTree
         |           |   |       |-- LeftValueExpr j
         |           |   |       `-- literal int: 10
         |           |   `-- Body:
-        |           |       `-- BlockStmt, line: 24
-        |           |           |-- ExprStmt line: 25
+        |           |       `-- BlockStmt, line: 38
+        |           |           |-- ExprStmt line: 39
         |           |           |   `-- BinaryExpr =
         |           |           |       |-- LeftValueExpr arr
         |           |           |       |   |-- LeftValueExpr i
@@ -89,21 +136,28 @@ ASTree
         |           |           |       `-- BinaryExpr +
         |           |           |           |-- LeftValueExpr i
         |           |           |           `-- LeftValueExpr j
-        |           |           `-- ExprStmt line: 26
+        |           |           `-- ExprStmt line: 40
         |           |               `-- BinaryExpr =
         |           |                   |-- LeftValueExpr j
         |           |                   `-- BinaryExpr +
         |           |                       |-- LeftValueExpr j
         |           |                       `-- literal int: 1
-        |           `-- ExprStmt line: 28
+        |           `-- ExprStmt line: 42
         |               `-- BinaryExpr =
         |                   |-- LeftValueExpr i
         |                   `-- BinaryExpr +
         |                       |-- LeftValueExpr i
         |                       `-- literal int: 1
         `-- ReturnStmt
-            `-- Call sum
-                |-- Arg 0: 
-                |   `-- LeftValueExpr arr
-                `-- Arg 1: 
-                    `-- literal int: 100
+            `-- BinaryExpr +
+                |-- Call sum
+                |   |-- Arg 0: 
+                |   |   `-- LeftValueExpr arr
+                |   `-- Arg 1: 
+                |       `-- literal int: 100
+                `-- Call max
+                    |-- Arg 0: 
+                    |   `-- LeftValueExpr arr
+                    |       `-- literal int: 0
+                    `-- Arg 1: 
+                        `-- literal int: 10
