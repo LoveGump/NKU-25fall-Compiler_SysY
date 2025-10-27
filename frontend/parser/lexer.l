@@ -8,6 +8,8 @@
     #include <limits>      
     #include <cmath>       
     #include <algorithm>
+    #include <errno.h>
+    #include <climits>
 
     using namespace FE;
 
@@ -124,11 +126,14 @@ TODO(Lab1)：参考SysY2022的定义，实现更多的词法，如浮点数、�
 "/*"  {
     // 处理未闭合的多行注释
     auto str = std::string(yytext); // 获取匹配的注释字符串
+    _parser.reportError(loc, str + "Unterminated multi-line comment");
     return YaccParser::make_ERR_TOKEN(str, loc);
 }
 "*/"  {
     // 处理多余的闭合注释符号
+
     auto str = std::string(yytext); // 获取匹配的注释字符串
+    _parser.reportError(loc, str + "Unexpected closing multi-line comment");
     return YaccParser::make_ERR_TOKEN(str, loc);
 }
 
@@ -179,6 +184,7 @@ TODO(Lab1)：参考SysY2022的定义，实现更多的词法，如浮点数、�
         float fval = convertToFloatDec(yytext);
         return YaccParser::make_FLOAT_CONST(fval, loc);// 多参数 不匹配宏 
     } catch (const std::out_of_range& e) {
+        _parser.reportError(loc, std::string("Error parsing hexadecimal float: ") + e.what());
         auto str = std::string(yytext);
         return YaccParser::make_ERR_TOKEN(str, loc);
     }
@@ -189,6 +195,7 @@ TODO(Lab1)：参考SysY2022的定义，实现更多的词法，如浮点数、�
         float fval = convertToFloatDec(yytext);
         return YaccParser::make_FLOAT_CONST(fval, loc);
     } catch (const std::out_of_range& e) {
+         _parser.reportError(loc, std::string("Error parsing decimal float: ") + e.what());
         auto str = std::string(yytext);
         return YaccParser::make_ERR_TOKEN(str, loc);
     }
@@ -199,6 +206,7 @@ TODO(Lab1)：参考SysY2022的定义，实现更多的词法，如浮点数、�
         float fval = convertToFloatDec(yytext);
         return YaccParser::make_FLOAT_CONST(fval, loc);
     } catch (const std::out_of_range& e) {
+        _parser.reportError(loc, std::string("Error parsing decimal float: ") + e.what());
         auto str = std::string(yytext);
         return YaccParser::make_ERR_TOKEN(str, loc);
     }
@@ -210,7 +218,8 @@ TODO(Lab1)：参考SysY2022的定义，实现更多的词法，如浮点数、�
     try {
         float fval = convertToFloatHex(yytext);
         return YaccParser::make_FLOAT_CONST(fval, loc);
-    } catch (...) {
+    } catch (const std::out_of_range& e) {
+        _parser.reportError(loc, std::string("Error parsing hexadecimal float: ") + e.what());
         auto str = std::string(yytext);
         return YaccParser::make_ERR_TOKEN(str, loc);
     }
@@ -220,7 +229,8 @@ TODO(Lab1)：参考SysY2022的定义，实现更多的词法，如浮点数、�
     try {
         float fval = convertToFloatHex(yytext);
         return YaccParser::make_FLOAT_CONST(fval, loc);
-    } catch (...) {
+    } catch (const std::out_of_range& e) {
+        _parser.reportError(loc, std::string("Error parsing hexadecimal float: ") + e.what());
         auto str = std::string(yytext);
         return YaccParser::make_ERR_TOKEN(str, loc);
     }
@@ -230,7 +240,8 @@ TODO(Lab1)：参考SysY2022的定义，实现更多的词法，如浮点数、�
     try {
         float fval = convertToFloatHex(yytext);
         return YaccParser::make_FLOAT_CONST(fval, loc);
-    } catch (...) {
+    } catch (const std::out_of_range& e) {
+        _parser.reportError(loc, std::string("Error parsing hexadecimal float: ") + e.what());
         auto str = std::string(yytext);
         return YaccParser::make_ERR_TOKEN(str, loc);
     }
@@ -255,7 +266,8 @@ TODO(Lab1)：参考SysY2022的定义，实现更多的词法，如浮点数、�
         long long result = convertToInt(yytext, '\0', isLL);
         if (isLL) return YaccParser::make_LL_CONST(result, loc);
         return YaccParser::make_INT_CONST(static_cast<int>(result), loc);
-    } catch (...) {
+    } catch (const std::exception& e) {
+        _parser.reportError(loc, std::string("Error parsing hexadecimal int: ") + e.what());
         auto str = std::string(yytext);
         return YaccParser::make_ERR_TOKEN(str, loc);
     }
@@ -267,7 +279,8 @@ TODO(Lab1)：参考SysY2022的定义，实现更多的词法，如浮点数、�
         long long result = convertToInt(yytext, '\0', isLL);
         if (isLL) return YaccParser::make_LL_CONST(result, loc);
         return YaccParser::make_INT_CONST(static_cast<int>(result), loc);
-    } catch (...) {
+    } catch (const std::exception& e) {
+        _parser.reportError(loc, std::string("Error parsing hexadecimal int: ") + e.what());
         auto str = std::string(yytext);
         return YaccParser::make_ERR_TOKEN(str, loc);
     }
@@ -314,7 +327,7 @@ int handleTab()
     return TAB_WIDTH - ((c - 1) % TAB_WIDTH) - 1;
 }
 
-long long convertToInt(const char* str, const char end, bool& isLongLong)
+/* long long convertToInt(const char* str, const char end, bool& isLongLong)
 {
     // 该函数用于将字符串转换为整数，能正确处理格式无误的十进制、十六进制和八进制整数
     // 接受一个 isLongLong 引用参数，用于指示结果是否超出 int 范围
@@ -384,6 +397,36 @@ long long convertToInt(const char* str, const char end, bool& isLongLong)
         {
             throw std::out_of_range(str + std::string(" overflow or underflow for long long"));
         }
+    }
+
+    return result;
+} */
+
+long long convertToInt(const char* str, const char end, bool& isLongLong)
+{
+    errno = 0; 
+    char* end_ptr;
+    long long result = std::strtoll(str, &end_ptr, 0);
+
+    isLongLong = false;
+
+    // 检测 long long 是否溢出
+    if (errno == ERANGE) {
+        isLongLong = true;
+        throw std::out_of_range(std::string(str) + " overflows long long");
+    }
+
+    // 判断是否超出 int 范围
+    if (result > INT_MAX || result < INT_MIN) {
+        isLongLong = true;
+    }
+    std::cout << "longlong "<< INT_MAX << " "<< INT_MIN << std::endl;
+
+    // 检查结尾字符
+    if (*end_ptr != end) {
+        throw std::invalid_argument(
+            std::string("Unexpected character '") + *end_ptr + "' at the end, expected '" + end + "'"
+        );
     }
 
     return result;
