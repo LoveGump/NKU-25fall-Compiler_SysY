@@ -124,7 +124,6 @@ TODO(Lab1)：参考SysY2022的定义，实现更多的词法，如浮点数、�
 "/*"  {
     // 处理未闭合的多行注释
     auto str = std::string(yytext); // 获取匹配的注释字符串
-    loc.lines(std::count(str.begin(), str.end(), '\n')); // 更新行号
     return YaccParser::make_ERR_TOKEN(str, loc);
 }
 "*/"  {

@@ -200,28 +200,23 @@ MINUS                         -                                                 
 IDENT                         b                             b                             59      19      
 SEMICOLON                     ;                                                           59      20      
 IDENT                         a                             a                             62      4       
-PLUS                          +                                                           62      6       
-ASSIGN                        =                                                           62      7       
+PLUS_ASSIGN                   +=                                                          62      6       
 INT_CONST                     1                             1                             62      9       
 SEMICOLON                     ;                                                           62      10      
 IDENT                         a                             a                             63      4       
-MINUS                         -                                                           63      6       
-ASSIGN                        =                                                           63      7       
+MINUS_ASSIGN                  -=                                                          63      6       
 INT_CONST                     2                             2                             63      9       
 SEMICOLON                     ;                                                           63      10      
 IDENT                         a                             a                             64      4       
-STAR                          *                                                           64      6       
-ASSIGN                        =                                                           64      7       
+MUL_ASSIGN                    *=                                                          64      6       
 INT_CONST                     3                             3                             64      9       
 SEMICOLON                     ;                                                           64      10      
 IDENT                         a                             a                             65      4       
-SLASH                         /                                                           65      6       
-ASSIGN                        =                                                           65      7       
+DIV_ASSIGN                    /=                                                          65      6       
 INT_CONST                     4                             4                             65      9       
 SEMICOLON                     ;                                                           65      10      
 IDENT                         a                             a                             66      4       
-MOD                           %                                                           66      6       
-ASSIGN                        =                                                           66      7       
+MOD_ASSIGN                    %=                                                          66      6       
 INT_CONST                     5                             5                             66      9       
 SEMICOLON                     ;                                                           66      10      
 IF                            if                                                          69      4       
@@ -237,7 +232,7 @@ SEMICOLON                     ;                                                 
 IF                            if                                                          70      4       
 LPAREN                        (                                                           70      7       
 IDENT                         a                             a                             70      8       
-NEQ                           !=                                                          70      9       
+NE                            !=                                                          70      9       
 IDENT                         b                             b                             70      11      
 RPAREN                        )                                                           70      12      
 IDENT                         c                             c                             70      14      
