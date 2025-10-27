@@ -420,7 +420,6 @@ long long convertToInt(const char* str, const char end, bool& isLongLong)
     if (result > INT_MAX || result < INT_MIN) {
         isLongLong = true;
     }
-    std::cout << "longlong "<< INT_MAX << " "<< INT_MIN << std::endl;
 
     // 检查结尾字符
     if (*end_ptr != end) {
