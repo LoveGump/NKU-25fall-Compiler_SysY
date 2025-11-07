@@ -1,0 +1,84 @@
+ASTree
+`-- FuncDecl main() -> int, line: 1
+    `-- BlockStmt, line: 2
+        |-- VarDeclStmt
+        |   `-- VarDeclaration, BaseType: int
+        |       `-- VarDeclarator
+        |           |-- Var: 
+        |           |   `-- LeftValueExpr c1
+        |           `-- Init: 
+        |               `-- Initializer
+        |                   `-- literal int: 1
+        |-- VarDeclStmt
+        |   `-- VarDeclaration, BaseType: int
+        |       `-- VarDeclarator
+        |           |-- Var: 
+        |           |   `-- LeftValueExpr c2
+        |           `-- Init: 
+        |               `-- Initializer
+        |                   `-- literal int: 0
+        |-- VarDeclStmt
+        |   `-- VarDeclaration, BaseType: int
+        |       `-- VarDeclarator
+        |           |-- Var: 
+        |           |   `-- LeftValueExpr x
+        |           `-- Init: 
+        |               `-- Initializer
+        |                   `-- literal int: 0
+        |-- IfStmt
+        |   |-- Condition:
+        |   |   `-- LeftValueExpr c1
+        |   |-- Then:
+        |   |   `-- IfStmt
+        |   |       |-- Condition:
+        |   |       |   `-- LeftValueExpr c2
+        |   |       `-- Else:
+        |   |           `-- ExprStmt line: 13
+        |   |               `-- BinaryExpr =
+        |   |                   |-- LeftValueExpr x
+        |   |                   `-- literal int: 1
+        |-- IfStmt
+        |   |-- Condition:
+        |   |   `-- LeftValueExpr c1
+        |   |-- Then:
+        |   |   `-- IfStmt
+        |   |       |-- Condition:
+        |   |       |   `-- LeftValueExpr c2
+        |   |       |-- Then:
+        |   |       |   `-- ExprStmt line: 19
+        |   |       |       `-- BinaryExpr =
+        |   |       |           |-- LeftValueExpr x
+        |   |       |           `-- literal int: 2
+        |   |       `-- Else:
+        |   |           `-- ExprStmt line: 21
+        |   |               `-- BinaryExpr =
+        |   |                   |-- LeftValueExpr x
+        |   |                   `-- literal int: 3
+        |-- IfStmt
+        |   |-- Condition:
+        |   |   `-- LeftValueExpr c1
+        |   |-- Then:
+        |   |   `-- BlockStmt, line: 24
+        |   |       `-- IfStmt
+        |   |           |-- Condition:
+        |   |           |   `-- LeftValueExpr c2
+        |   |           |-- Then:
+        |   |           |   `-- BlockStmt, line: 25
+        |   |           |       `-- ExprStmt line: 26
+        |   |           |           `-- BinaryExpr =
+        |   |           |               |-- LeftValueExpr x
+        |   |           |               `-- literal int: 4
+        |   |           `-- Else:
+        |   |               `-- BlockStmt, line: 27
+        |   |                   `-- ExprStmt line: 28
+        |   |                       `-- BinaryExpr =
+        |   |                           |-- LeftValueExpr x
+        |   |                           `-- literal int: 5
+        |   `-- Else:
+        |       `-- BlockStmt, line: 30
+        |           `-- ExprStmt line: 31
+        |               `-- BinaryExpr =
+        |                   |-- LeftValueExpr x
+        |                   `-- literal int: 6
+        `-- ReturnStmt
+            `-- LeftValueExpr x
