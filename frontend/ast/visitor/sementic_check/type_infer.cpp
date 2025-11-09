@@ -12,7 +12,7 @@ namespace FE::AST
     {
         // 类型提升规则：float > long long > int
         // 获取类型A、B的基本类型
-        Type_t kindA = a->getBaseType(); 
+        Type_t kindA = a->getBaseType();
         Type_t kindB = b->getBaseType();
 
         if (kindA == Type_t::FLOAT || kindB == Type_t::FLOAT) return floatType;
@@ -26,10 +26,10 @@ namespace FE::AST
         if (op == Operator::GT || op == Operator::GE || op == Operator::LT || op == Operator::LE ||
             op == Operator::EQ || op == Operator::NEQ || op == Operator::AND || op == Operator::OR ||
             op == Operator::NOT)
-            return boolType; // 布尔
+            return boolType;  // 布尔
 
         if (op == Operator::ADD || op == Operator::SUB)
-            if (operandType->getBaseType() == Type_t::BOOL) return intType; // 布尔参与加减运算时提升为整型
+            if (operandType->getBaseType() == Type_t::BOOL) return intType;  // 布尔参与加减运算时提升为整型
 
         return operandType;
     }

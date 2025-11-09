@@ -7,10 +7,13 @@
 #include <array>
 #include <map>
 
+// -------- 类型和操作符定义 --------
+// ast 类型组
 #define AST_TYPEGROUP_DECL  \
     X(BASIC, basic type, 0) \
     X(POINTER, pointer type, 1)
 
+// ast 基础类型 UNK: 未知类型
 #define AST_BASETYPE_DECL                                                           \
     X(UNK, unknown type, 0)                                                         \
     X(VOID, void, 1)                                                                \
@@ -19,6 +22,7 @@
     X(LL, long long, 4) /* 前端解析中用于暂存超出 int 范围的数字 */ \
     X(FLOAT, float, 5)
 
+// ast 操作符
 #define AST_OPERATOR_DECL       \
     X(UNK, unknown operator, 0) \
     X(ADD, +, 1)                \
@@ -65,11 +69,12 @@ namespace FE::AST
 #undef X
     };
 
+    // 类型基类
     struct Type
     {
-        virtual std::string toString() const     = 0;
-        virtual Type_t      getBaseType() const  = 0;
-        virtual TypeGroup   getTypeGroup() const = 0;
+        virtual std::string toString() const     = 0; // 类型名称字符串
+        virtual Type_t      getBaseType() const  = 0; // 获取基础类型枚举
+        virtual TypeGroup   getTypeGroup() const = 0;// 获取类型组枚举
 
         virtual ~Type() = default;
     };
@@ -78,8 +83,8 @@ namespace FE::AST
     {
         friend class TypeFactory;
 
-        Type_t      base;
-        std::string toString() const override
+        Type_t      base; // 基础类型枚举
+        std::string toString() const override // 类型名称字符串
         {
             switch (base)
             {
@@ -101,7 +106,7 @@ namespace FE::AST
     {
         friend class TypeFactory;
 
-        Type*       base;
+        Type*       base; // 指向的基础类型
         std::string toString() const override { return base->toString() + "*"; }
         Type_t      getBaseType() const override { return base ? base->getBaseType() : Type_t::UNK; }
         TypeGroup   getTypeGroup() const override { return TypeGroup::POINTER; }
@@ -126,11 +131,11 @@ namespace FE::AST
         TypeFactory();
         ~TypeFactory();
 
-        static std::array<Type*, maxTypeIdx + 1> baseTypes;
+        static std::array<Type*, maxTypeIdx + 1> baseTypes; // 基础类型数组
 
         using PtrBase_t = Type*;
         using PtrType_t = Type*;
-        static std::map<PtrBase_t, PtrType_t> ptrTypeMap;
+        static std::map<PtrBase_t, PtrType_t> ptrTypeMap; // 指针类型映射表
     };
 
     extern Type* voidType;
@@ -139,6 +144,7 @@ namespace FE::AST
     extern Type* llType;
     extern Type* floatType;
 
+    // 操作符枚举
     enum class Operator
     {
 #define X(name, lname, idx) name = idx,
@@ -146,9 +152,10 @@ namespace FE::AST
 #undef X
     };
 
+    // 表示AST中变量的类型和值
     struct VarValue
     {
-        Type* type;
+        Type* type;  // 变量的类型
         union
         {
             bool      boolValue;
@@ -157,18 +164,21 @@ namespace FE::AST
             float     floatValue;
         };
 
+        // 构造函数
         VarValue() : type(voidType), intValue(0) {}
         VarValue(bool v) : type(boolType), boolValue(v) {}
         VarValue(int v) : type(intType), intValue(v) {}
         VarValue(long long v) : type(llType), llValue(v) {}
         VarValue(float v) : type(floatType), floatValue(v) {}
 
+        // 代理结构体，用于类型转换
         struct Proxy
         {
-            const VarValue* obj;
+            const VarValue* obj;  // 指向原始VarValue对象的指针
 
             Proxy(const VarValue& Obj) : obj(&Obj) {}
 
+            // 声明操作符，用于类型转换
             operator bool() const;
             operator int() const;
             operator long long() const;
@@ -177,6 +187,7 @@ namespace FE::AST
 
         Proxy get() const { return Proxy(*this); }
 
+        // 类型转换函数
         bool getBool() const
         {
             if (type == boolType) return boolValue;
@@ -211,9 +222,10 @@ namespace FE::AST
         }
     };
 
+    // 表示AST中表达式的值及是否为编译期常量。
     struct ExprValue
     {
-        VarValue value;
+        VarValue value;        // 表达式的具体值，使用VarValue表示多种类型
         bool     isConstexpr;  // 该成员用于表示该表达式的值是否为编译期可以确定的常量
 
         ExprValue() : value(), isConstexpr(false) {}
@@ -231,12 +243,12 @@ namespace FE::AST
 
     struct VarAttr
     {
-        bool  isConstDecl;
-        Type* type;
-        int   scopeLevel;
+        bool  isConstDecl;  // 是否为常量声明
+        Type* type;         //  变量类型
+        int   scopeLevel;   // 变量作用域层级，-1表示全局变量
 
-        std::vector<int>      arrayDims;
-        std::vector<VarValue> initList;
+        std::vector<int>      arrayDims;  // 数组维度信息
+        std::vector<VarValue> initList;   //  变量初始化列表
 
         VarAttr() : isConstDecl(false), type(voidType), scopeLevel(-1), arrayDims(), initList() {}
         VarAttr(Type* t, bool isConst = false, int level = -1)
@@ -244,10 +256,11 @@ namespace FE::AST
         {}
     };
 
+    // 节点属性结构体
     struct NodeAttr
     {
-        Operator  op;
-        ExprValue val;
+        Operator  op;   // 操作符
+        ExprValue val;  // 表达式值
 
         NodeAttr(Operator o = Operator::UNK, const ExprValue& v = ExprValue()) : op(o), val(v) {}
     };

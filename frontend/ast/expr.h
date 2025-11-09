@@ -8,6 +8,7 @@
 */
 namespace FE::AST
 {
+    // 表达式节点基类
     class ExprNode : public Node
     {
       public:
@@ -32,8 +33,8 @@ namespace FE::AST
     {
       public:
         bool                    isLval;
-        Entry*                  entry;
-        std::vector<ExprNode*>* indices;
+        Entry*                  entry; // 符号表项
+        std::vector<ExprNode*>* indices;// 数组下标表达式列表
 
       public:
         LeftValExpr(Entry* entry, std::vector<ExprNode*>* indices = nullptr, int line_num = -1, int col_num = -1)

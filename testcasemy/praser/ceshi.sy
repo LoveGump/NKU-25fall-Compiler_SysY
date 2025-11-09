@@ -1,0 +1,46 @@
+// 测试样例：basic_test.sy
+
+// 常量定义
+const int MAX_VAL = 100;
+const int MIN_VAL = -100;
+
+// 函数定义：计算两个数的最大值
+int max(int a, int b) {
+    if (a > b) {
+        return a;
+    } else {
+        return b;
+    }
+}
+
+// 函数定义：计算两个数的最小值
+int min(int a, int b) {
+    if (a < b) {
+        return a;
+    } else {
+        return b;
+    }
+}
+
+// 主函数
+int main() {
+    int x = 10;
+    int y = 20;
+    int result;
+
+    // 调用 max 函数
+    result = max(x, y);
+    putint(result); // 输出最大值
+
+    // 调用 min 函数
+    result = min(x, y);
+    putint(result); // 输出最小值
+
+    // while 循环测试
+    while (x > 0) {
+        x = x - 1;
+        putint(x);
+    }
+
+    return 0;
+}

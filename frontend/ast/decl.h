@@ -22,21 +22,21 @@ namespace FE::AST
     class InitDecl : public DeclNode
     {
       public:
-        bool singleInit;
+        bool singleInit;  // 是否是单个初始化表达式
 
         InitDecl(bool singleInit = false, int line_num = -1, int col_num = -1)
             : DeclNode(line_num, col_num), singleInit(singleInit)
         {}
         virtual ~InitDecl() override = default;
 
-        virtual void accept(Visitor& visitor) override = 0;
+        virtual void accept(Visitor& visitor) override = 0;  // 纯虚函数
     };
 
     // 单个初始化表达式，如 int a = 5 + b 的 5 + b
     class Initializer : public InitDecl
     {
       public:
-        ExprNode* init_val;
+        ExprNode* init_val;  // 初始化表达式
 
       public:
         Initializer(ExprNode* expr, int line_num = -1, int col_num = -1)
@@ -52,7 +52,7 @@ namespace FE::AST
     class InitializerList : public InitDecl
     {
       public:
-        std::vector<InitDecl*>* init_list;
+        std::vector<InitDecl*>* init_list;  // 初始化列表
 
       public:
         InitializerList(std::vector<InitDecl*>* init_list, int line_num = -1, int col_num = -1)
@@ -69,8 +69,8 @@ namespace FE::AST
     class VarDeclarator : public DeclNode
     {
       public:
-        ExprNode* lval;
-        InitDecl* init;
+        ExprNode* lval;  // 变量左值表达式
+        InitDecl* init;  // 变量初始化部分，可以为空
 
       public:
         VarDeclarator(ExprNode* lval, InitDecl* init = nullptr, int line_num = -1, int col_num = -1)
@@ -85,9 +85,9 @@ namespace FE::AST
     class ParamDeclarator : public DeclNode
     {
       public:
-        Type*                   type;
-        Entry*                  entry;
-        std::vector<ExprNode*>* dims;
+        Type*                   type;   // 参数类型
+        Entry*                  entry;  // 符号表项
+        std::vector<ExprNode*>* dims;   // 参数维度列表，可以为空
 
       public:
         ParamDeclarator(
@@ -105,9 +105,9 @@ namespace FE::AST
     class VarDeclaration : public DeclNode
     {
       public:
-        Type*                        type;
-        std::vector<VarDeclarator*>* decls;
-        bool                         isConstDecl;
+        Type*                        type;         // 变量类型
+        std::vector<VarDeclarator*>* decls;        // 变量声明列表
+        bool                         isConstDecl;  // 是否是 const 声明
 
       public:
         VarDeclaration(Type* type, std::vector<VarDeclarator*>* decls, bool isConstDecl = false, int line_num = -1,
@@ -118,7 +118,6 @@ namespace FE::AST
 
         virtual void accept(Visitor& visitor) override { visitor.visit(*this); }
     };
-    
 
 }  // namespace FE::AST
 

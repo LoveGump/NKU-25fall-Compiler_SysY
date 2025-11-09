@@ -6,6 +6,7 @@
 
 namespace FE::Sym
 {
+    // 符号表的具体实现
     class SymTable : public iSymTable<SymTable>
     {
         friend iSymTable<SymTable>;

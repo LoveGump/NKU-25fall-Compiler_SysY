@@ -122,7 +122,7 @@ TODO(Lab1)：参考SysY2022的定义，实现更多的词法，如浮点数、�
     // 多行注释也是不把其作为token
 }
 
-%{/*reference: https://github.com/CentaureaHO/SysY_Compiler_2025/blob/main/parser/lexer.l : 105-115*/ %}
+    %{/*reference: https://github.com/CentaureaHO/SysY_Compiler_2025/blob/main/parser/lexer.l : 105-115*/ %}
 "/*"  {
     // 处理未闭合的多行注释
     auto str = std::string(yytext); // 获取匹配的注释字符串
@@ -131,7 +131,6 @@ TODO(Lab1)：参考SysY2022的定义，实现更多的词法，如浮点数、�
 }
 "*/"  {
     // 处理多余的闭合注释符号
-
     auto str = std::string(yytext); // 获取匹配的注释字符串
     _parser.reportError(loc, str + "Unexpected closing multi-line comment");
     return YaccParser::make_ERR_TOKEN(str, loc);
