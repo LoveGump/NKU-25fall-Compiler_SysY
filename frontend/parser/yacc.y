@@ -329,7 +329,6 @@ FUNC_BODY:
         $$ = nullptr;   // {} 空函数体
     }
     | LBRACE STMT_LIST RBRACE { // 非空函数体
-        std::cerr << "Parsing function body at line " << @1.begin.line << std::endl;
         if (!$2 || $2->empty())
         {
             // 语句列表为空（可能只有注释或空语句）
@@ -507,7 +506,6 @@ VAR_DECLARATOR:
         }
     | IDENT ASSIGN INITIALIZER {
             // 2. 带初始化: int a = 5;
-            std::cerr << "Parsing variable declarator with initialization: " << $1 << std::endl;
             Entry* entry = Entry::getEntry($1);
             ExprNode* lval = new LeftValExpr(entry, nullptr);
             $$ = new VarDeclarator(lval, $3);
@@ -523,6 +521,26 @@ VAR_DECLARATOR:
             Entry* entry = Entry::getEntry($1);
             ExprNode* lval = new LeftValExpr(entry, $2);
             $$ = new VarDeclarator(lval, $4);
+        }
+    | IDENT LBRACKET RBRACKET ARRAY_DIMENSION_EXPR_LIST {
+            // 允许首维省略的多维数组声明: int arr[][n];
+            // 用 -1 作为占位，后续在语义阶段检查合法性（需配合常量表达式判断或初始化推断）
+            Entry* entry = Entry::getEntry($1);
+            std::vector<ExprNode*>* dims = new std::vector<ExprNode*>();
+            dims->emplace_back(new LiteralExpr(-1, @2.begin.line, @2.begin.column));
+            // 追加后续维度
+            dims->insert(dims->end(), $4->begin(), $4->end());
+            ExprNode* lval = new LeftValExpr(entry, dims);
+            $$ = new VarDeclarator(lval, nullptr);
+        }
+    | IDENT LBRACKET RBRACKET ARRAY_DIMENSION_EXPR_LIST ASSIGN INITIALIZER {
+            // 允许首维省略并带初始化: int arr[][n] = {...};
+            Entry* entry = Entry::getEntry($1);
+            std::vector<ExprNode*>* dims = new std::vector<ExprNode*>();
+            dims->emplace_back(new LiteralExpr(-1, @2.begin.line, @2.begin.column));
+            dims->insert(dims->end(), $4->begin(), $4->end());
+            ExprNode* lval = new LeftValExpr(entry, dims);
+            $$ = new VarDeclarator(lval, $6);
         }
     ;
 
