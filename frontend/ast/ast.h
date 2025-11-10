@@ -131,7 +131,7 @@ namespace FE::AST
     class Root : public Node
     {
       private:
-        std::vector<StmtNode*>* stmts; // 顶层语句列表
+        std::vector<StmtNode*>* stmts;  // 顶层语句列表
 
       public:
         Root(std::vector<StmtNode*>* stmts) : Node(-1, -1), stmts(stmts) {}

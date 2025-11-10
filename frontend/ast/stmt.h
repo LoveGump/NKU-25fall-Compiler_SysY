@@ -8,7 +8,7 @@
 如果需要，你可以在类中添加成员变量和成员函数，辅助你完成实验
 */
 namespace FE::AST
-{   
+{
     // 语句节点基类
     class StmtNode : public Node
     {
@@ -109,8 +109,8 @@ namespace FE::AST
     class WhileStmt : public StmtNode
     {
       public:
-        ExprNode* cond; // 条件表达式
-        StmtNode* body; // 循环体
+        ExprNode* cond;  // 条件表达式
+        StmtNode* body;  // 循环体
 
       public:
         WhileStmt(ExprNode* cond = nullptr, StmtNode* body = nullptr, int line_num = -1, int col_num = -1)
@@ -127,9 +127,9 @@ namespace FE::AST
     class IfStmt : public StmtNode
     {
       public:
-        ExprNode* cond; // 条件表达式
-        StmtNode* thenStmt; // 条件为真时执行的语句
-        StmtNode* elseStmt; // 条件为假时执行的语句（可选）
+        ExprNode* cond;      // 条件表达式
+        StmtNode* thenStmt;  // 条件为真时执行的语句
+        StmtNode* elseStmt;  // 条件为假时执行的语句（可选）
 
       public:
         IfStmt(ExprNode* cond = nullptr, StmtNode* thenStmt = nullptr, StmtNode* elseStmt = nullptr, int line_num = -1,
@@ -168,10 +168,10 @@ namespace FE::AST
     class ForStmt : public StmtNode
     {
       public:
-        StmtNode* init; // 初始化语句
-        ExprNode* cond; // 循环条件表达式
-        ExprNode* step; // 步进语句
-        StmtNode* body; // 循环体
+        StmtNode* init;  // 初始化语句
+        ExprNode* cond;  // 循环条件表达式
+        ExprNode* step;  // 步进语句
+        StmtNode* body;  // 循环体
 
       public:
         ForStmt(StmtNode* init = nullptr, ExprNode* cond = nullptr, ExprNode* step = nullptr, StmtNode* body = nullptr,

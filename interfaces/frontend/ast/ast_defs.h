@@ -72,9 +72,9 @@ namespace FE::AST
     // 类型基类
     struct Type
     {
-        virtual std::string toString() const     = 0; // 类型名称字符串
-        virtual Type_t      getBaseType() const  = 0; // 获取基础类型枚举
-        virtual TypeGroup   getTypeGroup() const = 0;// 获取类型组枚举
+        virtual std::string toString() const     = 0;  // 类型名称字符串
+        virtual Type_t      getBaseType() const  = 0;  // 获取基础类型枚举
+        virtual TypeGroup   getTypeGroup() const = 0;  // 获取类型组枚举
 
         virtual ~Type() = default;
     };
@@ -83,8 +83,8 @@ namespace FE::AST
     {
         friend class TypeFactory;
 
-        Type_t      base; // 基础类型枚举
-        std::string toString() const override // 类型名称字符串
+        Type_t      base;                      // 基础类型枚举
+        std::string toString() const override  // 类型名称字符串
         {
             switch (base)
             {
@@ -106,7 +106,7 @@ namespace FE::AST
     {
         friend class TypeFactory;
 
-        Type*       base; // 指向的基础类型
+        Type*       base;  // 指向的基础类型
         std::string toString() const override { return base->toString() + "*"; }
         Type_t      getBaseType() const override { return base ? base->getBaseType() : Type_t::UNK; }
         TypeGroup   getTypeGroup() const override { return TypeGroup::POINTER; }
@@ -131,11 +131,11 @@ namespace FE::AST
         TypeFactory();
         ~TypeFactory();
 
-        static std::array<Type*, maxTypeIdx + 1> baseTypes; // 基础类型数组
+        static std::array<Type*, maxTypeIdx + 1> baseTypes;  // 基础类型数组
 
         using PtrBase_t = Type*;
         using PtrType_t = Type*;
-        static std::map<PtrBase_t, PtrType_t> ptrTypeMap; // 指针类型映射表
+        static std::map<PtrBase_t, PtrType_t> ptrTypeMap;  // 指针类型映射表
     };
 
     extern Type* voidType;
