@@ -1,0 +1,237 @@
+ASTree
+|-- FuncDecl compare(int a, int b) -> int, line: 1
+|   `-- BlockStmt, line: 2
+|       |-- IfStmt
+|       |   |-- Condition:
+|       |   |   `-- BinaryExpr <=
+|       |   |       |-- LeftValueExpr a
+|       |   |       `-- LeftValueExpr b
+|       |   |-- Then:
+|       |   |   `-- ReturnStmt
+|       |   |       `-- literal int: 1
+|       `-- ReturnStmt
+|           `-- literal int: 0
+|-- VarDeclStmt
+|   `-- VarDeclaration, BaseType: int
+|       `-- VarDeclarator
+|           |-- Var: 
+|           |   `-- LeftValueExpr ret
+|           `-- Init: 
+|               `-- Initializer
+|                   `-- literal int: 0
+|-- FuncDecl add(int a, int b) -> int, line: 7
+|   `-- ReturnStmt
+|       `-- BinaryExpr +
+|           |-- LeftValueExpr a
+|           `-- LeftValueExpr b
+|-- FuncDecl sav(int n) -> void, line: 8
+|   `-- ExprStmt line: 8
+|       `-- BinaryExpr =
+|           |-- LeftValueExpr ret
+|           `-- LeftValueExpr n
+|-- FuncDecl fib(int n) -> int, line: 9
+|   `-- BlockStmt, line: 10
+|       |-- IfStmt
+|       |   |-- Condition:
+|       |   |   `-- Call compare
+|       |   |       |-- Arg 0: 
+|       |   |       |   `-- LeftValueExpr n
+|       |   |       `-- Arg 1: 
+|       |   |           `-- literal int: 1
+|       |   |-- Then:
+|       |   |   `-- IfStmt
+|       |   |       |-- Condition:
+|       |   |       |   `-- Call compare
+|       |   |       |       |-- Arg 0: 
+|       |   |       |       |   `-- literal int: 2
+|       |   |       |       `-- Arg 1: 
+|       |   |       |           `-- LeftValueExpr n
+|       |   |       |-- Then:
+|       |   |       |   `-- IfStmt
+|       |   |       |       |-- Condition:
+|       |   |       |       |   `-- literal int: 5466217
+|       |   |       |       |-- Then:
+|       |   |       |       |   `-- ExprStmt line: 13
+|       |   |       |       |       `-- Call sav
+|       |   |       |       |           `-- Arg 0: 
+|       |   |       |       |               `-- literal int: 27497
+|       |   |       `-- Else:
+|       |   |           `-- IfStmt
+|       |   |               |-- Condition:
+|       |   |               |   `-- BinaryExpr -
+|       |   |               |       |-- literal int: 2
+|       |   |               |       `-- LeftValueExpr n
+|       |   |               |-- Then:
+|       |   |               |   `-- ExprStmt line: 14
+|       |   |               |       `-- Call sav
+|       |   |               |           `-- Arg 0: 
+|       |   |               |               `-- LeftValueExpr n
+|       |-- IfStmt
+|       |   |-- Condition:
+|       |   |   `-- Call compare
+|       |   |       |-- Arg 0: 
+|       |   |       |   `-- literal int: 2
+|       |   |       `-- Arg 1: 
+|       |   |           `-- LeftValueExpr n
+|       |   |-- Then:
+|       |   |   `-- ExprStmt line: 15
+|       |   |       `-- Call sav
+|       |   |           `-- Arg 0: 
+|       |   |               `-- Call add
+|       |   |                   |-- Arg 0: 
+|       |   |                   |   `-- Call fib
+|       |   |                   |       `-- Arg 0: 
+|       |   |                   |           `-- BinaryExpr -
+|       |   |                   |               |-- LeftValueExpr n
+|       |   |                   |               `-- literal int: 1
+|       |   |                   `-- Arg 1: 
+|       |   |                       `-- Call fib
+|       |   |                           `-- Arg 0: 
+|       |   |                               `-- BinaryExpr -
+|       |   |                                   |-- LeftValueExpr n
+|       |   |                                   `-- literal int: 2
+|       `-- ReturnStmt
+|           `-- LeftValueExpr ret
+`-- FuncDecl main() -> int, line: 18
+    `-- BlockStmt, line: 19
+        |-- VarDeclStmt
+        |   `-- VarDeclaration, BaseType: int
+        |       `-- VarDeclarator
+        |           `-- Var: 
+        |               `-- LeftValueExpr a
+        |-- VarDeclStmt
+        |   `-- VarDeclaration, BaseType: int
+        |       `-- VarDeclarator
+        |           |-- Var: 
+        |           |   `-- LeftValueExpr b
+        |           `-- Init: 
+        |               `-- Initializer
+        |                   `-- BinaryExpr +
+        |                       |-- BinaryExpr -
+        |                       |   |-- literal int: 5
+        |                       |   `-- BinaryExpr /
+        |                       |       |-- BinaryExpr *
+        |                       |       |   |-- UnaryExpr -
+        |                       |       |   |   `-- UnaryExpr -
+        |                       |       |   |       `-- UnaryExpr -
+        |                       |       |   |           `-- literal int: 12
+        |                       |       |   `-- literal int: 11
+        |                       |       `-- literal int: 6
+        |                       `-- UnaryExpr -
+        |                           `-- literal int: 3
+        |-- VarDeclStmt
+        |   `-- VarDeclaration, BaseType: int
+        |       `-- VarDeclarator
+        |           |-- Var: 
+        |           |   `-- LeftValueExpr c
+        |           `-- Init: 
+        |               `-- Initializer
+        |                   `-- BinaryExpr -
+        |                       |-- BinaryExpr +
+        |                       |   |-- literal int: 123
+        |                       |   `-- UnaryExpr +
+        |                       |       `-- UnaryExpr +
+        |                       |           `-- UnaryExpr +
+        |                       |               `-- literal int: 55
+        |                       `-- UnaryExpr +
+        |                           `-- UnaryExpr -
+        |                               `-- literal int: 9961
+        |-- VarDeclStmt
+        |   `-- VarDeclaration, BaseType: int
+        |       `-- VarDeclarator
+        |           |-- Var: 
+        |           |   `-- LeftValueExpr n
+        |           `-- Init: 
+        |               `-- Initializer
+        |                   `-- BinaryExpr /
+        |                       |-- LeftValueExpr b
+        |                       `-- literal int: 4
+        |-- VarDeclStmt
+        |   `-- VarDeclaration, BaseType: int
+        |       `-- VarDeclarator
+        |           |-- Var: 
+        |           |   `-- LeftValueExpr f
+        |           `-- Init: 
+        |               `-- Initializer
+        |                   `-- Call fib
+        |                       `-- Arg 0: 
+        |                           `-- LeftValueExpr n
+        |-- IfStmt
+        |   |-- Condition:
+        |   |   `-- BinaryExpr ||
+        |   |       |-- BinaryExpr &&
+        |   |       |   |-- literal int: 1
+        |   |       |   `-- BinaryExpr <
+        |   |       |       |-- BinaryExpr +
+        |   |       |       |   |-- BinaryExpr %
+        |   |       |       |   |   |-- BinaryExpr /
+        |   |       |       |   |   |   |-- LeftValueExpr f
+        |   |       |       |   |   |   `-- UnaryExpr -
+        |   |       |       |   |   |       `-- literal int: 4
+        |   |       |       |   |   `-- literal int: 2
+        |   |       |       |   `-- literal int: 67
+        |   |       |       `-- literal int: 0
+        |   |       `-- BinaryExpr &&
+        |   |           |-- BinaryExpr !=
+        |   |           |   |-- BinaryExpr -
+        |   |           |   |   |-- LeftValueExpr a
+        |   |           |   |   `-- LeftValueExpr b
+        |   |           |   `-- literal int: 0
+        |   |           `-- BinaryExpr !=
+        |   |               |-- BinaryExpr %
+        |   |               |   |-- BinaryExpr +
+        |   |               |   |   |-- LeftValueExpr c
+        |   |               |   |   `-- literal int: 2
+        |   |               |   `-- literal int: 2
+        |   |               `-- literal int: 0
+        |   |-- Then:
+        |   |   `-- BlockStmt, line: 30
+        |   |       |-- IfStmt
+        |   |       |   |-- Condition:
+        |   |       |   |   `-- literal int: 0
+        |   |       |   |-- Then:
+        |   |       |   |   `-- WhileStmt
+        |   |       |   |       |-- Condition:
+        |   |       |   |       |   `-- literal int: 1
+        |   |       |-- IfStmt
+        |   |       |   |-- Condition:
+        |   |       |   |   `-- literal int: 1
+        |   |       |   |-- Then:
+        |   |       |   |   `-- BlockStmt, line: 32
+        |   |       |-- WhileStmt
+        |   |       |   |-- Condition:
+        |   |       |   |   `-- literal int: 1
+        |   |       |   `-- Body:
+        |   |       |       `-- BlockStmt, line: 34
+        |   |       |           |-- ExprStmt line: 35
+        |   |       |           |   `-- Call putint
+        |   |       |           |       `-- Arg 0: 
+        |   |       |           |           `-- BinaryExpr -
+        |   |       |           |               |-- UnaryExpr -
+        |   |       |           |               |   `-- literal int: 1
+        |   |       |           |               `-- UnaryExpr -
+        |   |       |           |                   `-- literal long long: 2147483648
+        |   |       |           |-- ExprStmt line: 36
+        |   |       |           |   `-- Call putch
+        |   |       |           |       `-- Arg 0: 
+        |   |       |           |           `-- literal int: 10
+        |   |       |           `-- BreakStmt
+        |   |       |-- ExprStmt line: 39
+        |   |       |   `-- Call putint
+        |   |       |       `-- Arg 0: 
+        |   |       |           `-- LeftValueExpr n
+        |   |       |-- ExprStmt line: 39
+        |   |       |   `-- Call putch
+        |   |       |       `-- Arg 0: 
+        |   |       |           `-- literal int: 32
+        |   |       |-- ExprStmt line: 40
+        |   |       |   `-- Call putint
+        |   |       |       `-- Arg 0: 
+        |   |       |           `-- LeftValueExpr f
+        |   |       `-- ExprStmt line: 40
+        |   |           `-- Call putch
+        |   |               `-- Arg 0: 
+        |   |                   `-- literal int: 10
+        `-- ReturnStmt
+            `-- UnaryExpr -
+                `-- literal int: 1
