@@ -32,25 +32,12 @@ namespace FE::AST
                     for (size_t j = 0; j < p->dims->size(); ++j)
                     {
                         ExprNode* dimExpr = (*p->dims)[j];
-                        // 维度可能是字面量、标识符或更复杂的常量表达式，解析阶段尚未折叠。
-                        if (auto* lit = dynamic_cast<LiteralExpr*>(dimExpr))
-                        {
-                            int v = lit->literal.getInt();
-                            if (v < 0)
-                                paramStr += "[]"; // 省略首维
-                            else
-                                paramStr += "[" + std::to_string(v) + "]";
-                        }
-                        else if (auto* lv = dynamic_cast<LeftValExpr*>(dimExpr))
-                        {
-                            // 使用标识符名字展示，语义阶段再判定是否为常量表达式
-                            paramStr += "[" + lv->entry->getName() + "]";
-                        }
+                        auto*     lit     = static_cast<LiteralExpr*>(dimExpr);
+                        int v = lit->literal.getInt();
+                        if (v < 0)
+                            paramStr += "[]";
                         else
-                        {
-                            // 其它表达式暂时用占位符，避免非法转换导致崩溃
-                            paramStr += "[?]";
-                        }
+                            paramStr += "[" + std::to_string(v) + "]";
                     }
                 }
 
