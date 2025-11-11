@@ -37,7 +37,7 @@ namespace FE::AST
                         {
                             int v = lit->literal.getInt();
                             if (v < 0)
-                                paramStr += "[]"; // 省略首维
+                                paramStr += "[]";  // 省略首维
                             else
                                 paramStr += "[" + std::to_string(v) + "]";
                         }
