@@ -1,7 +1,0 @@
-int main()
-{
-    int x = getint() + getint();
-    int y = getch() + getint();
-    int z = x + y + putint(30);
-    return x + y + z;
-}

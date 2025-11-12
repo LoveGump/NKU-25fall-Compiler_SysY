@@ -1,5 +1,0 @@
-int main()
-{
-    putint(putint(putint(putint(getint()))));
-    return 0;
-}

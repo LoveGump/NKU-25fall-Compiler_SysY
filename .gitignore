@@ -13,3 +13,7 @@ frontend/parser/yacc.cpp
 index.html
 .vscode/
 test.lexer
+main 
+testcase/
+testcasemy/
+testcaseout/
