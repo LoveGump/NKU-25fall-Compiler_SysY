@@ -102,6 +102,8 @@
 %nterm <FE::AST::Operator> UNARY_OP 
 // 类型
 %nterm <FE::AST::Type*> TYPE 
+// 变量类型（不允许 void 用于变量声明）
+%nterm <FE::AST::Type*> VAR_TYPE
 // 变量初始化
 %nterm <FE::AST::InitDecl*> INITIALIZER
 // 变量初始化列表
@@ -303,11 +305,11 @@ EXPR_STMT:
 
 // 变量声明的核心规则 
 VAR_DECLARATION:
-    TYPE VAR_DECLARATOR_LIST {
+    VAR_TYPE VAR_DECLARATOR_LIST {
         // false: 表示非const
         $$ = new VarDeclaration($1, $2, false, @1.begin.line, @1.begin.column);
     }
-    | CONST TYPE VAR_DECLARATOR_LIST {
+    | CONST VAR_TYPE VAR_DECLARATOR_LIST {
         // const常量声明
         // true: 表示const常量
         $$ = new VarDeclaration($2, $3, true, @1.begin.line, @1.begin.column);
@@ -437,12 +439,12 @@ WHILE_STMT:
 // PARAM_DECLARATOR: 函数形参声明
 // 支持普通参数和数组参数
 PARAM_DECLARATOR:
-    TYPE IDENT {
+    VAR_TYPE IDENT {
         // 普通参数: int a,
         Entry* entry = Entry::getEntry($2);
         $$ = new ParamDeclarator($1, entry, nullptr, @1.begin.line, @1.begin.column);
     }
-    | TYPE IDENT LBRACKET RBRACKET {
+    | VAR_TYPE IDENT LBRACKET RBRACKET {
         // 一维数组参数: int arr[], float data[]
         // 数组作为参数时，第一维的大小可以省略       
         std::vector<ExprNode*>* dim = new std::vector<ExprNode*>();
@@ -451,7 +453,7 @@ PARAM_DECLARATOR:
         $$ = new ParamDeclarator($1, entry, dim, @1.begin.line, @1.begin.column);
     }
     //TODO(Lab2)：考虑函数形参更多情况
-    | TYPE IDENT LBRACKET RBRACKET ARRAY_DIMENSION_EXPR_LIST  {//1
+    | VAR_TYPE IDENT LBRACKET RBRACKET ARRAY_DIMENSION_EXPR_LIST  {//1
         // 多维数组参数: int arr[][10], float data[][20][30]
         // 第一维可省略，后续维度必须指定
         std::vector<ExprNode*>* dim = new std::vector<ExprNode*>();
@@ -461,7 +463,7 @@ PARAM_DECLARATOR:
         Entry* entry = Entry::getEntry($2);
         $$ = new ParamDeclarator($1, entry, dim, @1.begin.line, @1.begin.column);
     }
-    | TYPE IDENT ARRAY_DIMENSION_EXPR_LIST {
+    | VAR_TYPE IDENT ARRAY_DIMENSION_EXPR_LIST {
         // 多维数组参数: int arr[10][20], float data[30][40][50]
         std::vector<ExprNode*>* dim = $3; // 获取所有维度表达式
         Entry* entry = Entry::getEntry($2);
@@ -958,6 +960,16 @@ TYPE:
     }
     | VOID {
         $$ = FE::AST::TypeFactory::getBasicType(FE::AST::Type_t::VOID);
+    }
+    ;
+
+// VAR_TYPE: 仅用于变量声明的类型，禁止 void
+VAR_TYPE:
+    INT {
+        $$ = FE::AST::TypeFactory::getBasicType(FE::AST::Type_t::INT);
+    }
+    | FLOAT {
+        $$ = FE::AST::TypeFactory::getBasicType(FE::AST::Type_t::FLOAT);
     }
     ;
 
