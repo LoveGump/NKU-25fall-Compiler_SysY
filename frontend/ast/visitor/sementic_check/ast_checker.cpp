@@ -1,5 +1,7 @@
 #include <frontend/ast/visitor/sementic_check/ast_checker.h>
 #include <debug.h>
+#include <string>
+#include <interfaces/ivisitor.h>
 
 namespace FE::AST
 {
@@ -7,8 +9,102 @@ namespace FE::AST
     {
         // TODO(Lab3-1): 实现根节点的语义检查
         // 重置符号表，遍历所有顶层语句进行检查，确保存在main函数
-        (void)node;
-        TODO("Lab3-1: Implement Root node semantic checking");
+        // (void)node;
+        // TODO("Lab3-1: Implement Root node semantic checking");
+
+        // SysY 根节点语义检查
+        // 步骤：
+        // 1) 重置状态
+        // 2) 单遍扫描顶层：
+        //    - 遇到全局变量：立即检查并同步 glbSymbols
+        //    - 遇到函数定义：先登记到 funcDecls，随后立刻检查其函数体
+        // 3) 结束后检查是否存在合法的 main
+
+        symTable.reset();
+        mainExists     = false;
+        funcHasReturn  = false;
+        curFuncRetType = voidType;
+        loopDepth      = 0;
+        errors.clear();
+
+        bool all_ok = true;
+
+        auto* stmts = node.getStmts();
+        if (!stmts)
+        {
+            errors.emplace_back("Missing main function");
+            return false;
+        }
+
+        for (auto* s : *stmts)
+        {
+            if (!s) continue;  // 空语句继续分析
+
+            if (auto* v = dynamic_cast<VarDeclStmt*>(s))
+            {
+                // 变量声明语句
+                bool ok = apply(*this, *v);  // 立即检查变量声明
+                all_ok &= ok;
+                // 如果有变量声明，提取每个变量的信息同步到全局符号表快照
+                if (v->decl && v->decl->decls)
+                {
+                    for (auto* d : *(v->decl->decls))
+                    {   // 遍历每个变量声明
+                        if (!d || !d->lval) continue;  // 如果左值无效则跳过
+                        if (auto* l = dynamic_cast<LeftValExpr*>(d->lval))
+                        {
+                            if (!l->entry) continue;
+                            if (auto* attr = symTable.getSymbol(l->entry)) glbSymbols[l->entry] = *attr;
+                        }
+                    }
+                }
+            }
+            else if (auto* f = dynamic_cast<FuncDeclStmt*>(s))
+            {
+                // 函数定义语句
+                if (!f->entry) continue;
+                if (funcDecls.count(f->entry))
+                {
+                    // 重定义检查：同名函数再次出现直接报错
+                    errors.emplace_back("Redefinition of function '" + f->entry->getName() + "'");
+                    all_ok = false;
+                    continue;
+                }
+                // 先登记：允许递归调用当前函数
+                funcDecls[f->entry] = f;
+
+                // main 函数签名检查（必须：int main()）
+                if (f->entry->getName() == "main")
+                {
+                    mainExists = true;
+                    size_t pc  = f->params ? f->params->size() : 0;
+                    if (f->retType != intType || pc != 0)
+                    {
+                        // main 函数必须是int 并且没有参数
+                        errors.emplace_back("Invalid signature of main (expect: int main())");
+                        all_ok = false;
+                    }
+                }
+                // 立刻检查函数体（不支持对尚未定义的函数进行调用）
+                bool ok = apply(*this, *f);
+                all_ok &= ok;
+            }
+            else
+            {
+                // 如果出现其他的语句直接报错
+                errors.emplace_back("Top-level statement not allowed (only variable/function declarations permitted)");
+                all_ok = false;
+            }
+        }
+
+        if (!mainExists)
+        {
+            // 没有出现main函数
+            errors.emplace_back("Missing main function");
+            all_ok = false;
+        }
+
+        return all_ok;
     }
 
     void ASTChecker::libFuncRegister()
@@ -20,6 +116,7 @@ namespace FE::AST
         //      _sysy_starttime, _sysy_stoptime
         using SymEnt = FE::Sym::Entry;
 
+        // 注册以下库函数：
         // int getint(), getch(), getarray(int a[]);
         static SymEnt* getint   = SymEnt::getEntry("getint");
         static SymEnt* getch    = SymEnt::getEntry("getch");
@@ -46,6 +143,7 @@ namespace FE::AST
         static SymEnt* _sysy_starttime = SymEnt::getEntry("_sysy_starttime");
         static SymEnt* _sysy_stoptime  = SymEnt::getEntry("_sysy_stoptime");
 
+        // 解析参数并创建函数声明节点，加入 funcDecls 映射表
         // int getint()
         funcDecls[getint] = new FuncDeclStmt(intType, getint, nullptr);
 
