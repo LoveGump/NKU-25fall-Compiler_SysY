@@ -102,8 +102,7 @@
 %nterm <FE::AST::Operator> UNARY_OP 
 // 类型
 %nterm <FE::AST::Type*> TYPE 
-// 变量类型（不允许 void 用于变量声明）
-%nterm <FE::AST::Type*> VAR_TYPE
+
 // 变量初始化
 %nterm <FE::AST::InitDecl*> INITIALIZER
 // 变量初始化列表
@@ -305,11 +304,11 @@ EXPR_STMT:
 
 // 变量声明的核心规则 
 VAR_DECLARATION:
-    VAR_TYPE VAR_DECLARATOR_LIST {
+    TYPE VAR_DECLARATOR_LIST {
         // false: 表示非const
         $$ = new VarDeclaration($1, $2, false, @1.begin.line, @1.begin.column);
     }
-    | CONST VAR_TYPE VAR_DECLARATOR_LIST {
+    | CONST TYPE VAR_DECLARATOR_LIST {
         // const常量声明
         // true: 表示const常量
         $$ = new VarDeclaration($2, $3, true, @1.begin.line, @1.begin.column);
@@ -363,6 +362,12 @@ FUNC_DECL_STMT:
         Entry* entry = Entry::getEntry($2);// 获取函数名对应的符号表项，可能已经存在
         // FuncDeclStmt是函数定义的AST节点
         $$ = new FuncDeclStmt($1, entry, $4, $6, @1.begin.line, @1.begin.column);
+    }
+    | VOID IDENT LPAREN PARAM_DECLARATOR_LIST RPAREN FUNC_BODY {
+        // 显式 void 返回类型的函数定义
+        std::cerr<< "Defining function: " << $2 << std::endl;
+        Entry* entry = Entry::getEntry($2);
+        $$ = new FuncDeclStmt(FE::AST::TypeFactory::getBasicType(FE::AST::Type_t::VOID), entry, $4, $6, @1.begin.line, @1.begin.column);
     }
     ;
 
@@ -439,12 +444,12 @@ WHILE_STMT:
 // PARAM_DECLARATOR: 函数形参声明
 // 支持普通参数和数组参数
 PARAM_DECLARATOR:
-    VAR_TYPE IDENT {
+    TYPE IDENT {
         // 普通参数: int a,
         Entry* entry = Entry::getEntry($2);
         $$ = new ParamDeclarator($1, entry, nullptr, @1.begin.line, @1.begin.column);
     }
-    | VAR_TYPE IDENT LBRACKET RBRACKET {
+    | TYPE IDENT LBRACKET RBRACKET {
         // 一维数组参数: int arr[], float data[]
         // 数组作为参数时，第一维的大小可以省略       
         std::vector<ExprNode*>* dim = new std::vector<ExprNode*>();
@@ -453,7 +458,7 @@ PARAM_DECLARATOR:
         $$ = new ParamDeclarator($1, entry, dim, @1.begin.line, @1.begin.column);
     }
     //TODO(Lab2)：考虑函数形参更多情况
-    | VAR_TYPE IDENT LBRACKET RBRACKET ARRAY_DIMENSION_EXPR_LIST  {//1
+    | TYPE IDENT LBRACKET RBRACKET ARRAY_DIMENSION_EXPR_LIST  {//1
         // 多维数组参数: int arr[][10], float data[][20][30]
         // 第一维可省略，后续维度必须指定
         std::vector<ExprNode*>* dim = new std::vector<ExprNode*>();
@@ -463,7 +468,7 @@ PARAM_DECLARATOR:
         Entry* entry = Entry::getEntry($2);
         $$ = new ParamDeclarator($1, entry, dim, @1.begin.line, @1.begin.column);
     }
-    | VAR_TYPE IDENT ARRAY_DIMENSION_EXPR_LIST {
+    | TYPE IDENT ARRAY_DIMENSION_EXPR_LIST {
         // 多维数组参数: int arr[10][20], float data[30][40][50]
         std::vector<ExprNode*>* dim = $3; // 获取所有维度表达式
         Entry* entry = Entry::getEntry($2);
@@ -543,6 +548,14 @@ VAR_DECLARATOR:
             dims->insert(dims->end(), $4->begin(), $4->end());
             ExprNode* lval = new LeftValExpr(entry, dims);
             $$ = new VarDeclarator(lval, $6);
+        }
+    | IDENT LBRACKET RBRACKET {
+            // 允许一维数组首维省略: int a[];（语义阶段将据初始化或报错）
+            Entry* entry = Entry::getEntry($1);
+            std::vector<ExprNode*>* dims = new std::vector<ExprNode*>();
+            dims->emplace_back(new LiteralExpr(-1, @2.begin.line, @2.begin.column));
+            ExprNode* lval = new LeftValExpr(entry, dims);
+            $$ = new VarDeclarator(lval, nullptr);
         }
     | IDENT LBRACKET RBRACKET ASSIGN INITIALIZER {
             // 允许一维数组首维省略并带初始化: int a[] = {1,2,3};
@@ -940,23 +953,9 @@ LITERAL_EXPR:
     }
     ;
 
-// TYPE: 基本数据类型
-// SysY支持: int, float, void
-TYPE:
-    // TODO(Lab2): 完成类型的处理
-    INT {
-        $$ = FE::AST::TypeFactory::getBasicType(FE::AST::Type_t::INT);
-    }
-    | FLOAT {
-        $$ = FE::AST::TypeFactory::getBasicType(FE::AST::Type_t::FLOAT);
-    }
-    | VOID {
-        $$ = FE::AST::TypeFactory::getBasicType(FE::AST::Type_t::VOID);
-    }
-    ;
 
-// VAR_TYPE: 仅用于变量声明的类型，禁止 void
-VAR_TYPE:
+// TYPE: 仅用于变量声明的类型，禁止 void
+TYPE:
     INT {
         $$ = FE::AST::TypeFactory::getBasicType(FE::AST::Type_t::INT);
     }
