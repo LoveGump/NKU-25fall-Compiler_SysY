@@ -7,35 +7,8 @@ namespace FE::AST
     {
         // TODO(Lab3-1): 实现根节点的语义检查
         // 重置符号表，遍历所有顶层语句进行检查，确保存在main函数
-        //(void)node;
-        //TODO("Lab3-1: Implement Root node semantic checking");
-        
-        // 重置符号表
-        symTable.reset();
-        
-        // 进入全局作用域
-        symTable.enterScope();
-        
-        // 访问所有子节点
-        bool accept = true;
-        auto* stmts = node.getStmts();
-        if (stmts) {
-            for (auto* stmt : *stmts) {
-                if (!stmt) continue;
-                accept &= apply(*this, *stmt);
-            }
-        }
-
-        // 检查main函数是否存在
-        if (!mainExists) {
-            errors.push_back("Error: main function not defined");
-            accept = false;
-        }
-
-        // 退出全局作用域
-        symTable.exitScope();
-
-        return accept;
+        (void)node;
+        TODO("Lab3-1: Implement Root node semantic checking");
     }
 
     void ASTChecker::libFuncRegister()

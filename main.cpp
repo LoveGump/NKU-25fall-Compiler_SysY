@@ -215,17 +215,6 @@ int main(int argc, char** argv)
 
         if (step == "-parser")
         {
-            /*
-            FE::AST::ASTChecker checker;
-            bool                accept = apply(checker, *ast);
-            if (!accept)
-            {
-                cerr << "Semantic check failed with " << checker.errors.size() << " errors." << endl;
-                for (const auto& err : checker.errors) cerr << "Error: " << err << endl;
-                ret = 1;
-                goto cleanup_ast;
-            }
-            */
             FE::AST::ASTPrinter printer;
             std::ostream*       osPtr = outStream;
             apply(printer, *ast, osPtr);
