@@ -3,88 +3,76 @@
 
 namespace FE::Sym
 {
-    void SymTable::reset_impl()
-    {
-        // TODO("Lab3-1: Reset symbol table");
-        // 清空全局符号和作用域栈，重置深度
-        glbSymbols_.clear();
-        scopeStack_.clear();
-        curDepth_ = -1;
+    // 重置符号表状态
+    void SymTable::reset_impl() { 
+        // TODO("Lab3-1: Reset symbol table"); 
+        this->globalTables_.clear();
+        this->scopeStack_.clear();
+        this->curDepth_ = -1;
     }
 
-    void SymTable::enterScope_impl()
-    {
-        // TODO("Lab3-1: Enter new scope");
-        // 在作用域栈中添加新的一层，深度加一
-        scopeStack_.emplace_back();
-        ++curDepth_;
+    // 进入一个新的作用域
+    void SymTable::enterScope_impl() { 
+        // TODO("Lab3-1: Enter new scope"); 
+        this->scopeStack_.emplace_back();
+        this->curDepth_ += 1;
     }
 
-    void SymTable::exitScope_impl()
-    {
-        //  TODO("Lab3-1: Exit current scope");
-        // 确保不在全局作用域下退出作用域
+    // 退出当前作用域
+    void SymTable::exitScope_impl() { 
+        //TODO("Lab3-1: Exit current scope"); 
         ASSERT(curDepth_ >= 0 && "Exiting scope while at global scope");
-        // 从作用域栈中移除当前层，深度减一
-        scopeStack_.pop_back();
-        --curDepth_;
+        this->scopeStack_.pop_back();
+        this->curDepth_ -= 1;
     }
 
+    // 向符号表中添加一个符号及其属性
     void SymTable::addSymbol_impl(Entry* entry, FE::AST::VarAttr& attr)
     {
-        // 确保entry不为空
-        ASSERT(entry && "Null Entry when adding symbol");
         // (void)entry;
         // (void)attr;
         // TODO("Lab3-1: Add symbol to current scope");
-        // 根据当前作用域深度将符号添加到相应的符号集合中
-        if (isGlobalScope_impl())
-        {
-            // 全局作用域
-            attr.scopeLevel    = -1;
-            glbSymbols_[entry] = attr;
-        }
-        else
-        {
-            // 局部作用域
-            ASSERT(!scopeStack_.empty());
-            attr.scopeLevel  = curDepth_;
-            auto& currScope  = scopeStack_.back();  //栈顶
-            currScope[entry] = attr;
+        ASSERT(entry && "Trying to add null entry to symbol table");
+        if (this->isGlobalScope_impl()) {
+            // 在全局作用域中
+            attr.scopeLevel = -1;
+            auto result = this->globalTables_.emplace(entry, attr);
+            ASSERT(result.second && "Redefinition of symbol in global scope");
+        } else {
+            // 在局部作用域中
+            attr.scopeLevel = this->curDepth_;
+            auto& currentScope = this->scopeStack_.back(); // 获取当前作用域的符号表
+            auto result = currentScope.emplace(entry, attr);
+            ASSERT(result.second && "Redefinition of symbol in local scope");
         }
     }
 
+    // 检查全局符号表中对应entry的符号属性指针，找不到则返回nullptr
     FE::AST::VarAttr* SymTable::getSymbol_impl(Entry* entry)
     {
         // (void)entry;
         // TODO("Lab3-1: Get symbol from symbol table");
-        // 确保entry不为空
-        ASSERT(entry && "Null Entry when querying symbol");
-
-        for (int d = curDepth_; d >= 0; --d)
-        {
-            // 从当前作用域向上查找符号
-            auto& scope = scopeStack_[static_cast<size_t>(d)];
-            auto  it    = scope.find(entry);
-            if (it != scope.end()) return &it->second;
+        ASSERT(entry && "Trying to get null entry from symbol table");
+        // 先从局部作用域栈中查找，从内到外
+        for(int d = this->curDepth_; d >= 0; --d) {
+            auto& scope = this->scopeStack_[d]; // 获取当前作用域的符号表
+            auto it = scope.find(entry);
+            if (it != scope.end()) return &(it->second);
         }
-
-        // 最后查找全局作用域
-        auto it = glbSymbols_.find(entry);
-        if (it != glbSymbols_.end()) return &it->second;
-
-        return nullptr;
+        // 如果局部作用域中未找到，则在全局作用域中查找
+        auto it = this->globalTables_.find(entry);
+        if (it != this->globalTables_.end()) return &(it->second);
+        return nullptr; // 未找到
     }
 
-    bool SymTable::isGlobalScope_impl()
-    {
-        // TODO("Lab3-1: Check if current scope is global scope");
-        return curDepth_ < 0;
+    // 是否处于全局作用域
+    bool SymTable::isGlobalScope_impl() { 
+        // TODO("Lab3-1: Check if current scope is global scope"); 
+        return this->curDepth_ == -1;
     }
 
-    int SymTable::getScopeDepth_impl()
-    {
-        //  TODO("Lab3-1: Get current scope depth");
-        return curDepth_;
+    int SymTable::getScopeDepth_impl() { 
+        //TODO("Lab3-1: Get current scope depth"); 
+        return this->curDepth_;
     }
 }  // namespace FE::Sym

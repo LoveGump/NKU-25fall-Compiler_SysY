@@ -120,7 +120,7 @@ namespace FE::AST
       public:
         int      line_num;  // 行号
         int      col_num;   // 列号
-        NodeAttr attr;      // 携带节点属性，是语法树标记的重点对象
+        NodeAttr attr;      // 节点属性，用于存储操作符和表达式值等信息
 
         Node(int line_num = -1, int col_num = -1) : line_num(line_num), col_num(col_num), attr() {}
         virtual ~Node() = default;

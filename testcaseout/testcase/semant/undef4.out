@@ -1,0 +1,8 @@
+Input file: testcase/semant/undef4.sy
+Step: -llvm
+Output: a.out
+Optimize level: 0
+Defining function: main
+Semantic check failed with 2 errors.
+Error: Undeclared variable 'z' at line 7
+Error: While condition cannot be void type at line 7

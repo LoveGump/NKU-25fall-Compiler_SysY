@@ -7,77 +7,49 @@ namespace FE::AST
     {
         // TODO(Lab3-1): 实现左值表达式的语义检查
         // 检查变量是否存在，处理数组下标访问，进行类型检查和常量折叠
-        // (void)node;
-        // TODO("Lab3-1: Implement LeftValExpr semantic checking");
-
-        // 左值表达式语义检查：
-        // 1) 符号存在性检查
-        // 2) 数组下标检查（类型与数量）
-        // 3) 设置表达式类型（数组退化为指针，完全索引后为元素类型）
-        // 4) 常量折叠：仅对非数组的 const 变量且有常量初始化进行折叠
-
-        if (!node.entry)
-        {
-            // 无效标识符
-            errors.emplace_back("Invalid identifier at line " + std::to_string(node.line_num));
-            node.attr.val.value.type  = voidType;
-            node.attr.val.isConstexpr = false;
+        if(!node.entry){
+            this->errors.emplace_back("Invalid left value expression at line " + std::to_string(node.line_num));
             return false;
         }
-
-        // 查找符号表项
-        auto* attr = symTable.getSymbol(node.entry);
-        if (!attr)
-        {
-            // 未定义标识符
-            errors.emplace_back(
-                "Undefined identifier '" + node.entry->getName() + "' at line " + std::to_string(node.line_num));
-            node.attr.val.value.type  = voidType;
-            node.attr.val.isConstexpr = false;
+        // 检查变量是否存在于符号表中
+        auto* varAttr = this->symTable.getSymbol(node.entry);
+        if(!varAttr){
+            this->errors.emplace_back("Undeclared variable '" + node.entry->getName() + "' at line " + std::to_string(node.line_num));
             return false;
         }
-
-        bool   ok     = true;                                     // 语义检查结果
+        bool success = true;
         size_t idxCnt = node.indices ? node.indices->size() : 0;  // 下标数量
-
-        // 访问并检查每个下标表达式
-        if (idxCnt > 0)
-        {
-            // 访问下标表达式并进行类型检查
-            for (auto* idxExpr : *node.indices)
-            {
-                if (!idxExpr) continue;
-                ok &= apply(*this, *idxExpr);
-                Type* itype = idxExpr->attr.val.value.type;  // 下标表达式类型
-                if (!itype || itype->getTypeGroup() == TypeGroup::POINTER || itype->getBaseType() == Type_t::FLOAT ||
-                    itype->getBaseType() == Type_t::VOID)
+        if(idxCnt > 0){
+            // 访问数组下标表达式，进行类型检查
+            for(auto* indexExpr : *(node.indices)){
+                if(!indexExpr) continue;
+                success = apply(*this, *indexExpr) && success;
+                // 检查下标类型是否为整数类型
+                Type* idxType = indexExpr->attr.val.value.type;
+                if (!idxType || idxType->getTypeGroup() == TypeGroup::POINTER || 
+                    idxType->getBaseType() == Type_t::VOID)
                 {
                     // 下标表达式必须为整型
-                    errors.emplace_back("Array index must be integer at line " + std::to_string(idxExpr->line_num));
-                    ok = false;
+                    errors.emplace_back("Array index must be integer at line " + std::to_string(indexExpr->line_num));
+                    return false;
                 }
             }
         }
-
-        // 数组维度数量检查
-        if (idxCnt > attr->arrayDims.size())
-        {
-            // 如果下标数量超过数组维度数量，报错
-            errors.emplace_back(
-                "Too many indices for array '" + node.entry->getName() + "' at line " + std::to_string(node.line_num));
-            ok = false;
+        // 数组维度检查
+        if(idxCnt > varAttr->arrayDims.size()){
+            this->errors.emplace_back("Too many indices for array variable '" + node.entry->getName() + "' at line " + std::to_string(node.line_num));
+            return false;
         }
-
         // 设置类型：未完全索引的数组在表达式中视为指向元素类型的指针
-        if (!attr->arrayDims.empty())
+        if (!varAttr->arrayDims.empty())
         {
             // 数组类型处理
             if (idxCnt == 0) // 未索引，视为指针类型
-                node.attr.val.value.type = TypeFactory::getPtrType(attr->type);
-            else if (idxCnt < attr->arrayDims.size()) // 部分索引，退化为指针类型
-                node.attr.val.value.type = TypeFactory::getPtrType(attr->type);
+                node.attr.val.value.type = TypeFactory::getPtrType(varAttr->type);
+            else if (idxCnt < varAttr->arrayDims.size()) // 部分索引，退化为指针类型
+                node.attr.val.value.type = TypeFactory::getPtrType(varAttr->type);
             else
-                node.attr.val.value.type = attr->type;  // 完全索引到元素
+                node.attr.val.value.type = varAttr->type;  // 完全索引到元素
         }
         else
         {
@@ -87,18 +59,18 @@ namespace FE::AST
                 // 非数组类型却有下标访问，报错
                 errors.emplace_back("Subscripted value is not an array: '" + node.entry->getName() + "' at line " +
                                     std::to_string(node.line_num));
-                ok                        = false;
+                success                      = false;
                 node.attr.val.value.type  = voidType;
                 node.attr.val.isConstexpr = false;
                 return false;
             }
-            node.attr.val.value.type = attr->type;
+            node.attr.val.value.type = varAttr->type;
         }
 
         // 常量折叠：仅对非数组 const 且存在单一编译期初始化值作折叠
-        if (attr->isConstDecl && attr->arrayDims.empty() && attr->initList.size() == 1)
+        if (varAttr->isConstDecl && varAttr->arrayDims.empty() && varAttr->initList.size() == 1)
         {
-            node.attr.val.value       = attr->initList[0];
+            node.attr.val.value       = varAttr->initList[0];
             node.attr.val.isConstexpr = true;
         }
         else
@@ -106,7 +78,7 @@ namespace FE::AST
             node.attr.val.isConstexpr = false;
         }
 
-        return ok;
+        return success;
     }
 
     bool ASTChecker::visit(LiteralExpr& node)
@@ -122,11 +94,9 @@ namespace FE::AST
     {
         // TODO(Lab3-1): 实现一元表达式的语义检查
         // 访问子表达式，检查操作数类型，调用类型推断函数
-        // (void)node;
-        // TODO("Lab3-1: Implement UnaryExpr semantic checking");
 
         // 访问子表达式并进行类型推断/常量折叠
-        bool ok = true;
+        bool success   = true;
         if (!node.expr)
         {
             // 无效操作数
@@ -134,7 +104,7 @@ namespace FE::AST
             return false;
         }
 
-        ok &= apply(*this, *node.expr); // 访问子表达式并进行类型推断/常量折叠
+        success &= apply(*this, *node.expr); // 访问子表达式并进行类型推断/常量折叠
 
         // 早期检查：禁止 void 作为一元运算的操作数
         Type* ety = node.expr->attr.val.value.type;
@@ -151,7 +121,7 @@ namespace FE::AST
         ExprValue result   = typeInfer(node.expr->attr.val, node.op, node, hasError);
         node.attr.op       = node.op;
         node.attr.val      = result;
-        return ok && !hasError;
+        return success && !hasError;
     }
 
     bool ASTChecker::visit(BinaryExpr& node)

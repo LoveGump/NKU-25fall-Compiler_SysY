@@ -1,0 +1,7 @@
+Input file: testcase/semant/multi_def2.sy
+Step: -llvm
+Output: a.out
+Optimize level: 0
+Defining function: main
+Semantic check failed with 1 errors.
+Error: Redefinition of variable 'z' at line -1

@@ -1,0 +1,8 @@
+Input file: testcase/semant/undef2.sy
+Step: -llvm
+Output: a.out
+Optimize level: 0
+Defining function: main
+Semantic check failed with 2 errors.
+Error: Undefined function 'getc' at line 3
+Error: Return expression cannot be void type at line 3

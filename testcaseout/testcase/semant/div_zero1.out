@@ -1,0 +1,8 @@
+Input file: testcase/semant/div_zero1.sy
+Step: -llvm
+Output: a.out
+Optimize level: 0
+Defining function: main
+Semantic check failed with 2 errors.
+Error: / operation with zero divisor at line 9
+Error: Return expression cannot be void type at line 9

@@ -131,11 +131,12 @@ namespace FE::AST
         TypeFactory();
         ~TypeFactory();
 
-        static std::array<Type*, maxTypeIdx + 1> baseTypes;  // 基础类型数组
+        static std::array<Type*, maxTypeIdx + 1> baseTypes;  // 基础类型数组，储存所有基础类型实例
 
         using PtrBase_t = Type*;
         using PtrType_t = Type*;
-        static std::map<PtrBase_t, PtrType_t> ptrTypeMap;  // 指针类型映射表
+        // 一个基础类型的指针（如 int）获取对应的指针类型实例（如 int*）
+        static std::map<PtrBase_t, PtrType_t> ptrTypeMap;
     };
 
     extern Type* voidType;
@@ -156,6 +157,7 @@ namespace FE::AST
     struct VarValue
     {
         Type* type;  // 变量的类型
+        // union 的大小等于其最大成员的大小 ，所有成员共享同一块内存
         union
         {
             bool      boolValue;
@@ -222,7 +224,7 @@ namespace FE::AST
         }
     };
 
-    // 表示AST中表达式的值及是否为编译期常量。
+    // 抽象语法树（AST）中表达式的值及其是否为编译期常量
     struct ExprValue
     {
         VarValue value;        // 表达式的具体值，使用VarValue表示多种类型
@@ -241,6 +243,7 @@ namespace FE::AST
         float           getFloat() const { return value.getFloat(); }
     };
 
+    // 描述变量的属性信息，包括变量的类型、是否为常量、作用域层级、数组维度以及初始化列表
     struct VarAttr
     {
         bool  isConstDecl;  // 是否为常量声明

@@ -18,7 +18,7 @@ namespace FE::Sym
         // 重置符号表状态
         void reset() { static_cast<Derived*>(this)->reset_impl(); }
 
-        // 向符号表中添加一个符号及其属性
+        // 向符号表中添加一个符号及其属性，重复就报错
         void addSymbol(Entry* entry, AST::VarAttr& attr) { static_cast<Derived*>(this)->addSymbol_impl(entry, attr); }
         // 返回符号表中对应entry的符号属性指针，找不到则返回nullptr
         AST::VarAttr* getSymbol(Entry* entry) { return static_cast<Derived*>(this)->getSymbol_impl(entry); }

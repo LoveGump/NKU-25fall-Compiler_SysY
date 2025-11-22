@@ -36,7 +36,7 @@ namespace FE::AST
 
     class ParamDeclarator;
 
-    // 函数声明语句，如 int func(int a, float b) { ... }
+    // 函数声明+定义语句，如 int func(int a, float b) { ... }
     class FuncDeclStmt : public StmtNode
     {
       public:
@@ -105,7 +105,6 @@ namespace FE::AST
     };
 
     // while 语句，如 while (cond) { ... }
-    // 其中的 cond 是条件表达式，body 是循环体
     class WhileStmt : public StmtNode
     {
       public:
@@ -123,7 +122,6 @@ namespace FE::AST
     };
 
     // if 语句，如 if (cond) { ... } else { ... }
-    // 其中的 cond 是条件表达式，thenStmt 是条件为真时执行的语句，elseStmt 是条件为假时执行的语句（可选）
     class IfStmt : public StmtNode
     {
       public:
@@ -163,8 +161,6 @@ namespace FE::AST
     };
 
     // for 语句，如 for (init; cond; step) { ... }
-    // 其中的 init 是初始化语句，cond 是循环条件表达式，step 是每次循环后的步进语句，body 是循环体
-    // 这一 statement 并非 SysY 语言标准的一部分，你可以不实现它
     class ForStmt : public StmtNode
     {
       public:

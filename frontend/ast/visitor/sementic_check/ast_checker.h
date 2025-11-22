@@ -39,19 +39,19 @@ namespace FE::AST
     class ASTChecker : public Checker_t
     {
       private:
-        FE::Sym::SymTable                        symTable; // 符号表实例
-        std::map<FE::Sym::Entry*, VarAttr>       glbSymbols; // 全局变量符号表快照
-        std::map<FE::Sym::Entry*, FuncDeclStmt*> funcDecls; // 已声明的函数列表
+        FE::Sym::SymTable                        symTable;
+        std::map<FE::Sym::Entry*, VarAttr>       glbSymbols; // 全局符号表
+        std::map<FE::Sym::Entry*, FuncDeclStmt*> funcDecls; // 函数声明表
 
         bool mainExists; // 是否存在 main 函数
 
-        bool  funcHasReturn; // 当前函数是否包含返回语句
+        bool  funcHasReturn; // 当前函数是否有 return 语句
         Type* curFuncRetType; // 当前函数的返回类型
 
-        size_t loopDepth; // 当前循环嵌套深度，用于检查 break/continue
+        size_t loopDepth; // 当前循环嵌套深度，用于检查 break/continue 的合法性
 
       public:
-        std::vector<std::string> errors; // 语义错误列表
+        std::vector<std::string> errors; // 语义错误信息列表
 
         ASTChecker()
             : symTable(),

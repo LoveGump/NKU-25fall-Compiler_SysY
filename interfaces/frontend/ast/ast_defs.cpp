@@ -62,7 +62,9 @@ namespace FE::AST
         }
     }
 
+    // 获取基础类型实例
     Type* TypeFactory::getBasicType(Type_t t) { return baseTypes[static_cast<size_t>(t)]; }
+    // 获取指针类型实例
     Type* TypeFactory::getPtrType(Type* t)
     {
         if (!t) return nullptr;

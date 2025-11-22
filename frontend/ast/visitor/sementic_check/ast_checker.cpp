@@ -9,102 +9,103 @@ namespace FE::AST
     {
         // TODO(Lab3-1): 实现根节点的语义检查
         // 重置符号表，遍历所有顶层语句进行检查，确保存在main函数
-        // (void)node;
-        // TODO("Lab3-1: Implement Root node semantic checking");
+        this->symTable.reset();
+        this->mainExists = false;
+        this->funcHasReturn = false;
+        this->curFuncRetType = voidType;
+        this->loopDepth = 0;
+        this->errors.clear();
 
-        // SysY 根节点语义检查
-        // 步骤：
-        // 1) 重置状态
-        // 2) 单遍扫描顶层：
-        //    - 遇到全局变量：立即检查并同步 glbSymbols
-        //    - 遇到函数定义：先登记到 funcDecls，随后立刻检查其函数体
-        // 3) 结束后检查是否存在合法的 main
-
-        symTable.reset();
-        mainExists     = false;
-        funcHasReturn  = false;
-        curFuncRetType = voidType;
-        loopDepth      = 0;
-        errors.clear();
-
-        bool all_ok = true;
-
+        bool success = true;
+        
         auto* stmts = node.getStmts();
-        if (!stmts)
+        if(!stmts)
         {
-            errors.emplace_back("Missing main function");
+            // 空程序，直接检查main函数
+            this->errors.push_back("Error: 'main' function is missing.");
             return false;
         }
 
-        for (auto* s : *stmts)
+        for(auto* stmt : *stmts)
         {
-            if (!s) continue;  // 空语句继续分析
-
-            if (auto* v = dynamic_cast<VarDeclStmt*>(s))
+            if(!stmt) continue; // 空语句，跳过
+            if(auto*  varDecl = dynamic_cast<VarDeclStmt*>(stmt))
             {
-                // 变量声明语句
-                bool ok = apply(*this, *v);  // 立即检查变量声明
-                all_ok &= ok;
-                // 如果有变量声明，提取每个变量的信息同步到全局符号表快照
-                if (v->decl && v->decl->decls)
+                // 对于变量声明语句
+                success = apply(*this,*varDecl) && success;
+                // 如果有变量声明，提取其信息到全局符号表
+                if(varDecl->decl && this->symTable.isGlobalScope())
                 {
-                    for (auto* d : *(v->decl->decls))
-                    {   // 遍历每个变量声明
-                        if (!d || !d->lval) continue;  // 如果左值无效则跳过
-                        if (auto* l = dynamic_cast<LeftValExpr*>(d->lval))
+                    for(auto* decl : *(varDecl->decl->decls))
+                    {
+                        // 遍历每个变量声明
+                        if(!decl || !decl->lval) continue;
+                        if(auto* Lval = dynamic_cast<LeftValExpr*>(decl->lval))
                         {
-                            if (!l->entry) continue;
-                            if (auto* attr = symTable.getSymbol(l->entry)) glbSymbols[l->entry] = *attr;
+                            // 如果左值表达式有效，提取符号表项和属性
+                            if(!Lval->entry) continue;
+                            if(auto* attr = this->symTable.getSymbol(Lval->entry))
+                            {
+                                // 将符号及其属性加入全局符号表
+                                this->glbSymbols[Lval->entry] = *attr;
+                            }
                         }
                     }
                 }
             }
-            else if (auto* f = dynamic_cast<FuncDeclStmt*>(s))
+            else if(auto* funcDecl = dynamic_cast<FuncDeclStmt*>(stmt))
             {
                 // 函数定义语句
-                if (!f->entry) continue;
-                if (funcDecls.count(f->entry))
-                {
-                    // 重定义检查：同名函数再次出现直接报错
-                    errors.emplace_back("Redefinition of function '" + f->entry->getName() + "'");
-                    all_ok = false;
-                    continue;
-                }
-                // 先登记：允许递归调用当前函数
-                funcDecls[f->entry] = f;
+                if(!funcDecl->entry) continue;
 
-                // main 函数签名检查（必须：int main()）
-                if (f->entry->getName() == "main")
+                // 重定义检查
+                if(this->funcDecls.find(funcDecl->entry) != this->funcDecls.end())
                 {
-                    mainExists = true;
-                    size_t pc  = f->params ? f->params->size() : 0;
-                    if (f->retType != intType || pc != 0)
+                    this->errors.push_back("Error: Redefinition of function '" + funcDecl->entry->getName() +
+                                           "' at line " + std::to_string(funcDecl->line_num) + ".");
+                    success = false;
+                    continue;;
+                }
+                // 记录函数声明
+                this->funcDecls[funcDecl->entry] = funcDecl;
+
+                // 检查是否为 main 函数
+                if(funcDecl->entry->getName() == "main")
+                {
+                    this->mainExists = true;
+                    // main 函数返回类型检查
+                    if(funcDecl->retType != intType)
                     {
-                        // main 函数必须是int 并且没有参数
-                        errors.emplace_back("Invalid signature of main (expect: int main())");
-                        all_ok = false;
+                        this->errors.push_back("Error: 'main' function must have return type 'int' at line " +
+                                               std::to_string(funcDecl->line_num) + ".");
+                        success = false;
+                    }
+
+                    // main 函数参数检查
+                    if(funcDecl->params && !funcDecl->params->empty())
+                    {
+                        this->errors.push_back("Error: 'main' function must not have parameters at line " +
+                                               std::to_string(funcDecl->line_num) + ".");
+                        success = false;
                     }
                 }
-                // 立刻检查函数体（不支持对尚未定义的函数进行调用）
-                bool ok = apply(*this, *f);
-                all_ok &= ok;
+                success = apply(*this,*funcDecl) && success;
             }
             else
             {
-                // 如果出现其他的语句直接报错
-                errors.emplace_back("Top-level statement not allowed (only variable/function declarations permitted)");
-                all_ok = false;
+                // 非法顶层语句
+                this->errors.push_back("Error: Invalid top-level statement at line " + std::to_string(stmt->line_num) + ".");
+                success = false;
             }
         }
 
-        if (!mainExists)
+        if(!this->mainExists)
         {
-            // 没有出现main函数
-            errors.emplace_back("Missing main function");
-            all_ok = false;
+            this->errors.push_back("Error: 'main' function is missing.");
+            success = false;
         }
+        return success;
 
-        return all_ok;
     }
 
     void ASTChecker::libFuncRegister()

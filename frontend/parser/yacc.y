@@ -549,14 +549,6 @@ VAR_DECLARATOR:
             ExprNode* lval = new LeftValExpr(entry, dims);
             $$ = new VarDeclarator(lval, $6);
         }
-    | IDENT LBRACKET RBRACKET {
-            // 允许一维数组首维省略: int a[];（语义阶段将据初始化或报错）
-            Entry* entry = Entry::getEntry($1);
-            std::vector<ExprNode*>* dims = new std::vector<ExprNode*>();
-            dims->emplace_back(new LiteralExpr(-1, @2.begin.line, @2.begin.column));
-            ExprNode* lval = new LeftValExpr(entry, dims);
-            $$ = new VarDeclarator(lval, nullptr);
-        }
     | IDENT LBRACKET RBRACKET ASSIGN INITIALIZER {
             // 允许一维数组首维省略并带初始化: int a[] = {1,2,3};
             Entry* entry = Entry::getEntry($1);
