@@ -1,0 +1,15 @@
+Input file: testcasemy/semant/47_float.sy
+Step: -llvm
+Output: a.out
+Optimize level: 0
+Defining function: float_abs
+Defining function: circle_area
+Defining function: float_eq
+Defining function: error
+Defining function: ok
+Defining function: assert
+Defining function: assert_not
+Defining function: main
+[;34;1mTODO: [0;37;1mLab3-2: Implement Root IR generation
+[0;33;1mFile: [4;37;1mmiddleend/visitor/codegen/ast_codegen.cpp:68
+[0mcompiler: middleend/visitor/codegen/ast_codegen.cpp:68: virtual void ME::ASTCodeGen::visit(FE::AST::Root&, ME::Module*): Assertion `false' failed.

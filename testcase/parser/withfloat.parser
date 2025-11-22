@@ -1,0 +1,272 @@
+ASTree
+|-- FuncDecl testDecimalFloats() -> float, line: 1
+|   `-- BlockStmt, line: 2
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: float
+|       |       `-- VarDeclarator
+|       |           |-- Var: 
+|       |           |   `-- LeftValueExpr a
+|       |           `-- Init: 
+|       |               `-- Initializer
+|       |                   `-- literal float: 3.140000
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: float
+|       |       `-- VarDeclarator
+|       |           |-- Var: 
+|       |           |   `-- LeftValueExpr b
+|       |           `-- Init: 
+|       |               `-- Initializer
+|       |                   `-- literal float: 0.500000
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: float
+|       |       `-- VarDeclarator
+|       |           |-- Var: 
+|       |           |   `-- LeftValueExpr c
+|       |           `-- Init: 
+|       |               `-- Initializer
+|       |                   `-- literal float: 123.456001
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: float
+|       |       `-- VarDeclarator
+|       |           |-- Var: 
+|       |           |   `-- LeftValueExpr d
+|       |           `-- Init: 
+|       |               `-- Initializer
+|       |                   `-- literal float: 0.500000
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: float
+|       |       `-- VarDeclarator
+|       |           |-- Var: 
+|       |           |   `-- LeftValueExpr e
+|       |           `-- Init: 
+|       |               `-- Initializer
+|       |                   `-- literal float: 5.000000
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: float
+|       |       `-- VarDeclarator
+|       |           |-- Var: 
+|       |           |   `-- LeftValueExpr f
+|       |           `-- Init: 
+|       |               `-- Initializer
+|       |                   `-- literal float: 10000000000.000000
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: float
+|       |       `-- VarDeclarator
+|       |           |-- Var: 
+|       |           |   `-- LeftValueExpr g
+|       |           `-- Init: 
+|       |               `-- Initializer
+|       |                   `-- literal float: 15000000512.000000
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: float
+|       |       `-- VarDeclarator
+|       |           |-- Var: 
+|       |           |   `-- LeftValueExpr h
+|       |           `-- Init: 
+|       |               `-- Initializer
+|       |                   `-- literal float: 0.002500
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: float
+|       |       `-- VarDeclarator
+|       |           |-- Var: 
+|       |           |   `-- LeftValueExpr i
+|       |           `-- Init: 
+|       |               `-- Initializer
+|       |                   `-- literal float: 50000.000000
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: float
+|       |       `-- VarDeclarator
+|       |           |-- Var: 
+|       |           |   `-- LeftValueExpr j
+|       |           `-- Init: 
+|       |               `-- Initializer
+|       |                   `-- literal float: 0.000000
+|       `-- ReturnStmt
+|           `-- BinaryExpr +
+|               |-- BinaryExpr +
+|               |   |-- BinaryExpr +
+|               |   |   |-- BinaryExpr +
+|               |   |   |   |-- BinaryExpr +
+|               |   |   |   |   |-- BinaryExpr +
+|               |   |   |   |   |   |-- BinaryExpr +
+|               |   |   |   |   |   |   |-- BinaryExpr +
+|               |   |   |   |   |   |   |   |-- BinaryExpr +
+|               |   |   |   |   |   |   |   |   |-- LeftValueExpr a
+|               |   |   |   |   |   |   |   |   `-- LeftValueExpr b
+|               |   |   |   |   |   |   |   `-- LeftValueExpr c
+|               |   |   |   |   |   |   `-- LeftValueExpr d
+|               |   |   |   |   |   `-- LeftValueExpr e
+|               |   |   |   |   `-- LeftValueExpr f
+|               |   |   |   `-- LeftValueExpr g
+|               |   |   `-- LeftValueExpr h
+|               |   `-- LeftValueExpr i
+|               `-- LeftValueExpr j
+|-- FuncDecl testHexFloats() -> float, line: 18
+|   `-- BlockStmt, line: 19
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: float
+|       |       `-- VarDeclarator
+|       |           |-- Var: 
+|       |           |   `-- LeftValueExpr a
+|       |           `-- Init: 
+|       |               `-- Initializer
+|       |                   `-- literal float: 1.500000
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: float
+|       |       `-- VarDeclarator
+|       |           |-- Var: 
+|       |           |   `-- LeftValueExpr b
+|       |           `-- Init: 
+|       |               `-- Initializer
+|       |                   `-- literal float: 42.750000
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: float
+|       |       `-- VarDeclarator
+|       |           |-- Var: 
+|       |           |   `-- LeftValueExpr c
+|       |           `-- Init: 
+|       |               `-- Initializer
+|       |                   `-- literal float: 0.125000
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: float
+|       |       `-- VarDeclarator
+|       |           |-- Var: 
+|       |           |   `-- LeftValueExpr d
+|       |           `-- Init: 
+|       |               `-- Initializer
+|       |                   `-- literal float: 16320.000000
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: float
+|       |       `-- VarDeclarator
+|       |           |-- Var: 
+|       |           |   `-- LeftValueExpr e
+|       |           `-- Init: 
+|       |               `-- Initializer
+|       |                   `-- literal float: 32.000000
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: float
+|       |       `-- VarDeclarator
+|       |           |-- Var: 
+|       |           |   `-- LeftValueExpr f
+|       |           `-- Init: 
+|       |               `-- Initializer
+|       |                   `-- literal float: 2.500000
+|       `-- ReturnStmt
+|           `-- BinaryExpr +
+|               |-- BinaryExpr +
+|               |   |-- BinaryExpr +
+|               |   |   |-- BinaryExpr +
+|               |   |   |   |-- BinaryExpr +
+|               |   |   |   |   |-- LeftValueExpr a
+|               |   |   |   |   `-- LeftValueExpr b
+|               |   |   |   `-- LeftValueExpr c
+|               |   |   `-- LeftValueExpr d
+|               |   `-- LeftValueExpr e
+|               `-- LeftValueExpr f
+`-- FuncDecl main() -> int, line: 31
+    `-- BlockStmt, line: 32
+        |-- VarDeclStmt
+        |   `-- VarDeclaration, BaseType: float
+        |       `-- VarDeclarator
+        |           |-- Var: 
+        |           |   `-- LeftValueExpr pi
+        |           `-- Init: 
+        |               `-- Initializer
+        |                   `-- literal float: 3.141590
+        |-- VarDeclStmt
+        |   `-- VarDeclaration, BaseType: float
+        |       `-- VarDeclarator
+        |           |-- Var: 
+        |           |   `-- LeftValueExpr e_const
+        |           `-- Init: 
+        |               `-- Initializer
+        |                   `-- literal float: 2.718280
+        |-- VarDeclStmt
+        |   `-- VarDeclaration, BaseType: float
+        |       `-- VarDeclarator
+        |           |-- Var: 
+        |           |   `-- LeftValueExpr small
+        |           `-- Init: 
+        |               `-- Initializer
+        |                   `-- literal float: 0.000000
+        |-- VarDeclStmt
+        |   `-- VarDeclaration, BaseType: float
+        |       `-- VarDeclarator
+        |           |-- Var: 
+        |           |   `-- LeftValueExpr large
+        |           `-- Init: 
+        |               `-- Initializer
+        |                   `-- literal float: 100000002004087734272.000000
+        |-- VarDeclStmt
+        |   `-- VarDeclaration, BaseType: float
+        |       `-- VarDeclarator
+        |           |-- Var: 
+        |           |   `-- LeftValueExpr hex_half
+        |           `-- Init: 
+        |               `-- Initializer
+        |                   `-- literal float: 0.500000
+        |-- VarDeclStmt
+        |   `-- VarDeclaration, BaseType: float
+        |       `-- VarDeclarator
+        |           |-- Var: 
+        |           |   `-- LeftValueExpr hex_two
+        |           `-- Init: 
+        |               `-- Initializer
+        |                   `-- literal float: 2.000000
+        |-- VarDeclStmt
+        |   `-- VarDeclaration, BaseType: float
+        |       `-- VarDeclarator
+        |           |-- Var: 
+        |           |   `-- LeftValueExpr sum
+        |           `-- Init: 
+        |               `-- Initializer
+        |                   `-- BinaryExpr +
+        |                       |-- LeftValueExpr pi
+        |                       `-- LeftValueExpr e_const
+        |-- VarDeclStmt
+        |   `-- VarDeclaration, BaseType: float
+        |       `-- VarDeclarator
+        |           |-- Var: 
+        |           |   `-- LeftValueExpr product
+        |           `-- Init: 
+        |               `-- Initializer
+        |                   `-- BinaryExpr *
+        |                       |-- LeftValueExpr small
+        |                       `-- LeftValueExpr large
+        |-- VarDeclStmt
+        |   `-- VarDeclaration, BaseType: float
+        |       `-- VarDeclarator
+        |           |-- Var: 
+        |           |   `-- LeftValueExpr division
+        |           `-- Init: 
+        |               `-- Initializer
+        |                   `-- BinaryExpr /
+        |                       |-- LeftValueExpr hex_two
+        |                       `-- LeftValueExpr hex_half
+        |-- VarDeclStmt
+        |   `-- VarDeclaration, BaseType: float
+        |       `-- VarDeclarator
+        |           |-- Var: 
+        |           |   `-- LeftValueExpr result1
+        |           `-- Init: 
+        |               `-- Initializer
+        |                   `-- Call testDecimalFloats
+        |-- VarDeclStmt
+        |   `-- VarDeclaration, BaseType: float
+        |       `-- VarDeclarator
+        |           |-- Var: 
+        |           |   `-- LeftValueExpr result2
+        |           `-- Init: 
+        |               `-- Initializer
+        |                   `-- Call testHexFloats
+        `-- IfStmt
+            |-- Condition:
+            |   `-- BinaryExpr >
+            |       |-- LeftValueExpr result1
+            |       `-- LeftValueExpr result2
+            |-- Then:
+            |   `-- ReturnStmt
+            |       `-- literal int: 1
+            `-- Else:
+                `-- ReturnStmt
+                    `-- literal int: 0

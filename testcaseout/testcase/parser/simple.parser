@@ -1,0 +1,125 @@
+ASTree
+|-- FuncDecl add(int a, int b) -> int, line: 1
+|   `-- BlockStmt, line: 2
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: int
+|       |       `-- VarDeclarator
+|       |           |-- Var: 
+|       |           |   `-- LeftValueExpr tmp
+|       |           `-- Init: 
+|       |               `-- Initializer
+|       |                   `-- BinaryExpr +
+|       |                       |-- LeftValueExpr a
+|       |                       `-- LeftValueExpr b
+|       `-- ReturnStmt
+|           `-- LeftValueExpr tmp
+|-- FuncDecl fib(int n) -> int, line: 7
+|   `-- BlockStmt, line: 8
+|       |-- IfStmt
+|       |   |-- Condition:
+|       |   |   `-- BinaryExpr <=
+|       |   |       |-- LeftValueExpr n
+|       |   |       `-- literal int: 1
+|       |   |-- Then:
+|       |   |   `-- ReturnStmt
+|       |   |       `-- LeftValueExpr n
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: int
+|       |       |-- VarDeclarator
+|       |       |   |-- Var: 
+|       |       |   |   `-- LeftValueExpr l
+|       |       |   `-- Init: 
+|       |       |       `-- Initializer
+|       |       |           `-- literal int: 0
+|       |       `-- VarDeclarator
+|       |           |-- Var: 
+|       |           |   `-- LeftValueExpr r
+|       |           `-- Init: 
+|       |               `-- Initializer
+|       |                   `-- literal int: 1
+|       |-- VarDeclStmt
+|       |   `-- VarDeclaration, BaseType: int
+|       |       `-- VarDeclarator
+|       |           |-- Var: 
+|       |           |   `-- LeftValueExpr i
+|       |           `-- Init: 
+|       |               `-- Initializer
+|       |                   `-- literal int: 2
+|       |-- WhileStmt
+|       |   |-- Condition:
+|       |   |   `-- BinaryExpr <=
+|       |   |       |-- LeftValueExpr i
+|       |   |       `-- LeftValueExpr n
+|       |   `-- Body:
+|       |       `-- BlockStmt, line: 14
+|       |           |-- VarDeclStmt
+|       |           |   `-- VarDeclaration, BaseType: int
+|       |           |       `-- VarDeclarator
+|       |           |           |-- Var: 
+|       |           |           |   `-- LeftValueExpr tmp
+|       |           |           `-- Init: 
+|       |           |               `-- Initializer
+|       |           |                   `-- Call add
+|       |           |                       |-- Arg 0: 
+|       |           |                       |   `-- LeftValueExpr l
+|       |           |                       `-- Arg 1: 
+|       |           |                           `-- LeftValueExpr r
+|       |           |-- ExprStmt line: 16
+|       |           |   `-- BinaryExpr =
+|       |           |       |-- LeftValueExpr l
+|       |           |       `-- LeftValueExpr r
+|       |           |-- ExprStmt line: 17
+|       |           |   `-- BinaryExpr =
+|       |           |       |-- LeftValueExpr r
+|       |           |       `-- LeftValueExpr tmp
+|       |           `-- ExprStmt line: 18
+|       |               `-- BinaryExpr =
+|       |                   |-- LeftValueExpr i
+|       |                   `-- Call add
+|       |                       |-- Arg 0: 
+|       |                       |   `-- LeftValueExpr i
+|       |                       `-- Arg 1: 
+|       |                           `-- literal int: 1
+|       `-- ReturnStmt
+|           `-- LeftValueExpr r
+|-- VarDeclStmt
+|   `-- VarDeclaration, BaseType: int
+|       `-- VarDeclarator
+|           |-- Var: 
+|           |   `-- LeftValueExpr INT_MAX
+|           `-- Init: 
+|               `-- Initializer
+|                   `-- literal int: 2147483647
+|-- VarDeclStmt
+|   `-- VarDeclaration, BaseType: int
+|       `-- VarDeclarator
+|           |-- Var: 
+|           |   `-- LeftValueExpr INT_MIN
+|           `-- Init: 
+|               `-- Initializer
+|                   `-- UnaryExpr -
+|                       `-- literal long long: 2147483648
+`-- FuncDecl main() -> int, line: 26
+    `-- BlockStmt, line: 27
+        |-- VarDeclStmt
+        |   `-- VarDeclaration, BaseType: int
+        |       `-- VarDeclarator
+        |           |-- Var: 
+        |           |   `-- LeftValueExpr i
+        |           `-- Init: 
+        |               `-- Initializer
+        |                   `-- Call add
+        |                       |-- Arg 0: 
+        |                       |   `-- LeftValueExpr INT_MAX
+        |                       `-- Arg 1: 
+        |                           `-- LeftValueExpr INT_MIN
+        |-- ExprStmt line: 29
+        |   `-- Call putint
+        |       `-- Arg 0: 
+        |           `-- Call fib
+        |               `-- Arg 0: 
+        |                   `-- BinaryExpr *
+        |                       |-- LeftValueExpr i
+        |                       `-- literal int: 10
+        `-- ReturnStmt
+            `-- literal int: 0

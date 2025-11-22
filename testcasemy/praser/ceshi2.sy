@@ -1,0 +1,28 @@
+
+// 测试样例：nested_if_else.sy
+
+int main() {
+    int c1 = 1; // 条件1
+    int c2 = 0; // 条件2
+    int s1 = 10; // 语句1
+    int s2 = 20; // 语句2
+
+    // 测试嵌套 if-else 语句
+    if (c1) 
+        if (c2); 
+        else 
+            s1 = s1 + 1;
+
+    // 测试另一种嵌套 if-else 语句
+    if (c1) 
+        if (c2) 
+            s1 = s1 + 2;
+        else 
+            s2 = s2 + 2;
+
+    // 输出结果
+    putint(s1); // 检查 s1 的值
+    putint(s2); // 检查 s2 的值
+
+    return 0;
+}

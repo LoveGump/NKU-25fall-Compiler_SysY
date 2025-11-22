@@ -1,0 +1,21 @@
+Input file: testcasemy/semant/57_math.sy
+Step: -llvm
+Output: a.out
+Optimize level: 0
+Defining function: my_fabs
+Defining function: my_pow
+Defining function: my_sqrt
+Defining function: F1
+Defining function: F2
+Defining function: simpson
+Defining function: asr5
+Defining function: asr4
+Defining function: eee
+Defining function: my_exp
+Defining function: my_ln
+Defining function: my_log
+Defining function: my_powf
+Defining function: main
+[;34;1mTODO: [0;37;1mLab3-2: Implement Root IR generation
+[0;33;1mFile: [4;37;1mmiddleend/visitor/codegen/ast_codegen.cpp:68
+[0mcompiler: middleend/visitor/codegen/ast_codegen.cpp:68: virtual void ME::ASTCodeGen::visit(FE::AST::Root&, ME::Module*): Assertion `false' failed.

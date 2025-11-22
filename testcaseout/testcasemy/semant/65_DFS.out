@@ -1,0 +1,13 @@
+Input file: testcasemy/semant/65_DFS.sy
+Step: -llvm
+Output: a.out
+Optimize level: 0
+Defining function: quick_read
+Defining function: add_edge
+Defining function: init
+Defining function: clear
+Defining function: same
+Defining function: main
+[;34;1mTODO: [0;37;1mLab3-2: Implement Root IR generation
+[0;33;1mFile: [4;37;1mmiddleend/visitor/codegen/ast_codegen.cpp:68
+[0mcompiler: middleend/visitor/codegen/ast_codegen.cpp:68: virtual void ME::ASTCodeGen::visit(FE::AST::Root&, ME::Module*): Assertion `false' failed.

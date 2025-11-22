@@ -1,0 +1,14 @@
+int key = 0;
+
+int side_effect()
+{
+    key = 1;
+    return 0;
+}
+
+int main()
+{
+    int a = 1;
+    if (1 || side_effect());
+    return key;
+}

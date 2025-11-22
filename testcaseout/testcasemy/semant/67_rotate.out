@@ -1,0 +1,16 @@
+Input file: testcasemy/semant/67_rotate.sy
+Step: -llvm
+Output: a.out
+Optimize level: 0
+Defining function: my_fabs
+Defining function: p
+Defining function: my_sin_impl
+Defining function: my_sin
+Defining function: my_cos
+Defining function: read_image
+Defining function: rotate
+Defining function: write_pgm
+Defining function: main
+[;34;1mTODO: [0;37;1mLab3-2: Implement Root IR generation
+[0;33;1mFile: [4;37;1mmiddleend/visitor/codegen/ast_codegen.cpp:68
+[0mcompiler: middleend/visitor/codegen/ast_codegen.cpp:68: virtual void ME::ASTCodeGen::visit(FE::AST::Root&, ME::Module*): Assertion `false' failed.

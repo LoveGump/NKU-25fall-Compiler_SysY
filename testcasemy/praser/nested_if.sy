@@ -1,0 +1,35 @@
+int main()
+{
+    int c1 = 1;
+    int c2 = 0;
+    int x = 0;
+    
+    // 测试1: if (c1) if (c2); else s1;
+    // else 应该匹配内层的 if (c2)
+    if (c1) 
+        if (c2) 
+            ;  // 空语句
+        else 
+            x = 1;  // else 匹配 if (c2)
+    
+    // 测试2: if (c1) if (c2) s1 else s2;
+    // else 应该匹配内层的 if (c2)
+    if (c1)
+        if (c2)
+            x = 2;
+        else
+            x = 3;  // else 匹配 if (c2)
+    
+    // 测试3: 更复杂的嵌套
+    if (c1) {
+        if (c2) {
+            x = 4;
+        } else {
+            x = 5;
+        }
+    } else {
+        x = 6;
+    }
+    
+    return x;
+}

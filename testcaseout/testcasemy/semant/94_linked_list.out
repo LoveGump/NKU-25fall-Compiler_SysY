@@ -1,0 +1,28 @@
+Input file: testcasemy/semant/94_linked_list.sy
+Step: -llvm
+Output: a.out
+Optimize level: 0
+Defining function: get
+Defining function: set
+Defining function: print_array
+Defining function: get_list_head
+Defining function: set_list_head
+Defining function: get_node_data
+Defining function: set_node_data
+Defining function: get_node_next
+Defining function: set_node_next
+Defining function: get_free_node_counter
+Defining function: set_free_node_counter
+Defining function: allocate_node
+Defining function: insert_at_head
+Defining function: insert_at_tail
+Defining function: delete_node
+Defining function: search
+Defining function: print_list
+Defining function: get_length
+Defining function: copy_list
+Defining function: init_system
+Defining function: main
+[;34;1mTODO: [0;37;1mLab3-2: Implement Root IR generation
+[0;33;1mFile: [4;37;1mmiddleend/visitor/codegen/ast_codegen.cpp:68
+[0mcompiler: middleend/visitor/codegen/ast_codegen.cpp:68: virtual void ME::ASTCodeGen::visit(FE::AST::Root&, ME::Module*): Assertion `false' failed.

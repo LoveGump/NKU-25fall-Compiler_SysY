@@ -1,0 +1,232 @@
+/* ====================================
+ * SysY 词法分析综合边界测试程序
+ * 测试：数字边界、运算符、浮点数、标识符、注释
+ * ==================================== */
+
+/* 全局变量声明 */
+int global_int;
+float global_float;
+long long global_ll;
+
+/* ============ 测试1：边界数字 ============ */
+int test_edge_numbers() {
+    /* 负数与减法的区分 - 关键测试点 */
+    int a = 2 -1;        // 2 减 1（有空格）
+    int b = 2-1;         // 2 减 1（无空格）
+    int c = -1;          // 负1
+    int d = 2 - -1;      // 2 减负1（两个减号有空格）
+    int e = 2+-1;        // 2 加负1
+    int f = 2*-1;        // 2 乘负1
+    
+    /* INT_MAX 边界测试 */
+    int max_int = 2147483647;           // INT_MAX
+    long long overflow = 2147483648;    // INT_MAX + 1
+    long long big_ll = 9223372036854775807;  // LLONG_MAX
+    
+    /* 各种零的表示 */
+    int zero1 = 0;       // 十进制零
+    int zero2 = 00;      // 八进制零
+    int zero3 = 0x0;     // 十六进制零
+    int zero4 = 0X00;    // 十六进制零（大写X）
+    
+    /* 八进制数测试 */
+    int oct1 = 07;       // 简单八进制
+    int oct2 = 0777;     // 较大八进制
+    int oct3 = 017777777777;  // 八进制最大int
+    
+    /* 十六进制数测试 */
+    int hex1 = 0x7FFFFFFF;    // 十六进制 INT_MAX
+    int hex2 = 0xABCDEF;      // 包含字母的十六进制
+    int hex3 = 0Xabcdef;      // 小写字母十六进制（大写X）
+    long long hex4 = 0x80000000;   // 超出int范围
+    long long hex5 = 0xFFFFFFFF;   // 全F
+    
+    return 0;
+}
+
+/* ============ 测试2：运算符边界 ============ */
+int test_edge_operators() {
+    int a = 1;
+    int b = 2;
+    int c = 3;
+    int result;
+    
+    /* 连续加减运算符 */
+    result = a - - b;     // a 减负b（注意空格）
+    result = a + - b;     // a 加负b
+    result = a - + b;     // a 减正b
+    result = a * - b;     // a 乘负b
+    result = a / - b;     // a 除负b
+    
+    /* 复合赋值运算符 */
+    a += 1;               // 复合赋值
+    a -= 2;
+    a *= 3;
+    a /= 4;
+    a %= 5;
+    
+    /* 比较运算符（无空格测试）*/
+    if (a==b) c = 1;      // ==无空格
+    if (a!=b) c = 2;      // !=无空格
+    if (a<=b) c = 3;      // <=无空格
+    if (a>=b) c = 4;      // >=无空格
+    if (a<b) c = 5;       // <无空格
+    if (a>b) c = 6;       // >无空格
+    
+    /* 逻辑运算符（无空格测试）*/
+    if (a&&b) c = 7;      // &&无空格
+    if (a||b) c = 8;      // ||无空格
+    if (!a) c = 9;        // !无空格
+    
+    /* 连续运算符组合 */
+    result = a+-b*-c;     // 复杂表达式
+    result = -a*-b+-c;    // 多个负号
+    
+    return result;
+}
+
+/* ============ 测试3：浮点数边界 ============ */
+float test_edge_floats() {
+    /* 基本浮点数 */
+    float f1 = 3.14;      // 标准浮点数
+    float f2 = .5;        // 无整数部分
+    float f3 = 5.;        // 无小数部分
+    float f4 = 0.0;       // 零浮点数
+    float f5 = 123.456;   // 多位小数
+    
+    /* 科学计数法（十进制指数）*/
+    float e1 = 1e10;      // 正指数，无小数点
+    float e2 = 1.5e-5;    // 负指数
+    float e3 = 2E+3;      // 大写E，显式正号
+    float e4 = .5e10;     // 无整数部分的科学计数法
+    float e5 = 3.e8;      // 无小数部分的科学计数法
+    
+    /* 十六进制浮点数（使用p/P表示2的幂次）*/
+    float h1 = 0x1.2p3;   // 标准十六进制浮点
+    float h2 = 0x.8p-2;   // 无整数部分
+    float h3 = 0x1p10;    // 无小数部分
+    float h4 = 0X1.Ap5;   // 大写X和P
+    float h5 = 0xF.Fp+4;  // 大数值十六进制
+    
+    /* 极值测试 */
+    float tiny = 1e-38;   // 接近float最小值
+    float huge = 3.4e38;  // 接近float最大值
+    
+    /* 浮点运算 */
+    float result = f1 + f2 * f3 - f4 / f5;
+    result = -f1 * -f2 + -f3;
+    
+    return result;
+}
+
+/* ============ 测试4：标识符边界 ============ */
+int test_edge_identifiers() {
+    /* 关键字相似的标识符 */
+    int int1 = 1;         // int + 数字
+    int integer = 2;      // 包含关键字
+    int if1 = 3;          // if + 数字
+    int _if = 4;          // 下划线 + 关键字
+    int for_loop = 5;     // 关键字 + 下划线
+    int while1 = 6;
+    int return1 = 7;
+    
+    /* 下划线开头和组合 */
+    int _ = 10;           // 单下划线
+    int __ = 11;          // 双下划线
+    int _abc = 12;        // 下划线开头
+    int _123 = 13;        // 下划线+数字
+    int _a1b2c3 = 14;     // 混合
+    
+    /* 长标识符 */
+    int very_long_identifier_name_with_many_underscores_123 = 100;
+    
+    /* 数字结尾 */
+    int var1 = 20;
+    int var123 = 21;
+    int a1b2c3 = 22;
+    int test_0_1_2 = 23;
+    
+    /* 大小写混合 */
+    int camelCase = 30;
+    int PascalCase = 31;
+    int UPPER_CASE = 32;
+    int MiXeD_CaSe_123 = 33;
+    
+    return var1 + var123 + a1b2c3;
+}
+
+/* ============ 测试5：注释边界 ============ */
+int test_edge_comments() {
+    /* 这是一个多行注释
+       第二行
+       第三行 */
+    
+    int a = 1; // 行尾单行注释
+    int b = 2; /* 行内多行注释 */ int c = 3;
+    
+    /* 注释中的特殊字符 !@#$%^&*()_+-=[]{}|;:',.<>?/ */
+    
+    int d = 5 /* 表达式中间注释 */ + /* 多个注释 */ 6;
+    
+    // 连续单行注释
+    // 第一行
+    // 第二行
+    // 第三行
+    
+    /* 紧贴代码的注释 */int e = 7;
+    int f = 8;/* 紧贴在后面 */
+    
+    /* 包含注释标记的注释 /* 不是真嵌套 */ 
+    // 包含 /* */ 的单行注释
+    /* 包含 // 的多行注释 */
+    
+    int result = a // 注释1
+        + b /* 注释2 */
+        - c // 注释3
+        * d; /* 注释4 */
+    
+    return result; /* 返回值注释 */
+}
+
+/* ============ 主函数：综合测试 ============ */
+int main() {
+    int result1;
+    float result2;
+    
+    /* 调用各个测试函数 */
+    result1 = test_edge_numbers();      // 测试1
+    result1 = test_edge_operators();    // 测试2
+    result2 = test_edge_floats();       // 测试3
+    result1 = test_edge_identifiers();  // 测试4
+    result1 = test_edge_comments();     // 测试5
+    
+    /* 混合测试：在一个表达式中结合多种边界情况 */
+    int mixed1 = 0x7F + 077 - -10;
+    float mixed2 = 3.14e2 * .5 + 0x1.8p3;
+    long long mixed3 = 2147483648 - -2147483647;
+    
+    /* 复杂表达式测试 */
+    int complex = (mixed1+-10)*-2/-(3+5)%7;
+    
+    return 0; // 程序结束
+}
+
+/* ============ 额外的函数测试 ============ */
+
+// 测试不同返回类型
+float float_function(float x, float y) {
+    return x * y + 1.5e-3;
+}
+
+long long ll_function(long long a, long long b) {
+    return a + b - 2147483648;
+}
+
+void void_function(int arr[10]) {
+    int i = 0;
+    // 数组操作
+    arr[0] = 1;
+    arr[9] = 10;
+}
+
+/* 测试结束 */

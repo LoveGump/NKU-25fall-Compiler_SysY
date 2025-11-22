@@ -1,0 +1,211 @@
+Token                         Lexeme                        Property                      Line    Column  
+FLOAT                         float                                                       1       0       
+IDENT                         testDecimalFloats             testDecimalFloats             1       6       
+LPAREN                        (                                                           1       23      
+RPAREN                        )                                                           1       24      
+LBRACE                        {                                                           2       0       
+FLOAT                         float                                                       3       4       
+IDENT                         a                             a                             3       10      
+ASSIGN                        =                                                           3       12      
+FLOAT_CONST                   3.14                          3.14                          3       14      
+SEMICOLON                     ;                                                           3       18      
+FLOAT                         float                                                       4       4       
+IDENT                         b                             b                             4       10      
+ASSIGN                        =                                                           4       12      
+FLOAT_CONST                   0.5                           0.5                           4       14      
+SEMICOLON                     ;                                                           4       17      
+FLOAT                         float                                                       5       4       
+IDENT                         c                             c                             5       10      
+ASSIGN                        =                                                           5       12      
+FLOAT_CONST                   123.456                       123.456                       5       14      
+SEMICOLON                     ;                                                           5       21      
+FLOAT                         float                                                       6       4       
+IDENT                         d                             d                             6       10      
+ASSIGN                        =                                                           6       12      
+FLOAT_CONST                   .5                            0.5                           6       14      
+SEMICOLON                     ;                                                           6       16      
+FLOAT                         float                                                       7       4       
+IDENT                         e                             e                             7       10      
+ASSIGN                        =                                                           7       12      
+FLOAT_CONST                   5.                            5                             7       14      
+SEMICOLON                     ;                                                           7       16      
+FLOAT                         float                                                       9       4       
+IDENT                         f                             f                             9       10      
+ASSIGN                        =                                                           9       12      
+FLOAT_CONST                   1e10                          1e+10                         9       14      
+SEMICOLON                     ;                                                           9       18      
+FLOAT                         float                                                       10      4       
+IDENT                         g                             g                             10      10      
+ASSIGN                        =                                                           10      12      
+FLOAT_CONST                   1.5e10                        1.5e+10                       10      14      
+SEMICOLON                     ;                                                           10      20      
+FLOAT                         float                                                       11      4       
+IDENT                         h                             h                             11      10      
+ASSIGN                        =                                                           11      12      
+FLOAT_CONST                   2.5e-3                        0.0025                        11      14      
+SEMICOLON                     ;                                                           11      20      
+FLOAT                         float                                                       12      4       
+IDENT                         i                             i                             12      10      
+ASSIGN                        =                                                           12      12      
+FLOAT_CONST                   .5E+5                         50000                         12      14      
+SEMICOLON                     ;                                                           12      19      
+FLOAT                         float                                                       13      4       
+IDENT                         j                             j                             13      10      
+ASSIGN                        =                                                           13      12      
+FLOAT_CONST                   3.e-10                        3e-10                         13      14      
+SEMICOLON                     ;                                                           13      20      
+RETURN                        return                                                      15      4       
+IDENT                         a                             a                             15      11      
+PLUS                          +                                                           15      13      
+IDENT                         b                             b                             15      15      
+PLUS                          +                                                           15      17      
+IDENT                         c                             c                             15      19      
+PLUS                          +                                                           15      21      
+IDENT                         d                             d                             15      23      
+PLUS                          +                                                           15      25      
+IDENT                         e                             e                             15      27      
+PLUS                          +                                                           15      29      
+IDENT                         f                             f                             15      31      
+PLUS                          +                                                           15      33      
+IDENT                         g                             g                             15      35      
+PLUS                          +                                                           15      37      
+IDENT                         h                             h                             15      39      
+PLUS                          +                                                           15      41      
+IDENT                         i                             i                             15      43      
+PLUS                          +                                                           15      45      
+IDENT                         j                             j                             15      47      
+SEMICOLON                     ;                                                           15      48      
+RBRACE                        }                                                           16      0       
+FLOAT                         float                                                       18      0       
+IDENT                         testHexFloats                 testHexFloats                 18      6       
+LPAREN                        (                                                           18      19      
+RPAREN                        )                                                           18      20      
+LBRACE                        {                                                           19      0       
+FLOAT                         float                                                       20      4       
+IDENT                         a                             a                             20      10      
+ASSIGN                        =                                                           20      12      
+FLOAT_CONST                   0x1.8p0                       1.5                           20      14      
+SEMICOLON                     ;                                                           20      21      
+FLOAT                         float                                                       21      4       
+IDENT                         b                             b                             21      10      
+ASSIGN                        =                                                           21      12      
+FLOAT_CONST                   0xA.Bp2                       42.75                         21      14      
+SEMICOLON                     ;                                                           21      21      
+FLOAT                         float                                                       22      4       
+IDENT                         c                             c                             22      10      
+ASSIGN                        =                                                           22      12      
+FLOAT_CONST                   0x1.0p-3                      0.125                         22      14      
+SEMICOLON                     ;                                                           22      22      
+FLOAT                         float                                                       23      4       
+IDENT                         d                             d                             23      10      
+ASSIGN                        =                                                           23      12      
+FLOAT_CONST                   0xF.Fp10                      16320                         23      14      
+SEMICOLON                     ;                                                           23      22      
+FLOAT                         float                                                       25      4       
+IDENT                         e                             e                             25      10      
+ASSIGN                        =                                                           25      12      
+FLOAT_CONST                   0x1p5                         32                            25      14      
+SEMICOLON                     ;                                                           25      19      
+FLOAT                         float                                                       26      4       
+IDENT                         f                             f                             26      10      
+ASSIGN                        =                                                           26      12      
+FLOAT_CONST                   0xAp-2                        2.5                           26      14      
+SEMICOLON                     ;                                                           26      20      
+RETURN                        return                                                      28      4       
+IDENT                         a                             a                             28      11      
+PLUS                          +                                                           28      13      
+IDENT                         b                             b                             28      15      
+PLUS                          +                                                           28      17      
+IDENT                         c                             c                             28      19      
+PLUS                          +                                                           28      21      
+IDENT                         d                             d                             28      23      
+PLUS                          +                                                           28      25      
+IDENT                         e                             e                             28      27      
+PLUS                          +                                                           28      29      
+IDENT                         f                             f                             28      31      
+SEMICOLON                     ;                                                           28      32      
+RBRACE                        }                                                           29      0       
+INT                           int                                                         31      0       
+IDENT                         main                          main                          31      4       
+LPAREN                        (                                                           31      8       
+RPAREN                        )                                                           31      9       
+LBRACE                        {                                                           32      0       
+FLOAT                         float                                                       33      4       
+IDENT                         pi                            pi                            33      10      
+ASSIGN                        =                                                           33      19      
+FLOAT_CONST                   3.14159                       3.14159                       33      21      
+SEMICOLON                     ;                                                           33      28      
+FLOAT                         float                                                       34      4       
+IDENT                         e_const                       e_const                       34      10      
+ASSIGN                        =                                                           34      19      
+FLOAT_CONST                   2.71828                       2.71828                       34      21      
+SEMICOLON                     ;                                                           34      28      
+FLOAT                         float                                                       35      4       
+IDENT                         small                         small                         35      10      
+ASSIGN                        =                                                           35      19      
+FLOAT_CONST                   1e-10                         1e-10                         35      21      
+SEMICOLON                     ;                                                           35      26      
+FLOAT                         float                                                       36      4       
+IDENT                         large                         large                         36      10      
+ASSIGN                        =                                                           36      19      
+FLOAT_CONST                   1.0e20                        1e+20                         36      21      
+SEMICOLON                     ;                                                           36      27      
+FLOAT                         float                                                       37      4       
+IDENT                         hex_half                      hex_half                      37      10      
+ASSIGN                        =                                                           37      19      
+FLOAT_CONST                   0x1.0p-1                      0.5                           37      21      
+SEMICOLON                     ;                                                           37      29      
+FLOAT                         float                                                       38      4       
+IDENT                         hex_two                       hex_two                       38      10      
+ASSIGN                        =                                                           38      19      
+FLOAT_CONST                   0x2.0p0                       2                             38      21      
+SEMICOLON                     ;                                                           38      28      
+FLOAT                         float                                                       40      4       
+IDENT                         sum                           sum                           40      10      
+ASSIGN                        =                                                           40      19      
+IDENT                         pi                            pi                            40      21      
+PLUS                          +                                                           40      24      
+IDENT                         e_const                       e_const                       40      26      
+SEMICOLON                     ;                                                           40      33      
+FLOAT                         float                                                       41      4       
+IDENT                         product                       product                       41      10      
+ASSIGN                        =                                                           41      19      
+IDENT                         small                         small                         41      21      
+STAR                          *                                                           41      27      
+IDENT                         large                         large                         41      29      
+SEMICOLON                     ;                                                           41      34      
+FLOAT                         float                                                       42      4       
+IDENT                         division                      division                      42      10      
+ASSIGN                        =                                                           42      19      
+IDENT                         hex_two                       hex_two                       42      21      
+SLASH                         /                                                           42      29      
+IDENT                         hex_half                      hex_half                      42      31      
+SEMICOLON                     ;                                                           42      39      
+FLOAT                         float                                                       44      4       
+IDENT                         result1                       result1                       44      10      
+ASSIGN                        =                                                           44      18      
+IDENT                         testDecimalFloats             testDecimalFloats             44      20      
+LPAREN                        (                                                           44      37      
+RPAREN                        )                                                           44      38      
+SEMICOLON                     ;                                                           44      39      
+FLOAT                         float                                                       45      4       
+IDENT                         result2                       result2                       45      10      
+ASSIGN                        =                                                           45      18      
+IDENT                         testHexFloats                 testHexFloats                 45      20      
+LPAREN                        (                                                           45      33      
+RPAREN                        )                                                           45      34      
+SEMICOLON                     ;                                                           45      35      
+IF                            if                                                          47      4       
+LPAREN                        (                                                           47      7       
+IDENT                         result1                       result1                       47      8       
+GT                            >                                                           47      16      
+IDENT                         result2                       result2                       47      18      
+RPAREN                        )                                                           47      25      
+RETURN                        return                                                      47      27      
+INT_CONST                     1                             1                             47      34      
+SEMICOLON                     ;                                                           47      35      
+ELSE                          else                                                        48      4       
+RETURN                        return                                                      48      9       
+INT_CONST                     0                             0                             48      16      
+SEMICOLON                     ;                                                           48      17      
+RBRACE                        }                                                           49      0       

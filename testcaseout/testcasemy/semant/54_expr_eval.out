@@ -1,0 +1,20 @@
+Input file: testcasemy/semant/54_expr_eval.sy
+Step: -llvm
+Output: a.out
+Optimize level: 0
+Defining function: next_char
+Defining function: is_space
+Defining function: is_num
+Defining function: next_token
+Defining function: panic
+Defining function: get_op_prec
+Defining function: stack_push
+Defining function: stack_pop
+Defining function: stack_peek
+Defining function: stack_size
+Defining function: eval_op
+Defining function: eval
+Defining function: main
+[;34;1mTODO: [0;37;1mLab3-2: Implement Root IR generation
+[0;33;1mFile: [4;37;1mmiddleend/visitor/codegen/ast_codegen.cpp:68
+[0mcompiler: middleend/visitor/codegen/ast_codegen.cpp:68: virtual void ME::ASTCodeGen::visit(FE::AST::Root&, ME::Module*): Assertion `false' failed.

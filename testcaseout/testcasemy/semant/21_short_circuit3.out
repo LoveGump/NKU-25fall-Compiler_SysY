@@ -1,0 +1,11 @@
+Input file: testcasemy/semant/21_short_circuit3.sy
+Step: -llvm
+Output: a.out
+Optimize level: 0
+Defining function: set_a
+Defining function: set_b
+Defining function: set_d
+Defining function: main
+[;34;1mTODO: [0;37;1mLab3-2: Implement Root IR generation
+[0;33;1mFile: [4;37;1mmiddleend/visitor/codegen/ast_codegen.cpp:68
+[0mcompiler: middleend/visitor/codegen/ast_codegen.cpp:68: virtual void ME::ASTCodeGen::visit(FE::AST::Root&, ME::Module*): Assertion `false' failed.

@@ -1,0 +1,19 @@
+Input file: testcasemy/semant/63_splay.sy
+Step: -llvm
+Output: a.out
+Optimize level: 0
+Defining function: eq
+Defining function: son
+Defining function: push_up
+Defining function: xor_01
+Defining function: push_down
+Defining function: rotate
+Defining function: splay
+Defining function: get_kth
+Defining function: reverse
+Defining function: build
+Defining function: get_ans
+Defining function: main
+[;34;1mTODO: [0;37;1mLab3-2: Implement Root IR generation
+[0;33;1mFile: [4;37;1mmiddleend/visitor/codegen/ast_codegen.cpp:68
+[0mcompiler: middleend/visitor/codegen/ast_codegen.cpp:68: virtual void ME::ASTCodeGen::visit(FE::AST::Root&, ME::Module*): Assertion `false' failed.

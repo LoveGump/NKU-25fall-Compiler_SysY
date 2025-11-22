@@ -1,0 +1,44 @@
+Input file: testcasemy/semant/72_lisp1.sy
+Step: -llvm
+Output: a.out
+Optimize level: 0
+Defining function: eq
+Defining function: ne
+Defining function: lt
+Defining function: le
+Defining function: gt
+Defining function: ge
+Defining function: panic
+Defining function: init_data
+Defining function: alloc_data
+Defining function: free_data
+Defining function: copy_ptr
+Defining function: copy_data
+Defining function: make_symbol
+Defining function: make_number
+Defining function: make_list
+Defining function: is_predef_sym
+Defining function: is_eq_sym
+Defining function: print_sym
+Defining function: make_env
+Defining function: env_add
+Defining function: env_get
+Defining function: env_set
+Defining function: env_find
+Defining function: make_func
+Defining function: is_space
+Defining function: is_digit
+Defining function: next_token
+Defining function: parse
+Defining function: make_bool
+Defining function: is_true
+Defining function: is_equal
+Defining function: unwrap_list
+Defining function: unwrap_symbol
+Defining function: unwrap_number
+Defining function: eval
+Defining function: print
+Defining function: main
+[;34;1mTODO: [0;37;1mLab3-2: Implement Root IR generation
+[0;33;1mFile: [4;37;1mmiddleend/visitor/codegen/ast_codegen.cpp:68
+[0mcompiler: middleend/visitor/codegen/ast_codegen.cpp:68: virtual void ME::ASTCodeGen::visit(FE::AST::Root&, ME::Module*): Assertion `false' failed.

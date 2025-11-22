@@ -1,0 +1,4 @@
+const int b = 30;
+int test(int a[5][b]){
+    int arr[5][b];
+}
