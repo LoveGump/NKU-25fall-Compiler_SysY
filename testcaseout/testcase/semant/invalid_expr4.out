@@ -1,0 +1,7 @@
+Input file: testcase/semant/invalid_expr4.sy
+Step: -llvm
+Output: a.out
+Optimize level: 0
+Defining function: main
+Semantic check failed with 1 errors.
+Error: If condition cannot be void type at line 9

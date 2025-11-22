@@ -1,0 +1,8 @@
+Input file: testcase/semant/invalid_expr3.sy
+Step: -llvm
+Output: a.out
+Optimize level: 0
+Defining function: main
+Semantic check failed with 2 errors.
+Error: Void value used in binary operator + at line 5
+Error: Initializer cannot be void at line 5

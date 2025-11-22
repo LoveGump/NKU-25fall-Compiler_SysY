@@ -1,0 +1,9 @@
+Input file: testcase/semant/div_zero2.sy
+Step: -llvm
+Output: a.out
+Optimize level: 0
+Defining function: main
+Semantic check failed with 3 errors.
+Error: / operation with zero divisor at line 8
+Error: Void value used in binary operator == at line 8
+Error: If condition cannot be void type at line 8

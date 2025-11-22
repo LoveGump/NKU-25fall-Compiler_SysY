@@ -12,8 +12,8 @@ namespace FE::AST
     class ExprNode : public Node
     {
       public:
-        size_t trueTar;
-        size_t falseTar;
+        size_t trueTar; // 真的目标地址
+        size_t falseTar; // 假的目标地址
 
       public:
         ExprNode(int line_num = -1, int col_num = -1)
@@ -23,7 +23,9 @@ namespace FE::AST
 
         virtual void accept(Visitor& visitor) override = 0;
 
+        // 是否为逗号表达式
         virtual bool isCommaExpr() const { return false; }
+        // 是否为字面量表达式
         virtual bool isLiteralExpr() const { return false; }
     };
 
@@ -67,7 +69,7 @@ namespace FE::AST
     {
       public:
         Operator  op;
-        ExprNode* expr;
+        ExprNode* expr; // 操作数表达式
 
       public:
         UnaryExpr(Operator op, ExprNode* expr, int line_num = -1, int col_num = -1)

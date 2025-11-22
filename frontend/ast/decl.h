@@ -48,7 +48,6 @@ namespace FE::AST
     };
 
     // 初始化列表，如 int arr[3] = {1, 2, 3} 的 {1, 2, 3}
-    // 如果你不打算实现数组的支持，可以不实现这个类
     class InitializerList : public InitDecl
     {
       public:
@@ -65,7 +64,7 @@ namespace FE::AST
         size_t size();
     };
 
-    // 单个变量声明节点，如 int a = 5; 中的 a
+    // 单个变量声明节点，如 a = 5
     class VarDeclarator : public DeclNode
     {
       public:
@@ -100,8 +99,6 @@ namespace FE::AST
     };
 
     // 变量声明语句节点，如 int a = 5, arr[10] = {1,2,3};
-    // 它们的具体声明都放在 decls 里
-    // isConstDecl 标记是否是 const 声明
     class VarDeclaration : public DeclNode
     {
       public:

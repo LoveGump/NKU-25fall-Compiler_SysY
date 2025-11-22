@@ -1,0 +1,66 @@
+int a0=0,a1=0,a2=0,a3=0,a4=0,a5=0,a6=0,a7=0,a8=0,a9=0,a10=0,a11=0,a12=0,a13=0,a14=0,a15=0,a16=0,a17=0,a18=0,a19=0,a20=0,a21=0,a22=0,a23=0,a24=0,a25=0,a26=0,a27=0,a28=0,a29=0,a30=0,a31=0,a32=0,a33=0,a34=0,a35=0,a36=0,a37=0,a38=0,a39=0,a40=0,a41=0,a42=0,a43=0,a44=0,a45=0,a46=0,a47=0,a48=0,a49=0,a50=0,a51=0,a52=0,a53=0,a54=0,a55=0,a56=0,a57=0,a58=0,a59=0,a60=0,a61=0,a62=0,a63=0,a64=0,a65=0,a66=0,a67=0,a68=0,a69=0,a70=0,a71=0,a72=0,a73=0,a74=0,a75=0,a76=0,a77=0,a78=0,a79=0,a80=0,a81=0,a82=0,a83=0,a84=0,a85=0,a86=0,a87=0,a88=0,a89=0,a90=0,a91=0,a92=0,a93=0,a94=0,a95=0,a96=0,a97=0,a98=0,a99=0;
+int a100=0,a101=0,a102=0,a103=0,a104=0,a105=0,a106=0,a107=0,a108=0,a109=0,a110=0,a111=0,a112=0,a113=0,a114=0,a115=0,a116=0,a117=0,a118=0,a119=0;
+int arr_size = 120;
+
+int get(int x)
+{
+	if(x==0)return a0;if(x==1)return a1;if(x==2)return a2;if(x==3)return a3;if(x==4)return a4;if(x==5)return a5;if(x==6)return a6;if(x==7)return a7;if(x==8)return a8;if(x==9)return a9;if(x==10)return a10;if(x==11)return a11;if(x==12)return a12;if(x==13)return a13;if(x==14)return a14;if(x==15)return a15;if(x==16)return a16;if(x==17)return a17;if(x==18)return a18;if(x==19)return a19;if(x==20)return a20;if(x==21)return a21;if(x==22)return a22;if(x==23)return a23;if(x==24)return a24;if(x==25)return a25;if(x==26)return a26;if(x==27)return a27;if(x==28)return a28;if(x==29)return a29;if(x==30)return a30;if(x==31)return a31;if(x==32)return a32;if(x==33)return a33;if(x==34)return a34;if(x==35)return a35;if(x==36)return a36;if(x==37)return a37;if(x==38)return a38;if(x==39)return a39;if(x==40)return a40;if(x==41)return a41;if(x==42)return a42;if(x==43)return a43;if(x==44)return a44;if(x==45)return a45;if(x==46)return a46;if(x==47)return a47;if(x==48)return a48;if(x==49)return a49;if(x==50)return a50;if(x==51)return a51;if(x==52)return a52;if(x==53)return a53;if(x==54)return a54;if(x==55)return a55;if(x==56)return a56;if(x==57)return a57;if(x==58)return a58;if(x==59)return a59;if(x==60)return a60;if(x==61)return a61;if(x==62)return a62;if(x==63)return a63;if(x==64)return a64;if(x==65)return a65;if(x==66)return a66;if(x==67)return a67;if(x==68)return a68;if(x==69)return a69;if(x==70)return a70;if(x==71)return a71;if(x==72)return a72;if(x==73)return a73;if(x==74)return a74;if(x==75)return a75;if(x==76)return a76;if(x==77)return a77;if(x==78)return a78;if(x==79)return a79;if(x==80)return a80;if(x==81)return a81;if(x==82)return a82;if(x==83)return a83;if(x==84)return a84;if(x==85)return a85;if(x==86)return a86;if(x==87)return a87;if(x==88)return a88;if(x==89)return a89;if(x==90)return a90;if(x==91)return a91;if(x==92)return a92;if(x==93)return a93;if(x==94)return a94;if(x==95)return a95;if(x==96)return a96;if(x==97)return a97;if(x==98)return a98;if(x==99)return a99;
+	if(x==100)return a100;if(x==101)return a101;if(x==102)return a102;if(x==103)return a103;if(x==104)return a104;if(x==105)return a105;if(x==106)return a106;if(x==107)return a107;if(x==108)return a108;if(x==109)return a109;if(x==110)return a110;if(x==111)return a111;if(x==112)return a112;if(x==113)return a113;if(x==114)return a114;if(x==115)return a115;if(x==116)return a116;if(x==117)return a117;if(x==118)return a118;if(x==119)return a119;
+	return -1;
+}
+
+void set(int x, int v)
+{
+	if(x==0)a0=v;if(x==1)a1=v;if(x==2)a2=v;if(x==3)a3=v;if(x==4)a4=v;if(x==5)a5=v;if(x==6)a6=v;if(x==7)a7=v;if(x==8)a8=v;if(x==9)a9=v;if(x==10)a10=v;if(x==11)a11=v;if(x==12)a12=v;if(x==13)a13=v;if(x==14)a14=v;if(x==15)a15=v;if(x==16)a16=v;if(x==17)a17=v;if(x==18)a18=v;if(x==19)a19=v;if(x==20)a20=v;if(x==21)a21=v;if(x==22)a22=v;if(x==23)a23=v;if(x==24)a24=v;if(x==25)a25=v;if(x==26)a26=v;if(x==27)a27=v;if(x==28)a28=v;if(x==29)a29=v;if(x==30)a30=v;if(x==31)a31=v;if(x==32)a32=v;if(x==33)a33=v;if(x==34)a34=v;if(x==35)a35=v;if(x==36)a36=v;if(x==37)a37=v;if(x==38)a38=v;if(x==39)a39=v;if(x==40)a40=v;if(x==41)a41=v;if(x==42)a42=v;if(x==43)a43=v;if(x==44)a44=v;if(x==45)a45=v;if(x==46)a46=v;if(x==47)a47=v;if(x==48)a48=v;if(x==49)a49=v;if(x==50)a50=v;if(x==51)a51=v;if(x==52)a52=v;if(x==53)a53=v;if(x==54)a54=v;if(x==55)a55=v;if(x==56)a56=v;if(x==57)a57=v;if(x==58)a58=v;if(x==59)a59=v;if(x==60)a60=v;if(x==61)a61=v;if(x==62)a62=v;if(x==63)a63=v;if(x==64)a64=v;if(x==65)a65=v;if(x==66)a66=v;if(x==67)a67=v;if(x==68)a68=v;if(x==69)a69=v;if(x==70)a70=v;if(x==71)a71=v;if(x==72)a72=v;if(x==73)a73=v;if(x==74)a74=v;if(x==75)a75=v;if(x==76)a76=v;if(x==77)a77=v;if(x==78)a78=v;if(x==79)a79=v;if(x==80)a80=v;if(x==81)a81=v;if(x==82)a82=v;if(x==83)a83=v;if(x==84)a84=v;if(x==85)a85=v;if(x==86)a86=v;if(x==87)a87=v;if(x==88)a88=v;if(x==89)a89=v;if(x==90)a90=v;if(x==91)a91=v;if(x==92)a92=v;if(x==93)a93=v;if(x==94)a94=v;if(x==95)a95=v;if(x==96)a96=v;if(x==97)a97=v;if(x==98)a98=v;if(x==99)a99=v;
+	if(x==100)a100=v;if(x==101)a101=v;if(x==102)a102=v;if(x==103)a103=v;if(x==104)a104=v;if(x==105)a105=v;if(x==106)a106=v;if(x==107)a107=v;if(x==108)a108=v;if(x==109)a109=v;if(x==110)a110=v;if(x==111)a111=v;if(x==112)a112=v;if(x==113)a113=v;if(x==114)a114=v;if(x==115)a115=v;if(x==116)a116=v;if(x==117)a117=v;if(x==118)a118=v;if(x==119)a119=v;
+}
+
+void print_array(int start, int size)
+{
+	int i = start;
+	while (i < start + size)
+	{
+		putint(get(i));
+		if (i < start + size - 1) putch(32);
+		i = i + 1;
+	}
+	putch(10);
+}
+
+void bubble_sort(int size) 
+{
+    int i = 0, j, temp;
+    while (i < size - 1) 
+    {
+        j = 0;
+        while (j < size - 1 - i) 
+        {
+            if (get(j) > get(j + 1)) 
+            {
+                temp = get(j);
+                set(j, get(j + 1));
+                set(j + 1, temp);
+            }
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+}
+
+int main() 
+{
+    int n, i, value;
+    n = getint();
+    if (n > arr_size) return -1;
+    
+    i = 0;
+    while (i < n)
+    {
+        value = getint();
+        set(i, value);
+        i = i + 1;
+    }
+    
+    bubble_sort(n);
+    print_array(0, n);
+}
