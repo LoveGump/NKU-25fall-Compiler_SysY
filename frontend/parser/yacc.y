@@ -102,6 +102,7 @@
 %nterm <FE::AST::Operator> UNARY_OP 
 // 类型
 %nterm <FE::AST::Type*> TYPE 
+
 // 变量初始化
 %nterm <FE::AST::InitDecl*> INITIALIZER
 // 变量初始化列表
@@ -362,6 +363,12 @@ FUNC_DECL_STMT:
         // FuncDeclStmt是函数定义的AST节点
         $$ = new FuncDeclStmt($1, entry, $4, $6, @1.begin.line, @1.begin.column);
     }
+    | VOID IDENT LPAREN PARAM_DECLARATOR_LIST RPAREN FUNC_BODY {
+        // 显式 void 返回类型的函数定义
+        std::cerr<< "Defining function: " << $2 << std::endl;
+        Entry* entry = Entry::getEntry($2);
+        $$ = new FuncDeclStmt(FE::AST::TypeFactory::getBasicType(FE::AST::Type_t::VOID), entry, $4, $6, @1.begin.line, @1.begin.column);
+    }
     ;
 
 // 格式: for (初始化; 条件; 更新) 循环体
@@ -541,6 +548,14 @@ VAR_DECLARATOR:
             dims->insert(dims->end(), $4->begin(), $4->end());
             ExprNode* lval = new LeftValExpr(entry, dims);
             $$ = new VarDeclarator(lval, $6);
+        }
+    | IDENT LBRACKET RBRACKET ASSIGN INITIALIZER {
+            // 允许一维数组首维省略并带初始化: int a[] = {1,2,3};
+            Entry* entry = Entry::getEntry($1);
+            std::vector<ExprNode*>* dims = new std::vector<ExprNode*>();
+            dims->emplace_back(new LiteralExpr(-1, @2.begin.line, @2.begin.column));
+            ExprNode* lval = new LeftValExpr(entry, dims);
+            $$ = new VarDeclarator(lval, $5);
         }
     ;
 
@@ -930,18 +945,14 @@ LITERAL_EXPR:
     }
     ;
 
-// TYPE: 基本数据类型
-// SysY支持: int, float, void
+
+// TYPE: 仅用于变量声明的类型，禁止 void
 TYPE:
-    // TODO(Lab2): 完成类型的处理
     INT {
         $$ = FE::AST::TypeFactory::getBasicType(FE::AST::Type_t::INT);
     }
     | FLOAT {
         $$ = FE::AST::TypeFactory::getBasicType(FE::AST::Type_t::FLOAT);
-    }
-    | VOID {
-        $$ = FE::AST::TypeFactory::getBasicType(FE::AST::Type_t::VOID);
     }
     ;
 
