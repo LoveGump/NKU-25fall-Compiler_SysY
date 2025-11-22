@@ -93,8 +93,7 @@ def check_file(file1, file2):
         result = subprocess.run(
             ["diff", "--strip-trailing-cr", file1, file2, "-b"], check=False)
     except FileNotFoundError:
-        print(f"\033[91mUnknown Error on \033[0m{
-              file1}, \033[91mPlease check your output file\033[0m")
+        print(f"\033[91mUnknown Error on \033[0m{file1}, \033[91mPlease check your output file\033[0m")
         return 1
     return result.returncode
 
@@ -109,8 +108,7 @@ def add_returncode(file, ret):
                 if not content.endswith("\n"):
                     need_newline = True
     except IOError:
-        print(f"\033[91mUnknown Error on \033[0m{
-              file}, \033[91mPlease check your output file\033[0m")
+        print(f"\033[91mUnknown Error on \033[0m{file}, \033[91mPlease check your output file\033[0m")
         return False
 
     with open(file, "a+", encoding="utf-8") as f:
