@@ -45,25 +45,34 @@ namespace ME
         friend struct BinaryOperators;
 
       private:
+        // 全局符号表：存储全局变量的符号表项到变量属性的映射
         const std::map<FE::Sym::Entry*, FE::AST::VarAttr>&       glbSymbols;
+        // 函数声明表：存储函数符号表项到函数声明AST节点的映射
         const std::map<FE::Sym::Entry*, FE::AST::FuncDeclStmt*>& funcDecls;
+        // 当前正在生成的函数（IR Function对象）
         Function*                                                curFunc;
+        // 当前正在生成的基本块（IR Block对象）
         Block*                                                   curBlock;
+
+        // 符号到寄存器的映射表（支持作用域嵌套）
+        // 用于查找变量对应的寄存器编号
         class RegTab
         {
           public:
+          // 作用域结构：每个作用域维护一个符号到寄存器的映射
             struct Scope
             {
-                std::map<FE::Sym::Entry*, size_t> sym2Reg;
-                Scope*                            parent;
+                std::map<FE::Sym::Entry*, size_t> sym2Reg;// 符号 -> 寄存器编号
+                Scope*                            parent;// 父作用域（用于作用域链查找）
 
                 Scope(Scope* parent = nullptr) : sym2Reg(), parent(parent) {}
                 ~Scope() = default;
             };
-            Scope* curScope;
+            Scope* curScope;// 当前作用域
 
           public:
             RegTab() : curScope(new Scope(nullptr)) {}
+            // ... 析构函数和成员函数 ...
             ~RegTab()
             {
                 Scope* scope = curScope;
@@ -76,7 +85,9 @@ namespace ME
             }
 
           public:
+            // 在当前作用域添加符号到寄存器的映射
             void   addSymbol(FE::Sym::Entry* entry, size_t reg) { curScope->sym2Reg[entry] = reg; }
+            // 从当前作用域开始向上查找符号对应的寄存器（支持作用域链）
             size_t getReg(FE::Sym::Entry* entry)
             {
                 Scope* scope = curScope;
@@ -87,8 +98,9 @@ namespace ME
                 }
                 return static_cast<size_t>(-1);
             }
-
+            // 进入新的作用域（创建子作用域）
             void enterScope() { curScope = new Scope(curScope); }
+            // 退出当前作用域（回到父作用域）
             void exitScope()
             {
                 ASSERT(curScope != nullptr && "No scope to exit");
@@ -97,8 +109,11 @@ namespace ME
                 curScope = parent;
             }
         } name2reg;
+        // 寄存器到变量属性的映射（用于获取变量的类型、维度等信息）
         std::map<size_t, FE::AST::VarAttr>        reg2attr;
-        std::map<size_t, bool>                    paramPtrTab;  // if the i-th param is a pointer or not
+        // 参数指针表：标记第i个参数是否为指针类型（用于数组参数处理）
+        std::map<size_t, bool>                    paramPtrTab;
+        // 左值表达式到指针操作数的映射（用于赋值时获取左值的地址）
         std::map<FE::AST::LeftValExpr*, Operand*> lval2ptr;
 
       public:
