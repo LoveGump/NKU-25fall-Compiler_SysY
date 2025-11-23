@@ -44,15 +44,16 @@ namespace ME
         virtual void        accept(Visitor& visitor) override    = 0;
         virtual void        accept(InsVisitor& visitor) override = 0;
 
+        // 是否为终止指令
         virtual bool isTerminator() const = 0;
     };
 
     class LoadInst : public Instruction
     {
       public:
-        DataType dt;
-        Operand* ptr;
-        Operand* res;
+        DataType dt;   // load 的数据类型
+        Operand* ptr;  // 指向要加载数据的地址
+        Operand* res;  // 存放加载结果的寄存器
 
       public:
         LoadInst(DataType t, Operand* p, Operand* d, const std::string& c = "")
@@ -89,12 +90,13 @@ namespace ME
         virtual bool isTerminator() const override { return false; }
     };
 
+    // 算术指令，包括加减乘除等
     class ArithmeticInst : public Instruction
     {
       public:
         DataType dt;
-        Operand* lhs;
-        Operand* rhs;
+        Operand* lhs;  // 左操作数
+        Operand* rhs;  // 右操作数
         Operand* res;
 
       public:
@@ -111,14 +113,15 @@ namespace ME
         virtual bool isTerminator() const override { return false; }
     };
 
+    // 整型比较指令
     class IcmpInst : public Instruction
     {
       public:
         DataType dt;
-        ICmpOp   cond;
+        ICmpOp   cond;  // 比较条件
         Operand* lhs;
         Operand* rhs;
-        Operand* res;
+        Operand* res;  // 存放比较结果的寄存器
 
       public:
         IcmpInst(DataType t, ICmpOp c, Operand* l, Operand* r, Operand* res)
@@ -134,6 +137,7 @@ namespace ME
         virtual bool isTerminator() const override { return false; }
     };
 
+    // 浮点比较指令
     class FcmpInst : public Instruction
     {
       public:
@@ -157,6 +161,7 @@ namespace ME
         virtual bool isTerminator() const override { return false; }
     };
 
+    // 分配指令
     class AllocaInst : public Instruction
     {
       public:
@@ -178,6 +183,7 @@ namespace ME
         virtual bool isTerminator() const override { return false; }
     };
 
+    // 条件分支指令
     class BrCondInst : public Instruction
     {
       public:
@@ -216,13 +222,14 @@ namespace ME
         virtual bool isTerminator() const override { return true; }
     };
 
+    // 全局变量声明指令
     class GlbVarDeclInst : public Instruction
     {
       public:
         DataType         dt;
-        std::string      name;
-        Operand*         init;
-        FE::AST::VarAttr initList;
+        std::string      name;      // 变量名
+        Operand*         init;      // 初始化值，若无则为nullptr
+        FE::AST::VarAttr initList;  // 初始化列表，针对数组等复杂类型
 
       public:
         GlbVarDeclInst(DataType t, const std::string& n, Operand* i = nullptr)
@@ -241,6 +248,7 @@ namespace ME
         virtual bool isTerminator() const override { return false; }
     };
 
+    // 函数调用指令
     class CallInst : public Instruction
     {
       public:
@@ -251,17 +259,22 @@ namespace ME
         using argOp   = Operand*;
         using argPair = std::pair<argType, argOp>;
         using argList = std::vector<argPair>;
-        argList  args;
-        Operand* res;
+        argList                  args;
+        Operand*                 res;
+        std::vector<std::string> argTypeStrs;// 类型字符串覆盖
 
       public:
+        // 空参数列表的构造函数
         CallInst(DataType rt, const std::string& fn, Operand* r = nullptr, const std::string& c = "")
             : Instruction(Operator::CALL, c), retType(rt), funcName(fn), args({}), res(r)
         {}
+        // 带参数列表的构造函数
         CallInst(DataType rt, const std::string& fn, argList a, Operand* r = nullptr, const std::string& c = "")
             : Instruction(Operator::CALL, c), retType(rt), funcName(fn), args(a), res(r)
         {}
         ~CallInst() override = default;
+
+        void setArgTypeStrs(const std::vector<std::string>& types) { argTypeStrs = types; }
 
       public:
         virtual std::string toString() const override;
@@ -271,6 +284,7 @@ namespace ME
         virtual bool isTerminator() const override { return false; }
     };
 
+    // 返回指令
     class RetInst : public Instruction
     {
       public:
@@ -291,13 +305,15 @@ namespace ME
         virtual bool isTerminator() const override { return true; }
     };
 
+    // 函数声明指令
     class FuncDeclInst : public Instruction
     {
       public:
-        DataType              retType;
-        std::string           funcName;
-        std::vector<DataType> argTypes;
-        bool                  isVarArg;
+        DataType                 retType;
+        std::string              funcName;
+        std::vector<DataType>    argTypes;    // 参数类型列表
+        bool                     isVarArg;     // 是否为可变参数函数
+        std::vector<std::string> argTypeStrs;  // 指针可选：类型字符串覆盖
 
       public:
         FuncDeclInst(DataType rt, const std::string& fn, std::vector<DataType> at = {}, bool is_va = false,
@@ -305,6 +321,8 @@ namespace ME
             : Instruction(Operator::FUNCDECL, c), retType(rt), funcName(fn), argTypes(at), isVarArg(is_va)
         {}
         ~FuncDeclInst() override = default;
+
+        void setArgTypeStrs(const std::vector<std::string>& types) { argTypeStrs = types; }
 
       public:
         virtual std::string toString() const override;
@@ -314,6 +332,7 @@ namespace ME
         virtual bool isTerminator() const override { return false; }
     };
 
+    // 函数定义指令
     class FuncDefInst : public Instruction
     {
       public:
@@ -324,13 +343,16 @@ namespace ME
         using argOp   = Operand*;
         using argPair = std::pair<argType, argOp>;
         using argList = std::vector<argPair>;
-        argList argRegs;
+        argList                  argRegs; // 参数列表：类型-寄存器对
+        std::vector<std::string> argTypeStrs; // 指针可选：类型字符串覆盖
 
       public:
         FuncDefInst(DataType rt, const std::string& fn, argList ar = {}, const std::string& c = "")
             : Instruction(Operator::FUNCDEF, c), retType(rt), funcName(fn), argRegs(ar)
         {}
         ~FuncDefInst() override = default;
+
+        void setArgTypeStrs(const std::vector<std::string>& types) { argTypeStrs = types; }
 
       public:
         virtual std::string toString() const override;
@@ -340,15 +362,18 @@ namespace ME
         virtual bool isTerminator() const override { return false; }
     };
 
+    // GetElementPtr指令 计算地址偏移
     class GEPInst : public Instruction
     {
+        // %r = getelementptr i32, ptr %p, i32 %i
+        // %r = getelementptr [5 x [10 x i32]], ptr %p, i32 %i, i32 %j
       public:
         DataType              dt;
         DataType              idxType;
-        Operand*              basePtr;
+        Operand*              basePtr;  // 基址指针
         Operand*              res;
-        std::vector<int>      dims;
-        std::vector<Operand*> idxs;
+        std::vector<int>      dims;  // 数组各维度大小，用于多维数组寻址计算
+        std::vector<Operand*> idxs;  // 索引操作数列表
 
       public:
         GEPInst(
@@ -365,6 +390,7 @@ namespace ME
         virtual bool isTerminator() const override { return false; }
     };
 
+    // 类型转换指令 i2fp
     class SI2FPInst : public Instruction
     {
       public:
@@ -383,6 +409,7 @@ namespace ME
         virtual bool isTerminator() const override { return false; }
     };
 
+    // 类型转换指令 fp2i
     class FP2SIInst : public Instruction
     {
       public:
@@ -401,6 +428,7 @@ namespace ME
         virtual bool isTerminator() const override { return false; }
     };
 
+    // 类型转换指令 zero extension（高位补0）
     class ZextInst : public Instruction
     {
       public:
@@ -423,6 +451,7 @@ namespace ME
         virtual bool isTerminator() const override { return false; }
     };
 
+    // Phi指令 ：if/while 等控制流汇合后用 φ 指令决定变量来自哪条路径
     class PhiInst : public Instruction
     {
       public:

@@ -12,6 +12,7 @@ namespace ME
 {
     class OperandFactory;
 
+    // 操作数基类
     class Operand
     {
       private:
@@ -27,12 +28,13 @@ namespace ME
         virtual size_t      getRegNum() const = 0;
     };
 
+    // 寄存器操作数
     class RegOperand : public Operand
     {
         friend class OperandFactory;
 
       public:
-        size_t regNum;
+        size_t regNum; // 寄存器编号
 
       private:
         RegOperand(size_t id) : Operand(OperandType::REG), regNum(id) {}
@@ -43,12 +45,13 @@ namespace ME
         virtual size_t      getRegNum() const override { return regNum; }
     };
 
+    // 立即数操作数 - 整型
     class ImmeI32Operand : public Operand
     {
         friend class OperandFactory;
 
       public:
-        int value;
+        int value; // 立即数值
 
       private:
         ImmeI32Operand(int v) : Operand(OperandType::IMMEI32), value(v) {}
@@ -59,12 +62,13 @@ namespace ME
         virtual size_t      getRegNum() const override { ERROR("ImmeI32Operand does not have a register"); }
     };
 
+    // 立即数操作数 - 浮点型
     class ImmeF32Operand : public Operand
     {
         friend class OperandFactory;
 
       public:
-        float value;
+        float value; // 立即数值
 
       private:
         ImmeF32Operand(float v) : Operand(OperandType::IMMEF32), value(v) {}
@@ -80,6 +84,7 @@ namespace ME
         virtual size_t getRegNum() const override { ERROR("ImmeF32Operand does not have a register"); }
     };
 
+    // 全局变量操作数
     class GlobalOperand : public Operand
     {
         friend class OperandFactory;
@@ -96,12 +101,13 @@ namespace ME
         virtual size_t      getRegNum() const override { ERROR("GlobalOperand does not have a register"); }
     };
 
+    // 标签操作数
     class LabelOperand : public Operand
     {
         friend class OperandFactory;
 
       public:
-        size_t lnum;
+        size_t lnum; // 标签编号
 
       private:
         LabelOperand(size_t num) : Operand(OperandType::LABEL), lnum(num) {}
@@ -115,12 +121,11 @@ namespace ME
     class OperandFactory
     {
       private:
-        std::map<int, ImmeI32Operand*>        ImmeI32OperandMap;
-        std::map<float, ImmeF32Operand*>      ImmeF32OperandMap;
-        std::map<size_t, RegOperand*>         RegOperandMap;
-        std::map<size_t, LabelOperand*>       LabelOperandMap;
-        std::map<std::string, GlobalOperand*> GlobalOperandMap;
-
+        std::map<int, ImmeI32Operand*>        ImmeI32OperandMap; // 整型立即数操作数缓存
+        std::map<float, ImmeF32Operand*>      ImmeF32OperandMap; // 浮点型立即数操作数缓存
+        std::map<size_t, RegOperand*>         RegOperandMap;      // 寄存器操作数缓存
+        std::map<size_t, LabelOperand*>       LabelOperandMap;    // 标签操作数缓存
+        std::map<std::string, GlobalOperand*> GlobalOperandMap;   // 全局变量操作数缓存
         OperandFactory() = default;
         ~OperandFactory();
 

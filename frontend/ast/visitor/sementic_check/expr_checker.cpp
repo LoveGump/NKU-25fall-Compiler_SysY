@@ -7,7 +7,9 @@ namespace FE::AST
     {
         // TODO(Lab3-1): 实现左值表达式的语义检查
         // 检查变量是否存在，处理数组下标访问，进行类型检查和常量折叠
+
         if(!node.entry){
+            // 无效的左值表达式
             this->errors.emplace_back("Invalid left value expression at line " + std::to_string(node.line_num));
             return false;
         }
@@ -17,14 +19,16 @@ namespace FE::AST
             this->errors.emplace_back("Undeclared variable '" + node.entry->getName() + "' at line " + std::to_string(node.line_num));
             return false;
         }
+    
         bool success = true;
-        size_t idxCnt = node.indices ? node.indices->size() : 0;  // 下标数量
+        // 处理数组下标访问
+        size_t idxCnt = node.indices ? node.indices->size() : 0;
         if(idxCnt > 0){
-            // 访问数组下标表达式，进行类型检查
+            // 是数组，访问数组下标表达式，进行类型检查
             for(auto* indexExpr : *(node.indices)){
                 if(!indexExpr) continue;
                 success = apply(*this, *indexExpr) && success;
-                // 检查下标类型是否为整数类型
+                // 检查下标类型是否为整数类型，或者可以隐式转换为整型
                 Type* idxType = indexExpr->attr.val.value.type;
                 if (!idxType || idxType->getTypeGroup() == TypeGroup::POINTER || 
                     idxType->getBaseType() == Type_t::VOID)
@@ -35,7 +39,7 @@ namespace FE::AST
                 }
             }
         }
-        // 数组维度检查
+        // 数组维度检查，不能超过声明的维度
         if(idxCnt > varAttr->arrayDims.size()){
             this->errors.emplace_back("Too many indices for array variable '" + node.entry->getName() + "' at line " + std::to_string(node.line_num));
             return false;
@@ -128,11 +132,9 @@ namespace FE::AST
     {
         // TODO(Lab3-1): 实现二元表达式的语义检查
         // 访问左右子表达式，检查操作数类型，调用类型推断
-        // (void)node;
-        // TODO("Lab3-1: Implement BinaryExpr semantic checking");
 
         // 访问左右子表达式并进行类型推断/常量折叠
-        bool ok = true;
+        bool success = true;
         if (!node.lhs || !node.rhs)
         {
             // 无效操作数
@@ -141,8 +143,8 @@ namespace FE::AST
         }
 
         // 检查左右操作数
-        ok &= apply(*this, *node.lhs);
-        ok &= apply(*this, *node.rhs);
+        success &= apply(*this, *node.lhs);
+        success &= apply(*this, *node.rhs);
 
         // 禁止 void 作为二元运算任一操作数
         Type* lty = node.lhs->attr.val.value.type;
@@ -166,7 +168,7 @@ namespace FE::AST
                 // 非左值不可赋值
                 errors.emplace_back(
                     "Left operand of assignment is not assignable at line " + std::to_string(node.line_num));
-                ok = false;
+                success = false;
             }
             else
             {
@@ -177,13 +179,13 @@ namespace FE::AST
                     // const 变量不可赋值
                     errors.emplace_back("Cannot assign to const variable '" + lval->entry->getName() + "' at line " +
                                         std::to_string(node.line_num));
-                    ok = false;
+                    success = false;
                 }
             }
         }
 
         // 若是赋值，再做一次类型兼容检查（指针与非指针不可互赋）
-        if (node.op == Operator::ASSIGN && ok)
+        if (node.op == Operator::ASSIGN && success)
         {
             Type* lty2 = node.lhs->attr.val.value.type;
             Type* rty2 = node.rhs->attr.val.value.type;
@@ -195,7 +197,14 @@ namespace FE::AST
                 {
                     errors.emplace_back(
                         "Assignment type mismatch (array vs scalar) at line " + std::to_string(node.line_num));
-                    ok = false;
+                    success = false;
+                }
+            
+                if( lhsArrayLike && rhsArrayLike && lty2 != rty2 )
+                {
+                    errors.emplace_back(
+                        "Assignment type mismatch (different pointer types) at line " + std::to_string(node.line_num));
+                    success = false;
                 }
             }
         }
@@ -204,20 +213,13 @@ namespace FE::AST
         ExprValue result   = typeInfer(node.lhs->attr.val, node.rhs->attr.val, node.op, node, hasError);
         node.attr.op       = node.op;
         node.attr.val      = result;
-        return ok && !hasError;
+        return success && !hasError;
     }
 
     bool ASTChecker::visit(CallExpr& node)
     {
         // TODO(Lab3-1): 实现函数调用表达式的语义检查
         // 检查函数是否存在，访问实参列表，检查参数数量和类型匹配
-        // (void)node;
-        // TODO("Lab3-1: Implement CallExpr semantic checking");
-
-        // 函数调用检查：
-        // 1) 函数是否存在
-        // 2) 逐个访问实参
-        // 3) 检查参数数量和类型是否匹配（数组形参退化为指针）
 
         if (!node.func)
         {
@@ -228,6 +230,7 @@ namespace FE::AST
             return false;
         }
 
+        // 检查函数是否存在于函数声明表中
         auto it = funcDecls.find(node.func);
         if (it == funcDecls.end() || !it->second)
         {
@@ -243,29 +246,31 @@ namespace FE::AST
         FuncDeclStmt* decl = it->second;
 
         // 访问实参
-        bool   ok       = true;
+        bool   success       = true;
         size_t argCount = node.args ? node.args->size() : 0;
         if (node.args)
         {
+            // 访问每个实参表达式
             for (auto* a : *node.args)
             {
                 // 访问实参
                 if (!a) continue;
-                ok &= apply(*this, *a);
+                success &= apply(*this, *a);
             }
         }
 
+        // 参数数量检查
         size_t paramCount = decl->params ? decl->params->size() : 0;
         if (argCount != paramCount)
         {
             // 参数数量不匹配
             errors.emplace_back("Argument count mismatch in call to '" + node.func->getName() + "' at line " +
                                 std::to_string(node.line_num));
-            ok = false;
+            success = false;
         }
 
         // 类型匹配检查
-        if (ok && node.args && decl->params)
+        if (success && node.args && decl->params)
         {
             for (size_t i = 0; i < paramCount && i < argCount; ++i)
             {
@@ -273,13 +278,13 @@ namespace FE::AST
                 auto*      p        = (*decl->params)[i];
                 Type*      pty      = p->type;
                 const bool isArr    = (p->dims && !p->dims->empty());
-                Type*      expected = isArr ? TypeFactory::getPtrType(pty) : pty;
+                Type*      expected = isArr ? TypeFactory::getPtrType(pty) : pty; // 形参为数组时视为指针类型
                 ExprNode*  argExpr  = (*node.args)[i];
                 Type*      actual   = argExpr ? argExpr->attr.val.value.type : voidType;
 
                 if (!expected || !actual)
                 {
-                    ok = false;
+                    success = false;
                     errors.emplace_back("Invalid parameter/argument type at line " + std::to_string(node.line_num));
                     continue;
                 }
@@ -287,7 +292,7 @@ namespace FE::AST
                 // 禁止将 void 作为实参传入任何参数
                 if (actual->getBaseType() == Type_t::VOID)
                 {
-                    ok = false;
+                    success = false;
                     errors.emplace_back("Void value passed to parameter " + std::to_string(i) + " in call to '" +
                                         node.func->getName() + "' at line " + std::to_string(node.line_num));
                     continue;
@@ -300,17 +305,17 @@ namespace FE::AST
                 {
                     if (actual->getTypeGroup() != TypeGroup::POINTER)
                     {
-                        ok = false;
                         errors.emplace_back("Argument type mismatch for parameter " + std::to_string(i) +
                                             " in call to '" + node.func->getName() + "' at line " +
                                             std::to_string(node.line_num));
+                        success = false;
                     }
                 }
                 else
                 {
                     if (actual->getTypeGroup() == TypeGroup::POINTER)
                     {
-                        ok = false;
+                        success = false;
                         errors.emplace_back("Pointer passed to non-pointer parameter " + std::to_string(i) +
                                             " in call to '" + node.func->getName() + "' at line " +
                                             std::to_string(node.line_num));
@@ -321,25 +326,23 @@ namespace FE::AST
 
         node.attr.val.value.type  = decl->retType;
         node.attr.val.isConstexpr = false;
-        return ok;
+        return success;
     }
 
     bool ASTChecker::visit(CommaExpr& node)
     {
         // TODO(Lab3-1): 实现逗号表达式的语义检查
         // 依序访问各子表达式，结果为最后一个表达式的属性
-        // (void)node;
-        // TODO("Lab3-1: Implement CommaExpr semantic checking");
-        // 逗号表达式：依序访问，结果为最后一个表达式的属性
+
         if (!node.exprs || node.exprs->empty()) return true;
-        bool ok = true;
+        bool success = true;
         for (size_t i = 0; i < node.exprs->size(); ++i)
         {
             ExprNode* e = (*node.exprs)[i];
             if (!e) continue;
-            ok &= apply(*this, *e);
+            success &= apply(*this, *e);
             if (i + 1 == node.exprs->size()) node.attr.val = e->attr.val;
         }
-        return ok;
+        return success;
     }
 }  // namespace FE::AST

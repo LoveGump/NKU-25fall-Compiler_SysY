@@ -6,15 +6,16 @@
 
 namespace ME
 {
+  // 函数类，包含函数定义指令和基本块列表
     class Function : public Visitable
     {
       public:
-        FuncDefInst*             funcDef;
-        std::map<size_t, Block*> blocks;
+        FuncDefInst*             funcDef; // 函数定义指令
+        std::map<size_t, Block*> blocks; // 函数基本块列表，key为基本块编号
 
       private:
-        size_t maxLabel;
-        size_t maxReg;
+        size_t maxLabel; // 当前函数中最大的基本块编号
+        size_t maxReg;   // 当前函数中最大的寄存器编号
 
       public: /*以下2个变量与循环优化相关，如果你正在做Lab3，可以暂时忽略它们 */
         size_t loopStartLabel;

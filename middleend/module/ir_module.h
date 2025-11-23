@@ -8,9 +8,9 @@ namespace ME
     class Module : public Visitable
     {
       public:
-        std::vector<GlbVarDeclInst*> globalVars;
-        std::vector<FuncDeclInst*>   funcDecls;
-        std::vector<Function*>       functions;
+        std::vector<GlbVarDeclInst*> globalVars; // 全局变量列表
+        std::vector<FuncDeclInst*>   funcDecls;  // 函数声明列表
+        std::vector<Function*>       functions;  // 函数定义列表
 
       public:
         Module();

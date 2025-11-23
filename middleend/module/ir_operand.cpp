@@ -11,6 +11,8 @@ namespace ME
         for (auto& [k, v] : GlobalOperandMap) delete v;
     }
 
+    // 内部查找缓存，若不存在则 new 一个对象并缓存后返回同一指针
+    
     RegOperand* OperandFactory::getRegOperand(size_t id)
     {
         auto it = RegOperandMap.find(id);
@@ -82,6 +84,7 @@ ME::LabelOperand*   getLabelOperand(size_t num) { return ME::ofInstance.getLabel
 
 std::ostream& operator<<(std::ostream& os, const ME::Operand* op)
 {
+    // 重载 << 运算符，输出指针的时候，其实是调用 toString 方法
     os << op->toString();
     return os;
 }

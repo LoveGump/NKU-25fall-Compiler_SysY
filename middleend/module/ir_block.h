@@ -11,8 +11,8 @@ namespace ME
     class Block : public Visitable
     {
       public:
-        std::deque<Instruction*> insts;
-        size_t                   blockId;
+        std::deque<Instruction*> insts; // 指令列表
+        size_t                   blockId; // 基本块编号
 
       public:
 #ifndef ENABLE_IRBLOCK_COMMENT
