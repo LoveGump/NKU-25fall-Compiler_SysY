@@ -10,6 +10,8 @@
 #include <middleend/module/ir_module.h>
 #include <debug.h>
 #include <list>
+#include <string>
+#include <vector>
 
 /*
  * Lab 3-2: 中间代码生成 (IR Generation)
@@ -49,13 +51,14 @@ namespace ME
         const std::map<FE::Sym::Entry*, FE::AST::FuncDeclStmt*>& funcDecls;
         Function*                                                curFunc;
         Block*                                                   curBlock;
+        Block*                                                   funcEntryBlock;  // 当前函数的入口基本块
         class RegTab
         {
           public:
             struct Scope
             {
-                std::map<FE::Sym::Entry*, size_t> sym2Reg;
-                Scope*                            parent;
+                std::map<FE::Sym::Entry*, size_t> sym2Reg;  // 符号表项 -> 寄存器
+                Scope*                            parent;   // 父作用域指针
 
                 Scope(Scope* parent = nullptr) : sym2Reg(), parent(parent) {}
                 ~Scope() = default;
@@ -76,9 +79,13 @@ namespace ME
             }
 
           public:
-            void   addSymbol(FE::Sym::Entry* entry, size_t reg) { curScope->sym2Reg[entry] = reg; }
-            size_t getReg(FE::Sym::Entry* entry)
+            // 添加符号表项到寄存器映射
+            void addSymbol(FE::Sym::Entry* entry, size_t reg) { curScope->sym2Reg[entry] = reg; }
+
+            // 获取符号表项对应的寄存器 ，-1 表示未找到
+            size_t getReg(FE::Sym::Entry* entry) const
             {
+                // 从当前向上找
                 Scope* scope = curScope;
                 while (scope)
                 {
@@ -96,10 +103,21 @@ namespace ME
                 delete curScope;
                 curScope = parent;
             }
-        } name2reg;
-        std::map<size_t, FE::AST::VarAttr>        reg2attr;
-        std::map<size_t, bool>                    paramPtrTab;  // if the i-th param is a pointer or not
-        std::map<FE::AST::LeftValExpr*, Operand*> lval2ptr;
+        } name2reg;  // 符号表项 -> 寄存器
+
+        std::map<size_t, FE::AST::VarAttr>        reg2attr;     // 寄存器 -> 变量属性
+        std::map<size_t, bool>                    paramPtrTab;  // 第 i 个参数是否为指针
+        std::map<FE::AST::LeftValExpr*, Operand*> lval2ptr;     // 左值表达式 -> 地址指令
+
+        // ---- new fields ----
+        DataType curRetType;  // 当前函数的返回值类型
+        int      scopeDepth;  // 当前作用域深度
+        struct LoopContext    // 与循环相关的上下文信息
+        {
+            size_t continueLabel;  // continue标签
+            size_t breakLabel;     // break标签
+        };
+        std::vector<LoopContext> loopStack;  // 循环上下文栈
 
       public:
         ASTCodeGen(const std::map<FE::Sym::Entry*, FE::AST::VarAttr>& glbSymbols,
@@ -108,10 +126,14 @@ namespace ME
               funcDecls(funcDecls),
               curFunc(nullptr),
               curBlock(nullptr),
+              funcEntryBlock(nullptr),
               name2reg(),
               reg2attr(),
               paramPtrTab(),
-              lval2ptr()
+              lval2ptr(),
+              curRetType(DataType::VOID),
+              scopeDepth(0),
+              loopStack()
         {}
 
       private:
@@ -134,6 +156,23 @@ namespace ME
         void visit(FE::AST::CommaExpr& node, Module* m) override;
 
         // Statement nodes
+        // ---new functions ---
+        Operand* ensureLValueAddress(FE::AST::LeftValExpr& node, Module* m, size_t extraZeros = 0);  // 确保左值地址
+        const FE::AST::VarAttr* getVarAttr(FE::Sym::Entry* entry) const;                             // 获取变量属性
+        size_t                  ensureType(size_t reg, DataType from, DataType to);
+        std::vector<int>        collectArrayDims(const std::vector<FE::AST::ExprNode*>* dimExprs) const;
+        std::string             formatIRType(FE::AST::Type* type, bool asPointer = false) const;
+        std::string formatIRType(FE::AST::Type* type, const std::vector<int>& arrayDims, bool asPointer = false) const;
+        void        pushLoopContext(size_t continueLabel, size_t breakLabel);
+        void        popLoopContext();
+        LoopContext currentLoopContext() const;
+        void        insertAllocaInst(Instruction* inst);
+        void        fillGlobalArrayInit(FE::AST::InitDecl* init, FE::AST::Type* elemType, const std::vector<int>& dims,
+                   std::vector<FE::AST::VarValue>& storage) const;
+        void        emitRuntimeArrayInit(
+                   FE::AST::InitDecl* init, Operand* basePtr, DataType elemDataType, const std::vector<int>& dims, Module* m);
+        FE::AST::VarValue makeZeroValue(FE::AST::Type* type) const;
+
         void visit(FE::AST::ExprStmt& node, Module* m) override;
         void visit(FE::AST::FuncDeclStmt& node, Module* m) override;
         void visit(FE::AST::VarDeclStmt& node, Module* m) override;

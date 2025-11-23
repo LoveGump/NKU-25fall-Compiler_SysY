@@ -1,5 +1,109 @@
 #include <middleend/visitor/codegen/ast_codegen.h>
 #include <debug.h>
+#include <algorithm>
+#include <sstream>
+#include <string>
+
+namespace
+{
+    using FE::AST::InitDecl;
+    using FE::AST::Initializer;
+    using FE::AST::InitializerList;
+    using FE::AST::Type;
+    using FE::AST::VarValue;
+
+    void assignScalarInit(InitDecl* init, Type* elemType, size_t offset, std::vector<VarValue>& storage)
+    {
+        if (!init || offset >= storage.size()) return;
+        if (auto* list = dynamic_cast<InitializerList*>(init))
+        {
+            if (!list->init_list) return;
+            size_t idx = offset;
+            for (auto* child : *(list->init_list))
+            {
+                assignScalarInit(child, elemType, idx, storage);
+                ++idx;
+                if (idx >= storage.size()) break;
+            }
+            return;
+        }
+
+        auto* scalar = dynamic_cast<Initializer*>(init);
+        if (!scalar || !scalar->init_val) return;
+
+        const auto& val = scalar->init_val->attr.val.value;
+        if (!elemType)
+        {
+            storage[offset] = val;
+            return;
+        }
+
+        switch (elemType->getBaseType())
+        {
+            case FE::AST::Type_t::BOOL: storage[offset] = VarValue(val.getBool()); break;
+            case FE::AST::Type_t::FLOAT: storage[offset] = VarValue(val.getFloat()); break;
+            case FE::AST::Type_t::LL: storage[offset] = VarValue(val.getLL()); break;
+            case FE::AST::Type_t::INT:
+            default: storage[offset] = VarValue(val.getInt()); break;
+        }
+    }
+
+    size_t aggregateArrayInit(InitDecl* init, Type* elemType, size_t dimIdx, const std::vector<int>& dims,
+        const std::vector<size_t>& strides, size_t offset, std::vector<VarValue>& storage)
+    {
+        if (!init) return 0;
+        if (dimIdx >= dims.size())
+        {
+            assignScalarInit(init, elemType, offset, storage);
+            return 1;
+        }
+
+        auto* list = dynamic_cast<InitializerList*>(init);
+        if (!list) { return aggregateArrayInit(init, elemType, dimIdx + 1, dims, strides, offset, storage); }
+
+        if (!list->init_list) return 0;
+
+        size_t blockSize     = strides.empty() ? 1 : strides[dimIdx];
+        size_t elementCount  = static_cast<size_t>(std::max(dims[dimIdx], 0));
+        size_t idx           = 0;
+        size_t innerProgress = 0;
+        size_t totalConsumed = 0;
+
+        for (auto* child : *(list->init_list))
+        {
+            if (!child) continue;
+            if (idx >= elementCount) break;
+
+            bool   childIsList   = dynamic_cast<InitializerList*>(child) != nullptr;
+            size_t childConsumed = aggregateArrayInit(
+                child, elemType, dimIdx + 1, dims, strides, offset + idx * blockSize + innerProgress, storage);
+
+            totalConsumed += childConsumed;
+
+            if (childIsList)
+            {
+                innerProgress = 0;
+                ++idx;
+            }
+            else
+            {
+                innerProgress += childConsumed;
+                while (innerProgress >= blockSize)
+                {
+                    innerProgress -= blockSize;
+                    ++idx;
+                    if (idx >= elementCount)
+                    {
+                        innerProgress = 0;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return totalConsumed;
+    }
+}  // namespace
 
 namespace ME
 {
@@ -14,13 +118,17 @@ namespace ME
         decls.emplace_back(new FuncDeclInst(DataType::I32, "getch"));
 
         // int getarray(int a[]);
-        decls.emplace_back(new FuncDeclInst(DataType::I32, "getarray", {DataType::PTR}));
+        auto* getarray = new FuncDeclInst(DataType::I32, "getarray", {DataType::PTR});
+        getarray->setArgTypeStrs({"i32*"});
+        decls.emplace_back(getarray);
 
         // float getfloat();
         decls.emplace_back(new FuncDeclInst(DataType::F32, "getfloat"));
 
         // int getfarray(float a[]);
-        decls.emplace_back(new FuncDeclInst(DataType::I32, "getfarray", {DataType::PTR}));
+        auto* getfarray = new FuncDeclInst(DataType::I32, "getfarray", {DataType::PTR});
+        getfarray->setArgTypeStrs({"float*"});
+        decls.emplace_back(getfarray);
 
         // void putint(int a);
         decls.emplace_back(new FuncDeclInst(DataType::VOID, "putint", {DataType::I32}));
@@ -29,13 +137,17 @@ namespace ME
         decls.emplace_back(new FuncDeclInst(DataType::VOID, "putch", {DataType::I32}));
 
         // void putarray(int n, int a[]);
-        decls.emplace_back(new FuncDeclInst(DataType::VOID, "putarray", {DataType::I32, DataType::PTR}));
+        auto* putarray = new FuncDeclInst(DataType::VOID, "putarray", {DataType::I32, DataType::PTR});
+        putarray->setArgTypeStrs({"i32", "i32*"});
+        decls.emplace_back(putarray);
 
         // void putfloat(float a);
         decls.emplace_back(new FuncDeclInst(DataType::VOID, "putfloat", {DataType::F32}));
 
         // void putfarray(int n, float a[]);
-        decls.emplace_back(new FuncDeclInst(DataType::VOID, "putfarray", {DataType::I32, DataType::PTR}));
+        auto* putfarray = new FuncDeclInst(DataType::VOID, "putfarray", {DataType::I32, DataType::PTR});
+        putfarray->setArgTypeStrs({"i32", "float*"});
+        decls.emplace_back(putfarray);
 
         // void starttime(int lineno);
         decls.emplace_back(new FuncDeclInst(DataType::VOID, "_sysy_starttime", {DataType::I32}));
@@ -44,16 +156,340 @@ namespace ME
         decls.emplace_back(new FuncDeclInst(DataType::VOID, "_sysy_stoptime", {DataType::I32}));
 
         // llvm memset
-        decls.emplace_back(new FuncDeclInst(
-            DataType::VOID, "llvm.memset.p0.i32", {DataType::PTR, DataType::I8, DataType::I32, DataType::I1}));
+        auto* memsetDecl = new FuncDeclInst(
+            DataType::VOID, "llvm.memset.p0.i32", {DataType::PTR, DataType::I8, DataType::I32, DataType::I1});
+        memsetDecl->setArgTypeStrs({"i8*", "i8", "i32", "i1"});
+        decls.emplace_back(memsetDecl);
     }
 
+    // 获取变量属性
+    const FE::AST::VarAttr* ASTCodeGen::getVarAttr(FE::Sym::Entry* entry) const
+    {
+        // 检查符号表项是否有效
+        if (!entry) return nullptr;
+
+        // 找到对应的寄存器编号
+        size_t reg = name2reg.getReg(entry);
+        if (reg != static_cast<size_t>(-1))
+        {
+            // 如果不在作用域中，直接返回变量属性
+            auto locIt = reg2attr.find(reg);
+            if (locIt != reg2attr.end()) return &locIt->second;
+        }
+
+        // 去全局符号表中查找
+        auto glbIt = glbSymbols.find(entry);
+        if (glbIt != glbSymbols.end()) return &glbIt->second;
+
+        // 未找到返回空指针
+        return nullptr;
+    }
+
+    // 处理全局变量声明
     void ASTCodeGen::handleGlobalVarDecl(FE::AST::VarDeclStmt* decls, Module* m)
     {
         // TODO(Lab 3-2): 生成全局变量声明 IR（支持标量与数组的初值）
-        (void)decls;
-        (void)m;
-        TODO("Lab3-2: Implement global var declaration IR generation");
+
+        // 检查变量声明语句是否有效
+        if (!decls || !decls->decl || !decls->decl->decls) return;
+
+        // 遍历变量声明列表
+        for (auto* vd : *(decls->decl->decls))
+        {
+            if (!vd) continue;
+            // 左值表达式必须有效且关联符号表项
+            auto* lval = dynamic_cast<FE::AST::LeftValExpr*>(vd->lval);
+            if (!lval || !lval->entry) continue;
+
+            // 获取变量属性
+            const FE::AST::VarAttr* attr = getVarAttr(lval->entry);
+            if (!attr) continue;  // 跳过无效变量属性
+
+            DataType elemType = convert(attr->type);  // 获取变量的基本数据类型
+            if (attr->arrayDims.empty())
+            {
+                // 标量变量
+                Operand* initOp = nullptr;
+                if (!attr->initList.empty())
+                {
+                    // 如果有初始值 根据类型生成对应的立即数操作数
+                    if (elemType == DataType::I32 || elemType == DataType::I1 || elemType == DataType::I8)
+                        initOp = getImmeI32Operand(attr->initList[0].getInt());
+                    else if (elemType == DataType::F32)
+                        initOp = getImmeF32Operand(attr->initList[0].getFloat());
+                }
+                // 没有初始值则为零初始化
+
+                // 添加全局变量声明指令到模块
+                m->globalVars.emplace_back(new GlbVarDeclInst(elemType, lval->entry->getName(), initOp));
+            }
+            else
+            {
+                // 数组变量
+                FE::AST::VarAttr arrayAttr = *attr;
+                size_t           totalSize = 1;  // 计算数组总大小
+                // 变量初始化
+                for (int dim : arrayAttr.arrayDims) totalSize *= static_cast<size_t>(std::max(dim, 0));
+                if (totalSize == 0) totalSize = 1;  // 防止零大小数组
+                // 初始化数组元素为零值
+                arrayAttr.initList.assign(totalSize, makeZeroValue(arrayAttr.type));
+                // 如果有初始值 根据初始值填充数组
+                if (vd->init) fillGlobalArrayInit(vd->init, arrayAttr.type, arrayAttr.arrayDims, arrayAttr.initList);
+                m->globalVars.emplace_back(new GlbVarDeclInst(elemType, lval->entry->getName(), arrayAttr));
+            }
+        }
+    }
+
+    // 寄存器中的值 被转为指定类型，返回转换后的寄存器编号
+    size_t ASTCodeGen::ensureType(size_t reg, DataType from, DataType to)
+    {
+        if (reg == static_cast<size_t>(-1) || from == to || to == DataType::UNK || from == DataType::UNK) return reg;
+
+        auto insts = createTypeConvertInst(from, to, reg);
+        // 插入转换指令
+        for (auto* inst : insts) insert(inst);
+        if (insts.empty()) return reg;
+        return getMaxReg();
+    }
+
+    // 收集数组维度信息 收集给定表达式列表中的维度值
+    std::vector<int> ASTCodeGen::collectArrayDims(const std::vector<FE::AST::ExprNode*>* dimExprs) const
+    {
+        std::vector<int> ret;
+        if (!dimExprs) return ret;
+        for (auto* expr : *dimExprs)
+        {
+            if (!expr) continue;
+            ret.push_back(expr->attr.val.getInt());
+        }
+        return ret;
+    }
+
+    std::string ASTCodeGen::formatIRType(FE::AST::Type* type, bool asPointer) const
+    {
+        static const std::vector<int> emptyDims;
+        return formatIRType(type, emptyDims, asPointer);
+    }
+
+    std::string ASTCodeGen::formatIRType(FE::AST::Type* type, const std::vector<int>& arrayDims, bool asPointer) const
+    {
+        using namespace FE::AST;
+        bool  isPointer = asPointer;
+        Type* baseType  = type;
+        if (baseType && baseType->getTypeGroup() == TypeGroup::POINTER)
+        {
+            isPointer = true;
+            if (auto* ptrTy = dynamic_cast<PtrType*>(baseType)) baseType = ptrTy->base;
+        }
+
+        std::string baseStr = "void";
+        if (baseType)
+        {
+            switch (baseType->getBaseType())
+            {
+                case Type_t::BOOL: baseStr = "i1"; break;
+                case Type_t::INT:
+                case Type_t::LL: baseStr = "i32"; break;
+                case Type_t::FLOAT: baseStr = "float"; break;
+                case Type_t::VOID: baseStr = "void"; break;
+                default: baseStr = "unk"; break;
+            }
+        }
+
+        auto wrapWithArrayDims = [&](const std::string& elem) {
+            size_t            validDims = 0;
+            std::stringstream ss;
+            for (int dim : arrayDims)
+            {
+                if (dim <= 0) continue;
+                ss << "[" << dim << " x ";
+                ++validDims;
+            }
+            if (validDims == 0) return elem;
+            ss << elem;
+            for (size_t i = 0; i < validDims; ++i) ss << "]";
+            return ss.str();
+        };
+
+        std::string typeStr = wrapWithArrayDims(baseStr);
+        if (isPointer) typeStr += "*";
+        return typeStr;
+    }
+
+    void ASTCodeGen::pushLoopContext(size_t continueLabel, size_t breakLabel)
+    {
+        loopStack.push_back({continueLabel, breakLabel});
+    }
+
+    void ASTCodeGen::popLoopContext()
+    {
+        ASSERT(!loopStack.empty() && "Loop context underflow");
+        loopStack.pop_back();
+    }
+
+    ASTCodeGen::LoopContext ASTCodeGen::currentLoopContext() const
+    {
+        ASSERT(!loopStack.empty() && "Loop context unavailable");
+        return loopStack.back();
+    }
+
+    void ASTCodeGen::insertAllocaInst(Instruction* inst)
+    {
+        if (!funcEntryBlock)
+        {
+            insert(inst);
+            return;
+        }
+
+        if (curBlock == funcEntryBlock)
+        {
+            funcEntryBlock->insertBack(inst);
+            return;
+        }
+
+        funcEntryBlock->insertFront(inst);
+    }
+
+    // 生成类型对应的零值
+    FE::AST::VarValue ASTCodeGen::makeZeroValue(FE::AST::Type* type) const
+    {
+        if (!type) return FE::AST::VarValue(0);
+        switch (type->getBaseType())
+        {
+            case FE::AST::Type_t::BOOL: return FE::AST::VarValue(false);
+            case FE::AST::Type_t::FLOAT: return FE::AST::VarValue(0.0f);
+            case FE::AST::Type_t::LL: return FE::AST::VarValue(static_cast<long long>(0));
+            case FE::AST::Type_t::INT:
+            default: return FE::AST::VarValue(0);
+        }
+    }
+
+    // 填充全局数组初始值
+    void ASTCodeGen::fillGlobalArrayInit(FE::AST::InitDecl* init, FE::AST::Type* elemType, const std::vector<int>& dims,
+        std::vector<FE::AST::VarValue>& storage) const
+    {
+        if (!init) return;  // 无初始值直接返回
+
+        // 计算数组每一维的步长
+        std::vector<size_t> strides(dims.size(), 1);
+        for (int i = static_cast<int>(dims.size()) - 2; i >= 0; --i)
+        {
+            strides[i] = strides[i + 1] * static_cast<size_t>(dims[i + 1]);
+        }
+
+        ::aggregateArrayInit(init, elemType, 0, dims, strides, 0, storage);
+    }
+
+    void ASTCodeGen::emitRuntimeArrayInit(
+        FE::AST::InitDecl* init, Operand* basePtr, DataType elemDataType, const std::vector<int>& dims, Module* m)
+    {
+        if (!init || dims.empty()) return;
+
+        std::vector<size_t> strides(dims.size(), 1);
+        for (int i = static_cast<int>(dims.size()) - 2; i >= 0; --i)
+        {
+            strides[i] = strides[i + 1] * static_cast<size_t>(std::max(dims[i + 1], 0));
+        }
+
+        auto emitScalar = [&](auto&& self, FE::AST::InitDecl* node, size_t curOffset) -> void {
+            if (!node) return;
+
+            if (auto* list = dynamic_cast<FE::AST::InitializerList*>(node))
+            {
+                if (!list->init_list) return;
+                size_t localOffset = curOffset;
+                for (auto* child : *(list->init_list))
+                {
+                    self(self, child, localOffset);
+                    ++localOffset;
+                }
+                return;
+            }
+
+            auto* scalar = dynamic_cast<FE::AST::Initializer*>(node);
+            if (!scalar || !scalar->init_val) return;
+
+            apply(*this, *(scalar->init_val), m);
+            size_t   valueReg  = getMaxReg();
+            DataType valueType = convert(scalar->init_val->attr.val.value.type);
+            if (valueType == DataType::UNK) valueType = elemDataType;
+            valueReg = ensureType(valueReg, valueType, elemDataType);
+
+            std::vector<Operand*> idxOps;
+            idxOps.reserve(dims.size() + 1);
+            idxOps.push_back(getImmeI32Operand(0));
+
+            size_t remaining = curOffset;
+            for (size_t i = 0; i < dims.size(); ++i)
+            {
+                size_t stride = (i < strides.size()) ? strides[i] : 1;
+                if (stride == 0) stride = 1;
+                size_t idxVal  = remaining / stride;
+                int    dimSize = std::max(dims[i], 0);
+                if (dimSize > 0) idxVal %= static_cast<size_t>(dimSize);
+                idxOps.push_back(getImmeI32Operand(static_cast<int>(idxVal)));
+                remaining -= idxVal * stride;
+            }
+
+            size_t gepReg = getNewRegId();
+            insert(createGEP_I32Inst(elemDataType, basePtr, dims, idxOps, gepReg));
+            insert(createStoreInst(elemDataType, valueReg, getRegOperand(gepReg)));
+        };
+
+        auto emitArray = [&](auto&& self, FE::AST::InitDecl* node, size_t dimIdx, size_t offset) -> size_t {
+            if (!node) return 0;
+            if (dimIdx >= dims.size())
+            {
+                emitScalar(emitScalar, node, offset);
+                return 1;
+            }
+
+            auto* list = dynamic_cast<FE::AST::InitializerList*>(node);
+            if (!list) { return self(self, node, dimIdx + 1, offset); }
+            if (!list->init_list) return 0;
+
+            size_t blockSize = (dimIdx < strides.size()) ? strides[dimIdx] : 1;
+            if (blockSize == 0) blockSize = 1;
+            size_t elementCount = static_cast<size_t>(std::max(dims[dimIdx], 0));
+
+            size_t idx           = 0;
+            size_t innerProgress = 0;
+            size_t totalConsumed = 0;
+
+            for (auto* child : *(list->init_list))
+            {
+                if (!child) continue;
+                if (idx >= elementCount) break;
+
+                bool   childIsList   = dynamic_cast<FE::AST::InitializerList*>(child) != nullptr;
+                size_t childConsumed = self(self, child, dimIdx + 1, offset + idx * blockSize + innerProgress);
+                totalConsumed += childConsumed;
+
+                if (childIsList)
+                {
+                    innerProgress = 0;
+                    ++idx;
+                }
+                else
+                {
+                    innerProgress += childConsumed;
+                    while (innerProgress >= blockSize)
+                    {
+                        innerProgress -= blockSize;
+                        ++idx;
+                        if (idx >= elementCount)
+                        {
+                            innerProgress = 0;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return totalConsumed;
+        };
+
+        emitArray(emitArray, init, 0, 0);
     }
 
     void ASTCodeGen::visit(FE::AST::Root& node, Module* m)
@@ -63,9 +499,17 @@ namespace ME
 
         // TODO(Lab 3-2): 生成模块级 IR
         // 处理顶层语句：全局变量声明、函数定义等
-        (void)node;
-        (void)m;
-        TODO("Lab3-2: Implement Root IR generation");
+        auto* stmts = node.getStmts();
+        if (!stmts) return;
+
+        for (auto* stmt : *stmts)
+        {
+            if (!stmt) continue;
+            if (auto* var = dynamic_cast<FE::AST::VarDeclStmt*>(stmt))
+                handleGlobalVarDecl(var, m);
+            else if (auto* func = dynamic_cast<FE::AST::FuncDeclStmt*>(stmt))
+                apply(*this, *func, m);
+        }
     }
 
     LoadInst* ASTCodeGen::createLoadInst(DataType t, Operand* ptr, size_t resReg)
