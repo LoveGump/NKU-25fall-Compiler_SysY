@@ -10,7 +10,8 @@ namespace FE::Sym
     class SymTable : public iSymTable<SymTable>
     {
         friend iSymTable<SymTable>;
-    private:
+
+      private:
         // 全局符号表 - 存储全局作用域的符号
         std::map<Entry*, FE::AST::VarAttr> globalTables_;
 
@@ -19,7 +20,8 @@ namespace FE::Sym
 
         // 当前作用域深度：-1 表示处于全局作用域；0、1、... 为局部层级 方便便利
         int curDepth_ = -1;
-    public:
+
+      public:
         SymTable()  = default;
         ~SymTable() = default;
 

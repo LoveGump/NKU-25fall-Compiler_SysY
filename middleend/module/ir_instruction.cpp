@@ -3,8 +3,6 @@
 #include <numeric>
 #include <sstream>
 
-
-
 namespace ME
 {
     std::string LoadInst::toString() const
@@ -83,7 +81,8 @@ namespace ME
      * @param beginPos 初始化列表的起始位置
      * @param endPos 初始化列表的结束位置
      */
-    void initArrayGlb( std::ostream& s, DataType type, const FE::AST::VarAttr& v, size_t dimDph, size_t beginPos, size_t endPos)
+    void initArrayGlb(
+        std::ostream& s, DataType type, const FE::AST::VarAttr& v, size_t dimDph, size_t beginPos, size_t endPos)
     {
         if (dimDph == 0)
         {  // 在递归的最外层，检查是否全为零初始化
@@ -144,7 +143,7 @@ namespace ME
 
         s << "]";
     }
-    
+
     std::string GlbVarDeclInst::toString() const
     {
         std::stringstream ss;
@@ -205,12 +204,11 @@ namespace ME
         for (size_t idx = 0; idx < argTypes.size(); ++idx)
         {
             // 优先 argTypeStrs
-            if (!argTypeStrs.empty() && idx < argTypeStrs.size() && !argTypeStrs[idx].empty()){
+            if (!argTypeStrs.empty() && idx < argTypeStrs.size() && !argTypeStrs[idx].empty())
+            {
                 ss << argTypeStrs[idx];
             }
-            else{
-                ss << argTypes[idx];
-            }
+            else { ss << argTypes[idx]; }
             if (idx + 1 < argTypes.size()) ss << ", ";
         }
         if (isVarArg) ss << ", ...";
@@ -241,9 +239,10 @@ namespace ME
     std::string aggregateTypeString(ME::DataType elemType, const std::vector<int>& dims)
     {
         std::stringstream ss;
-        if (dims.empty()) { 
+        if (dims.empty())
+        {
             // 非数组类型
-            ss << elemType; 
+            ss << elemType;
         }
         else
         {

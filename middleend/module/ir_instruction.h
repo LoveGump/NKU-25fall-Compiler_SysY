@@ -261,7 +261,7 @@ namespace ME
         using argList = std::vector<argPair>;
         argList                  args;
         Operand*                 res;
-        std::vector<std::string> argTypeStrs;// 类型字符串覆盖
+        std::vector<std::string> argTypeStrs;  // 类型字符串覆盖
 
       public:
         // 空参数列表的构造函数
@@ -311,7 +311,7 @@ namespace ME
       public:
         DataType                 retType;
         std::string              funcName;
-        std::vector<DataType>    argTypes;    // 参数类型列表
+        std::vector<DataType>    argTypes;     // 参数类型列表
         bool                     isVarArg;     // 是否为可变参数函数
         std::vector<std::string> argTypeStrs;  // 指针可选：类型字符串覆盖
 
@@ -343,8 +343,8 @@ namespace ME
         using argOp   = Operand*;
         using argPair = std::pair<argType, argOp>;
         using argList = std::vector<argPair>;
-        argList                  argRegs; // 参数列表：类型-寄存器对
-        std::vector<std::string> argTypeStrs; // 指针可选：类型字符串覆盖
+        argList                  argRegs;      // 参数列表：类型-寄存器对
+        std::vector<std::string> argTypeStrs;  // 指针可选：类型字符串覆盖
 
       public:
         FuncDefInst(DataType rt, const std::string& fn, argList ar = {}, const std::string& c = "")

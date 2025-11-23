@@ -12,8 +12,8 @@ namespace FE::AST
     class ExprNode : public Node
     {
       public:
-        size_t trueTar; // 真的目标地址
-        size_t falseTar; // 假的目标地址
+        size_t trueTar;   // 真的目标地址
+        size_t falseTar;  // 假的目标地址
 
       public:
         ExprNode(int line_num = -1, int col_num = -1)
@@ -69,7 +69,7 @@ namespace FE::AST
     {
       public:
         Operator  op;
-        ExprNode* expr; // 操作数表达式
+        ExprNode* expr;  // 操作数表达式
 
       public:
         UnaryExpr(Operator op, ExprNode* expr, int line_num = -1, int col_num = -1)

@@ -34,7 +34,7 @@ namespace ME
         friend class OperandFactory;
 
       public:
-        size_t regNum; // 寄存器编号
+        size_t regNum;  // 寄存器编号
 
       private:
         RegOperand(size_t id) : Operand(OperandType::REG), regNum(id) {}
@@ -51,7 +51,7 @@ namespace ME
         friend class OperandFactory;
 
       public:
-        int value; // 立即数值
+        int value;  // 立即数值
 
       private:
         ImmeI32Operand(int v) : Operand(OperandType::IMMEI32), value(v) {}
@@ -68,7 +68,7 @@ namespace ME
         friend class OperandFactory;
 
       public:
-        float value; // 立即数值
+        float value;  // 立即数值
 
       private:
         ImmeF32Operand(float v) : Operand(OperandType::IMMEF32), value(v) {}
@@ -107,7 +107,7 @@ namespace ME
         friend class OperandFactory;
 
       public:
-        size_t lnum; // 标签编号
+        size_t lnum;  // 标签编号
 
       private:
         LabelOperand(size_t num) : Operand(OperandType::LABEL), lnum(num) {}
@@ -121,8 +121,8 @@ namespace ME
     class OperandFactory
     {
       private:
-        std::map<int, ImmeI32Operand*>        ImmeI32OperandMap; // 整型立即数操作数缓存
-        std::map<float, ImmeF32Operand*>      ImmeF32OperandMap; // 浮点型立即数操作数缓存
+        std::map<int, ImmeI32Operand*>        ImmeI32OperandMap;  // 整型立即数操作数缓存
+        std::map<float, ImmeF32Operand*>      ImmeF32OperandMap;  // 浮点型立即数操作数缓存
         std::map<size_t, RegOperand*>         RegOperandMap;      // 寄存器操作数缓存
         std::map<size_t, LabelOperand*>       LabelOperandMap;    // 标签操作数缓存
         std::map<std::string, GlobalOperand*> GlobalOperandMap;   // 全局变量操作数缓存

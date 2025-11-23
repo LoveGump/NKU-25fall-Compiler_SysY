@@ -19,6 +19,7 @@ namespace ME
         }();
     }  // namespace
 
+    // 将 FE::AST 类型 转换为中间表示的 类型
     DataType ASTCodeGen::convert(FE::AST::Type* at)
     {
         if (!at) return DataType::UNK;
@@ -206,6 +207,7 @@ namespace ME
         }
     };
 
+    //
     void ASTCodeGen::handleUnaryCalc(FE::AST::ExprNode& node, FE::AST::Operator uop, Block* block, Module* m)
     {
         using UnaryOpFunc                                           = void (*)(ASTCodeGen*, Block*, size_t);

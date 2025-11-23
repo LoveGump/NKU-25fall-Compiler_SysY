@@ -126,7 +126,7 @@ namespace FE::Sym
         friend class EntryDeleter;
 
       private:
-        static std::unordered_map<std::string, Entry*> entryMap; // 静态成员变量，所有Entry对象共享
+        static std::unordered_map<std::string, Entry*> entryMap;  // 静态成员变量，所有Entry对象共享
         static void                                    clear();
 
       public:
