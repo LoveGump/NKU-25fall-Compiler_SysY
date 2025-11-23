@@ -15,8 +15,8 @@ if ! make; then
 fi
 
 # 路径设置
-INPUT_DIR="testcasemy/semant"
-OUTPUT_DIR="testcaseout/testcasemy/semant"
+INPUT_DIR="testcase/semant"
+OUTPUT_DIR="testcaseout/testcase/semant"
 BIN="./bin/compiler"
 
 mkdir -p "$OUTPUT_DIR"
