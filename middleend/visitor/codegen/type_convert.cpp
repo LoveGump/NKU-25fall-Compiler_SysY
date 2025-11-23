@@ -2,6 +2,9 @@
 
 namespace ME
 {
+    // 类型映射表：将前端 AST 类型转换为 IR 数据类型
+    // 
+    // 使用静态初始化，在程序启动时构建映射表
     namespace
     {
         std::array<DataType, FE::AST::maxTypeIdx + 1> at2dt = []() {
@@ -27,20 +30,27 @@ namespace ME
         return at2dt[static_cast<size_t>(at->getBaseType())];
     }
 
+    // UnaryOperators: 一元运算符处理结构体
+    // 
+    // 为每种一元运算符（+、-、!）提供整数和浮点数版本的实现
+    // 注意：+ 运算符通常不需要生成指令（恒等操作）
     struct UnaryOperators
     {
+        // 整数一元加：恒等操作，无需生成指令
         static void addInt(ASTCodeGen* codegen, Block* block, size_t srcReg)
         {
             (void)codegen;
             (void)block;
             (void)srcReg;
         }
+        // 整数一元减：生成 0 - src 指令（取负）
         static void subInt(ASTCodeGen* codegen, Block* block, size_t srcReg)
         {
             size_t          dest = codegen->getNewRegId();
             ArithmeticInst* neg  = codegen->createArithmeticI32Inst_ImmeLeft(Operator::SUB, 0, srcReg, dest);
             block->insert(neg);
         }
+        // 整数逻辑非：生成 src == 0 的比较指令,下面的是浮点数版本，也和上面定义差不多
         static void notInt(ASTCodeGen* codegen, Block* block, size_t srcReg)
         {
             size_t    dest    = codegen->getNewRegId();
@@ -68,6 +78,10 @@ namespace ME
         }
     };
 
+    // BinaryOperators: 二元运算符处理结构体
+    // 
+    // 为每种二元运算符提供整数和浮点数版本的实现
+    // 包括：算术运算（+、-、*、/、%）和比较运算（>、>=、<、<=、==、!=）
     struct BinaryOperators
     {
         static void addInt(ASTCodeGen* codegen, Block* block, size_t lhsReg, size_t rhsReg)
@@ -161,6 +175,7 @@ namespace ME
             ArithmeticInst* div  = codegen->createArithmeticF32Inst(Operator::FDIV, lhsReg, rhsReg, dest);
             block->insert(div);
         }
+        // 浮点数取模：不支持
         static void modFloat(ASTCodeGen* codegen, Block* block, size_t lhsReg, size_t rhsReg)
         {
             (void)codegen;
@@ -207,7 +222,14 @@ namespace ME
         }
     };
 
-    //
+    // handleUnaryCalc: 处理一元运算表达式
+    // 
+    // 流程：
+    // 1. 递归访问操作数，生成其 IR
+    // 2. 获取操作数的类型和寄存器
+    // 3. 如果操作数是 i1，先转换为 i32（因为一元运算通常需要整数或浮点数）
+    // 4. 根据类型选择对应的运算符处理函数
+    // 5. 调用运算符处理函数生成指令
     void ASTCodeGen::handleUnaryCalc(FE::AST::ExprNode& node, FE::AST::Operator uop, Block* block, Module* m)
     {
         using UnaryOpFunc                                           = void (*)(ASTCodeGen*, Block*, size_t);
@@ -250,6 +272,12 @@ namespace ME
         opFunc(this, block, srcReg);
     }
 
+    // promoteType: 类型提升函数
+    // 
+    // 用于二元运算中的类型提升规则：
+    // - 如果任一操作数是 f32，结果类型为 f32
+    // - 否则如果任一操作数是 i32，结果类型为 i32
+    // - 否则为 i1
     DataType promoteType(DataType t1, DataType t2)
     {
         if (t1 == DataType::F32 || t2 == DataType::F32) return DataType::F32;
@@ -257,6 +285,15 @@ namespace ME
         return DataType::I1;
     }
 
+    // handleBinaryCalc: 处理二元运算表达式
+    // 
+    // 流程：
+    // 1. 递归访问左右操作数，生成其 IR
+    // 2. 获取操作数的类型和寄存器
+    // 3. 计算提升后的类型（类型提升）
+    // 4. 如果操作数类型不一致，插入类型转换指令
+    // 5. 根据提升后的类型选择对应的运算符处理函数
+    // 6. 调用运算符处理函数生成指令
     void ASTCodeGen::handleBinaryCalc(
         FE::AST::ExprNode& lhs, FE::AST::ExprNode& rhs, FE::AST::Operator bop, Block* block, Module* m)
     {

@@ -5,6 +5,8 @@
 
 namespace ME
 {
+    // LoadInst: 从内存加载值到寄存器
+    // LLVM IR 格式: %reg = load i32, ptr %ptr
     std::string LoadInst::toString() const
     {
         std::stringstream ss;
@@ -12,6 +14,8 @@ namespace ME
         return ss.str();
     }
 
+    // StoreInst: 将值存储到内存
+    // LLVM IR 格式: store i32 %val, ptr %ptr
     std::string StoreInst::toString() const
     {
         std::stringstream ss;
@@ -19,13 +23,20 @@ namespace ME
         return ss.str();
     }
 
+    // ArithmeticInst: 算术运算指令（add, sub, mul, div, mod 等）
+    // LLVM IR 格式: %res = add i32 %lhs, %rhs
+    // 支持的运算符由 opcode 字段决定（ADD, SUB, MUL, DIV, MOD, FADD, FSUB, FMUL, FDIV）
     std::string ArithmeticInst::toString() const
     {
         std::stringstream ss;
         ss << res << " = " << opcode << " " << dt << " " << lhs << ", " << rhs << getComment();
         return ss.str();
     }
-
+    
+    // IcmpInst: 整数比较指令
+    // LLVM IR 格式: %res = icmp slt i32 %lhs, %rhs
+    // cond 字段指定比较类型：EQ, NE, SLT, SLE, SGT, SGE 等
+    // 结果类型为 i1（布尔值）
     std::string IcmpInst::toString() const
     {
         std::stringstream ss;
@@ -33,6 +44,10 @@ namespace ME
         return ss.str();
     }
 
+    // FcmpInst: 浮点数比较指令
+    // LLVM IR 格式: %res = fcmp olt float %lhs, %rhs
+    // cond 字段指定比较类型：OEQ, ONE, OLT, OLE, OGT, OGE 等（ordered 比较）
+    // 结果类型为 i1（布尔值）
     std::string FcmpInst::toString() const
     {
         std::stringstream ss;
@@ -40,6 +55,11 @@ namespace ME
         return ss.str();
     }
 
+    // AllocaInst: 在栈上分配局部变量内存
+    // LLVM IR 格式:
+    //   - 标量: %ptr = alloca i32
+    //   - 数组: %ptr = alloca [10 x i32]
+    // dims 为空表示标量，否则表示多维数组的维度
     std::string AllocaInst::toString() const
     {
         std::stringstream ss;
@@ -58,6 +78,9 @@ namespace ME
         return ss.str();
     }
 
+    // BrCondInst: 条件分支指令（终结指令）
+    // LLVM IR 格式: br i1 %cond, label %true_label, label %false_label
+    // 根据条件值跳转到 trueTar 或 falseTar 基本块
     std::string BrCondInst::toString() const
     {
         std::stringstream ss;
@@ -65,6 +88,9 @@ namespace ME
         return ss.str();
     }
 
+    // BrUncondInst: 无条件分支指令（终结指令）
+    // LLVM IR 格式: br label %target
+    // 无条件跳转到目标基本块
     std::string BrUncondInst::toString() const
     {
         std::stringstream ss;
@@ -84,6 +110,7 @@ namespace ME
     void initArrayGlb(
         std::ostream& s, DataType type, const FE::AST::VarAttr& v, size_t dimDph, size_t beginPos, size_t endPos)
     {
+        // 底层：检查是否所有元素都为0
         if (dimDph == 0)
         {  // 在递归的最外层，检查是否全为零初始化
             bool allZero = true;
@@ -106,6 +133,7 @@ namespace ME
                 if (!allZero) break;
             }
 
+            // 如果全为0，使用 zeroinitializer 优化
             if (allZero)
             {
                 // 若全为零初始化，则直接输出 zeroinitializer
@@ -114,7 +142,8 @@ namespace ME
                 return;
             }
         }
-
+        
+        // 单个元素：直接输出值
         if (beginPos == endPos)
         {
             // 递归终止条件，输出单个元素的初始化值
@@ -124,6 +153,7 @@ namespace ME
                 case DataType::I32:
                 case DataType::I64: s << type << " " << v.initList[beginPos].getInt(); break;
                 case DataType::F32:
+                    // 浮点数以十六进制格式输出（IEEE 754 位表示）
                     s << type << " 0x" << std::hex << FLOAT_TO_DOUBLE_BITS(v.initList[beginPos].getFloat()) << std::dec;
                     break;
                 default: ERROR("Unsupported data type in global array init");
@@ -131,25 +161,37 @@ namespace ME
             return;
         }
 
+        // 多维数组：生成类型前缀，然后递归处理每一维
         for (size_t i = dimDph; i < v.arrayDims.size(); ++i) s << "[" << v.arrayDims[i] << " x ";
         s << type << std::string(v.arrayDims.size() - dimDph, ']') << " [";
 
+        // 计算当前维度每个元素的步长（后续维度的元素总数）
         int step = std::accumulate(v.arrayDims.begin() + dimDph + 1, v.arrayDims.end(), 1, std::multiplies<int>());
         for (int i = 0; i < v.arrayDims[dimDph]; ++i)
         {
             if (i != 0) s << ",";
+            // 递归处理下一维
             initArrayGlb(s, type, v, dimDph + 1, beginPos + i * step, beginPos + (i + 1) * step - 1);
         }
 
         s << "]";
     }
 
+    // GlbVarDeclInst: 全局变量声明指令
+    // LLVM IR 格式:
+    //   - 标量: @var = global i32 0
+    //   - 数组: @arr = global [10 x i32] zeroinitializer
+    // 
+    // 处理两种情况:
+    //   1. 标量变量：使用 init 操作数或 zeroinitializer
+    //   2. 数组变量：使用 initArrayGlb 递归生成初始化列表
     std::string GlbVarDeclInst::toString() const
     {
         std::stringstream ss;
         ss << "@" << name << " = global ";
         if (initList.arrayDims.empty())
         {
+             // 标量变量
             ss << dt << " ";
             if (init)
                 ss << init;
@@ -166,6 +208,12 @@ namespace ME
         return ss.str();
     }
 
+    // CallInst: 函数调用指令
+    // LLVM IR 格式:
+    //   - 有返回值: %res = call i32 @func(i32 %arg1, float %arg2)
+    //   - 无返回值: call void @func(i32 %arg1)
+    // 
+    // args 是参数列表，每个元素是 (类型, 操作数) 对
     std::string CallInst::toString() const
     {
         std::stringstream ss;
@@ -188,6 +236,10 @@ namespace ME
         return ss.str();
     }
 
+    // RetInst: 返回指令（终结指令）
+    // LLVM IR 格式:
+    //   - 有返回值: ret i32 %val
+    //   - 无返回值: ret void
     std::string RetInst::toString() const
     {
         std::stringstream ss;
@@ -197,6 +249,11 @@ namespace ME
         return ss.str();
     }
 
+    // FuncDeclInst: 函数声明（用于外部函数或库函数）
+    // LLVM IR 格式: declare i32 @func(i32, float, ...)
+    // 
+    // 注意：这是声明而非定义，不包含函数体
+    // isVarArg 表示是否支持可变参数（...）
     std::string FuncDeclInst::toString() const
     {
         std::stringstream ss;
@@ -216,6 +273,11 @@ namespace ME
         return ss.str();
     }
 
+    // FuncDefInst: 函数定义
+    // LLVM IR 格式: define i32 @func(i32 %arg1, float %arg2)
+    // 
+    // 注意：这只是函数签名，函数体（基本块）由 Function 类管理
+    // argRegs 是参数列表，每个元素是 (类型, 寄存器操作数) 对
     std::string FuncDefInst::toString() const
     {
         std::stringstream ss;
@@ -265,6 +327,8 @@ namespace ME
         return ss.str();
     }
 
+    // SI2FPInst: 有符号整数到浮点数转换
+    // LLVM IR 格式: %dest = sitofp i32 %src to float
     std::string SI2FPInst::toString() const
     {
         std::stringstream ss;
@@ -272,6 +336,8 @@ namespace ME
         return ss.str();
     }
 
+    // FP2SIInst: 浮点数到有符号整数转换
+    // LLVM IR 格式: %dest = fptosi float %src to i32
     std::string FP2SIInst::toString() const
     {
         std::stringstream ss;
@@ -279,6 +345,11 @@ namespace ME
         return ss.str();
     }
 
+    // ZextInst: 零扩展指令（通常用于 i1 -> i32 的扩展）
+    // LLVM IR 格式: %dest = zext i1 %src to i32
+    // 
+    // 将较小的整数类型零扩展到较大的整数类型
+    // 常用于将布尔值（i1）转换为整数（i32）
     std::string ZextInst::toString() const
     {
         std::stringstream ss;
@@ -286,6 +357,16 @@ namespace ME
         return ss.str();
     }
 
+
+
+    // PhiInst: Phi 节点指令（SSA 形式中的合并点）
+    // LLVM IR 格式: %res = phi i32 [ %val1, %label1 ], [ %val2, %label2 ]
+    // 
+    // 用途:
+    //   - 在基本块合并点选择来自不同前驱的值
+    //   - 例如：if-else 后合并两个分支的值
+    // 
+    // incomingVals: 映射表，key 是来源基本块标签，value 是对应的值
     std::string PhiInst::toString() const
     {
         std::stringstream ss;
