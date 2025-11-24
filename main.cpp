@@ -367,7 +367,7 @@ int main(int argc, char** argv)
          * 主要任务：
          * - 选择并完成你的指令选择（DAG ISel 或直接 IR→MIR），产出包含 FrameIndex 等抽象的 MIR；
          * - 在 AArch64/RV64 的 `runPipeline` 内按 README.md 给出的顺序串起各 Pass；
-         * 
+         *
          * 补充说明：
          * - 项目根目录下提供了 arm2bin.sh 和 rv2bin.sh 脚本，可以用于将 AArch64 和 RISC-V 的汇编代码转换为二进制文件。
          *     默认输入为 `test.s`，输出为 `test.bin`，可通过命令行参数修改。

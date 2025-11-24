@@ -26,13 +26,14 @@ namespace BE::AArch64::Passes::Lowering
       private:
         void runOnFunction(BE::Function* func, const BE::Targeting::TargetInstrAdapter* adapter);
 
-        void splitCriticalEdgesForBlock(BE::Function* func, BE::MIR::CFG* cfg, uint32_t toLabel);
-        void redirectEdgeBranch(BE::Function* func, uint32_t fromLabel, uint32_t oldTo, uint32_t newTo);
+        [[maybe_unused]] void splitCriticalEdgesForBlock(BE::Function* func, BE::MIR::CFG* cfg, uint32_t toLabel);
+        [[maybe_unused]] void redirectEdgeBranch(
+            BE::Function* func, uint32_t fromLabel, uint32_t oldTo, uint32_t newTo);
 
-        std::deque<BE::MInstruction*>::iterator findInsertPoint(
+        [[maybe_unused]] std::deque<BE::MInstruction*>::iterator findInsertPoint(
             BE::Block* block, const BE::Targeting::TargetInstrAdapter* adapter);
 
-        void insertPhiCopiesForPred(BE::Function* func, BE::Block* predBlock,
+        [[maybe_unused]] void insertPhiCopiesForPred(BE::Function* func, BE::Block* predBlock,
             const std::vector<std::pair<BE::Register, BE::Operand*>>& copies,
             const BE::Targeting::TargetInstrAdapter*                  adapter);
     };

@@ -271,6 +271,7 @@ namespace BE
             ERROR("FuncDefInst should not appear in DAGBuilder");
         }
 
+        [[maybe_unused]]
         static inline int elemByteSize(ME::DataType t)
         {
             switch (t)

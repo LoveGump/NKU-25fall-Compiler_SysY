@@ -14,7 +14,7 @@
 
 namespace BE::RV64
 {
-    static inline bool imm12(int imm) { return imm >= -2048 && imm <= 2047; }
+    [[maybe_unused]]static inline bool imm12(int imm) { return imm >= -2048 && imm <= 2047; }
 
     std::vector<const DAG::SDNode*> DAGIsel::scheduleDAG(const DAG::SelectionDAG& dag)
     {
