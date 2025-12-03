@@ -1,10 +1,6 @@
 #include <frontend/parser/parser.h>
 #include <frontend/ast/ast.h>
 #include <frontend/ast/visitor/printer/ast_printer.h>
-#include <fstream>
-#include <iostream>
-#include <iomanip>
-
 #include <frontend/symbol/symbol_table.h>
 #include <frontend/ast/visitor/sementic_check/ast_checker.h>
 
@@ -12,6 +8,14 @@
 #include <middleend/visitor/printer/module_printer.h>
 #include <middleend/module/ir_module.h>
 #include <middleend/pass/unify_return.h>
+
+#include <backend/mir/m_module.h>
+#include <backend/target/registry.h>
+#include <backend/target/target.h>
+
+#include <fstream>
+#include <iostream>
+#include <iomanip>
 
 /* 如果你简化了框架的实现, 或者解决了框架现存的问题
    或者是用现代C++特性对框架进行了重构, 并且有效地简化了代码或者提高了代码的复用性
@@ -46,8 +50,9 @@ int main(int argc, char** argv)
 {
     // 这一段程序的作用是解析输入参数
     string   inputFile     = "";
-    string   outputFile    = "a.out";
-    string   step          = "-llvm";  // 默认编译到 llvm IR
+    string   outputFile    = "";
+    string   step          = "-llvm";
+    string   march         = "riscv64";
     int      optimizeLevel = 0;
     ostream* outStream     = &cout;  // 默认输出到标准输出
     ofstream outFile;                // 如果指定了输出文件，则将输出重定向到该文件
@@ -64,6 +69,16 @@ int main(int argc, char** argv)
             else
             {
                 cerr << "Error: -o option requires a filename" << endl;
+                return 1;
+            }
+        }
+        else if (arg == "-march")
+        {
+            if (i + 1 < argc)
+                march = argv[++i];
+            else
+            {
+                cerr << "Error: -march option requires a target (e.g., riscv64)" << endl;
                 return 1;
             }
         }
@@ -321,13 +336,66 @@ int main(int argc, char** argv)
             // 这一部分的打印有完整实现提供，如果你未对 IR 结构有改动，可以直接使用
             ME::IRPrinter printer;
             printer.visit(m, *outStream);
+            ret = 0;
+            goto cleanup_ast;
         }
-        else if (step == "-S")
+
+        if (step != "-S")
         {
-            // 由于 ARMV8 的后端尚未完成，此处暂时留空
-            // 后续更新实验框架时会在飞书群内通知
-            TODO("Lab5: Impl ARMV8 Pipeline");
+            cerr << "Unknown step: " << step << endl;
+            ret = 1;
+            goto cleanup_ast;
         }
+
+        /*
+         * Lab 5: 后端代码生成
+         *
+         * 从这里开始进入后端。请先阅读 `backend/README.md` 了解后端目录结构、流水线与各阶段职责
+         * （指令选择 → 帧降低 → 寄存器分配 → 栈降低）。
+         *
+         * 后端的“主流程入口”不在此文件，而在各目标架构的 Target 类：
+         * - AArch64: `backend/targets/aarch64/aarch64_target.cpp` 的 `AArch64Target::runPipeline`
+         * - RISC-V:  `backend/targets/riscv64/rv64_target.cpp` 的 `RV64::Target::runPipeline`
+         * main 中通过 `BE::Targeting::TargetRegistry::getTarget(march)` 获取具体后端实例，
+         * 然后调用 `target->runPipeline(&m, &backendModule, outStream)` 串起后续步骤。
+         *
+         * 关于 `BE::Targeting::TargetRegistry`：
+         * - 作用：维护“目标字符串 → Target 工厂/实例”的全局注册表，作为后端选择与复用的入口。
+         * - 注册：各架构在其 target 源文件内通过静态构造注册工厂函数，例如：
+         *   AArch64 在 `aarch64_target.cpp` 中注册 "aarch64"/"armv8"；
+         *   RISC‑V 在 `rv64_target.cpp` 中注册 "riscv64"/"riscv"/"rv64"。
+         * - 获取：使用命令行 `-march` 的字符串（默认 "riscv64"）调用 `getTarget(march)`：
+         *     `auto* tgt = BE::Targeting::TargetRegistry::getTarget(march);`
+         *   若已创建过则返回缓存实例，否则通过对应工厂创建并缓存；找不到则返回 `nullptr`。
+         *
+         * 主要任务：
+         * - 选择并完成你的指令选择（DAG ISel 或直接 IR→MIR），产出包含 FrameIndex 等抽象的 MIR；
+         * - 在 AArch64/RV64 的 `runPipeline` 内按 README.md 给出的顺序串起各 Pass；
+         *
+         * 补充说明：
+         * - 项目根目录下提供了 arm2bin.sh 和 rv2bin.sh 脚本，可以用于将 AArch64 和 RISC-V 的汇编代码转换为二进制文件。
+         *     默认输入为 `test.s`，输出为 `test.bin`，可通过命令行参数修改。
+         * - 关于后端调试，请同学们善用 gdb 工具。arm2bin.sh 和 rv2bin.sh 脚本中已经添加了 -g 选项，可以生成调试信息。
+         *     随后，你可以使用 gdb-multiarch 工具来调试 AArch64 和 RISC-V 的程序。具体启动示例如下：
+         *     ```bash
+         *     qemu-riscv64 -g {port} {exec} &      // {port} 为调试端口，{exec} 为可执行文件，& 表示后台运行
+         *                                          // 如 `qemu-riscv64 -g 1234 test.bin &`
+         *                                          // 当然不加 & 也可以，新开一个终端运行 gdb 就行
+         *     gdb-multiarch {exec}
+         *     (gdb) target remote:{port}
+         *     ```
+         *     gdb 的使用相信大家在 OS 课上已经有所了解，这里就略过。
+         */
+        BE::Module backendModule;
+        auto*      tgt = BE::Targeting::TargetRegistry::getTarget(march);
+        if (!tgt)
+        {
+            cerr << "Unknown target: " << march << endl;
+            ret = 1;
+            goto cleanup_ast;
+        }
+
+        tgt->runPipeline(&m, &backendModule, outStream);
 
         ret = 0;
     }
