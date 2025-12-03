@@ -24,7 +24,7 @@ namespace FE::AST
         }
 
         bool success = true;
-        // 处理数组下标访问
+        // 处理数组下标访问，数组访问表达式
         size_t idxCnt = node.indices ? node.indices->size() : 0;
         if (idxCnt > 0)
         {
@@ -42,14 +42,15 @@ namespace FE::AST
                     return false;
                 }
             }
+            // 访问的数组维度，不能超过声明的维度
+            if (idxCnt > varAttr->arrayDims.size())
+            {
+                this->errors.emplace_back("Too many indices for array variable '" + node.entry->getName() +
+                                          "' at line " + std::to_string(node.line_num));
+                return false;
+            }
         }
-        // 数组维度检查，不能超过声明的维度
-        if (idxCnt > varAttr->arrayDims.size())
-        {
-            this->errors.emplace_back("Too many indices for array variable '" + node.entry->getName() + "' at line " +
-                                      std::to_string(node.line_num));
-            return false;
-        }
+
         // 设置类型：未完全索引的数组在表达式中视为指向元素类型的指针
         if (!varAttr->arrayDims.empty())
         {
@@ -185,11 +186,8 @@ namespace FE::AST
                     success = false;
                 }
             }
-        }
 
-        // 若是赋值，再做一次类型兼容检查（指针与非指针不可互赋）
-        if (node.op == Operator::ASSIGN && success)
-        {
+            // 类型兼容检查
             Type* lty2 = node.lhs->attr.val.value.type;
             Type* rty2 = node.rhs->attr.val.value.type;
             if (lty2 && rty2)
@@ -210,6 +208,7 @@ namespace FE::AST
                     success = false;
                 }
             }
+            // 基本类型可以隐式类型转换
         }
 
         bool      hasError = false;
@@ -339,13 +338,13 @@ namespace FE::AST
 
         if (!node.exprs || node.exprs->empty()) return true;
         bool success = true;
-        for (size_t i = 0; i < node.exprs->size(); ++i)
+
+        for (auto* e : *node.exprs)
         {
-            ExprNode* e = (*node.exprs)[i];
             if (!e) continue;
             success &= apply(*this, *e);
-            if (i + 1 == node.exprs->size()) node.attr.val = e->attr.val;
         }
+        node.attr.val = (*node.exprs)[node.exprs->size() - 1]->attr.val;
         return success;
     }
 }  // namespace FE::AST

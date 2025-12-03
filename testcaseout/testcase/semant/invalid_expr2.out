@@ -1,7 +1,8 @@
 Input file: testcase/semant/invalid_expr2.sy
 Step: -llvm
-Output: a.out
+Output: standard output
 Optimize level: 0
 Defining function: main
+this is Root ASTChecker
 Semantic check failed with 1 errors.
 Error: Return expression cannot be void type at line 4

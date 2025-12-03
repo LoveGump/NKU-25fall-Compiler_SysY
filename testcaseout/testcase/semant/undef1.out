@@ -1,8 +1,10 @@
 Input file: testcase/semant/undef1.sy
 Step: -llvm
-Output: a.out
+Output: standard output
 Optimize level: 0
 Defining function: main
+this is Root ASTChecker
+this is LeftValExpr ASTchecker
 Semantic check failed with 2 errors.
 Error: Undeclared variable 'x' at line 3
 Error: Return expression cannot be void type at line 3

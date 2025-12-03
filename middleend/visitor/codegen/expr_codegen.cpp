@@ -282,10 +282,7 @@ namespace ME
                     }
                     op = ensureLValueAddress(*lval, m, extraZeros);
                 }
-                else
-                {
-                    op = getRegOperand(getMaxReg());
-                }
+                else { op = getRegOperand(getMaxReg()); }
                 args.emplace_back(DataType::PTR, op);
             }
             else

@@ -1,7 +1,8 @@
 Input file: testcase/semant/unmatch_call4.sy
 Step: -llvm
-Output: a.out
+Output: standard output
 Optimize level: 0
 Defining function: main
+this is Root ASTChecker
 Semantic check failed with 1 errors.
 Error: Argument count mismatch in call to 'putint' at line 3

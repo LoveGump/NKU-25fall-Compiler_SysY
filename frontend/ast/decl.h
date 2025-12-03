@@ -68,12 +68,13 @@ namespace FE::AST
     class VarDeclarator : public DeclNode
     {
       public:
-        ExprNode* lval;  // 变量左值表达式
-        InitDecl* init;  // 变量初始化部分，可以为空
+        ExprNode*        lval;      // 变量左值表达式
+        InitDecl*        init;      // 变量初始化部分，可以为空
+        std::vector<int> declDims;  // 语义检查阶段缓存的数组维度
 
       public:
         VarDeclarator(ExprNode* lval, InitDecl* init = nullptr, int line_num = -1, int col_num = -1)
-            : DeclNode(line_num, col_num), lval(lval), init(init)
+            : DeclNode(line_num, col_num), lval(lval), init(init), declDims()
         {}
         virtual ~VarDeclarator() override;
 

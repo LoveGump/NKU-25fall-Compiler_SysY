@@ -32,7 +32,7 @@ namespace ME
         ss << res << " = " << opcode << " " << dt << " " << lhs << ", " << rhs << getComment();
         return ss.str();
     }
-    
+
     // IcmpInst: 整数比较指令
     // LLVM IR 格式: %res = icmp slt i32 %lhs, %rhs
     // cond 字段指定比较类型：EQ, NE, SLT, SLE, SGT, SGE 等
@@ -142,7 +142,7 @@ namespace ME
                 return;
             }
         }
-        
+
         // 单个元素：直接输出值
         if (beginPos == endPos)
         {
@@ -181,7 +181,7 @@ namespace ME
     // LLVM IR 格式:
     //   - 标量: @var = global i32 0
     //   - 数组: @arr = global [10 x i32] zeroinitializer
-    // 
+    //
     // 处理两种情况:
     //   1. 标量变量：使用 init 操作数或 zeroinitializer
     //   2. 数组变量：使用 initArrayGlb 递归生成初始化列表
@@ -191,7 +191,7 @@ namespace ME
         ss << "@" << name << " = global ";
         if (initList.arrayDims.empty())
         {
-             // 标量变量
+            // 标量变量
             ss << dt << " ";
             if (init)
                 ss << init;
@@ -212,7 +212,7 @@ namespace ME
     // LLVM IR 格式:
     //   - 有返回值: %res = call i32 @func(i32 %arg1, float %arg2)
     //   - 无返回值: call void @func(i32 %arg1)
-    // 
+    //
     // args 是参数列表，每个元素是 (类型, 操作数) 对
     std::string CallInst::toString() const
     {
@@ -251,7 +251,7 @@ namespace ME
 
     // FuncDeclInst: 函数声明（用于外部函数或库函数）
     // LLVM IR 格式: declare i32 @func(i32, float, ...)
-    // 
+    //
     // 注意：这是声明而非定义，不包含函数体
     // isVarArg 表示是否支持可变参数（...）
     std::string FuncDeclInst::toString() const
@@ -275,7 +275,7 @@ namespace ME
 
     // FuncDefInst: 函数定义
     // LLVM IR 格式: define i32 @func(i32 %arg1, float %arg2)
-    // 
+    //
     // 注意：这只是函数签名，函数体（基本块）由 Function 类管理
     // argRegs 是参数列表，每个元素是 (类型, 寄存器操作数) 对
     std::string FuncDefInst::toString() const
@@ -347,7 +347,7 @@ namespace ME
 
     // ZextInst: 零扩展指令（通常用于 i1 -> i32 的扩展）
     // LLVM IR 格式: %dest = zext i1 %src to i32
-    // 
+    //
     // 将较小的整数类型零扩展到较大的整数类型
     // 常用于将布尔值（i1）转换为整数（i32）
     std::string ZextInst::toString() const
@@ -357,15 +357,13 @@ namespace ME
         return ss.str();
     }
 
-
-
     // PhiInst: Phi 节点指令（SSA 形式中的合并点）
     // LLVM IR 格式: %res = phi i32 [ %val1, %label1 ], [ %val2, %label2 ]
-    // 
+    //
     // 用途:
     //   - 在基本块合并点选择来自不同前驱的值
     //   - 例如：if-else 后合并两个分支的值
-    // 
+    //
     // incomingVals: 映射表，key 是来源基本块标签，value 是对应的值
     std::string PhiInst::toString() const
     {

@@ -39,7 +39,7 @@ namespace FE::AST
     class ASTChecker : public Checker_t
     {
       private:
-        FE::Sym::SymTable                        symTable;
+        FE::Sym::SymTable                        symTable;    // 符号表
         std::map<FE::Sym::Entry*, VarAttr>       glbSymbols;  // 全局符号表
         std::map<FE::Sym::Entry*, FuncDeclStmt*> funcDecls;   // 函数声明表
 

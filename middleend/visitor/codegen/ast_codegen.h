@@ -48,18 +48,18 @@ namespace ME
 
       private:
         // 全局符号表：存储全局变量的符号表项到变量属性的映射
-        const std::map<FE::Sym::Entry*, FE::AST::VarAttr>&       glbSymbols;
+        const std::map<FE::Sym::Entry*, FE::AST::VarAttr>& glbSymbols;
         // 函数声明表：存储函数符号表项到函数声明AST节点的映射
         const std::map<FE::Sym::Entry*, FE::AST::FuncDeclStmt*>& funcDecls;
         // 当前正在生成的函数（IR Function对象）
-        Function*                                                curFunc;
+        Function* curFunc;
         // 当前正在生成的基本块（IR Block对象）
-        Block*                                                   curBlock;
-        Block*                                                   funcEntryBlock;  // 当前函数的入口基本块
+        Block* curBlock;
+        Block* funcEntryBlock;  // 当前函数的入口基本块
         class RegTab
         {
           public:
-          // 作用域结构：每个作用域维护一个符号到寄存器的映射
+            // 作用域结构：每个作用域维护一个符号到寄存器的映射
             struct Scope
             {
                 std::map<FE::Sym::Entry*, size_t> sym2Reg;  // 符号表项 -> 寄存器
@@ -68,7 +68,7 @@ namespace ME
                 Scope(Scope* parent = nullptr) : sym2Reg(), parent(parent) {}
                 ~Scope() = default;
             };
-            Scope* curScope;// 当前作用域
+            Scope* curScope;  // 当前作用域
 
           public:
             RegTab() : curScope(new Scope(nullptr)) {}
@@ -165,7 +165,7 @@ namespace ME
         // Statement nodes
         // ---new functions ---
         Operand* ensureLValueAddress(FE::AST::LeftValExpr& node, Module* m, size_t extraZeros = 0);  // 确保左值地址
-        const FE::AST::VarAttr* getVarAttr(FE::Sym::Entry* entry) const;                             // 获取变量属性
+        const FE::AST::VarAttr* getVarAttr(FE::Sym::Entry* entry) const;  // 获取变量属性
         size_t                  ensureType(size_t reg, DataType from, DataType to);
         std::vector<int>        collectArrayDims(const std::vector<FE::AST::ExprNode*>* dimExprs) const;
         std::string             formatIRType(FE::AST::Type* type, bool asPointer = false) const;

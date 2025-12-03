@@ -1,7 +1,11 @@
 Input file: testcase/semant/multi_def1.sy
 Step: -llvm
-Output: a.out
+Output: standard output
 Optimize level: 0
 Defining function: main
+this is Root ASTChecker
+this is LeftValExpr ASTchecker
+this is LeftValExpr ASTchecker
+this is LeftValExpr ASTchecker
 Semantic check failed with 1 errors.
 Error: Redefinition of variable 'x' at line -1

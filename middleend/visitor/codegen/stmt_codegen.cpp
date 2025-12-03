@@ -168,10 +168,7 @@ namespace ME
             condReg           = ensureType(condReg, condType, DataType::I1);
             insert(createBranchInst(condReg, bodyBlock->blockId, endBlock->blockId));
         }
-        else
-        {
-            insert(createBranchInst(bodyBlock->blockId));
-        }
+        else { insert(createBranchInst(bodyBlock->blockId)); }
 
         pushLoopContext(condBlock->blockId, endBlock->blockId);
 
@@ -209,10 +206,7 @@ namespace ME
             else
                 insert(createBranchInst(condReg, thenBlock->blockId, endBlock->blockId));
         }
-        else
-        {
-            insert(createBranchInst(thenBlock->blockId));
-        }
+        else { insert(createBranchInst(thenBlock->blockId)); }
 
         enterBlock(thenBlock);
         if (node.thenStmt) apply(*this, *node.thenStmt, m);
@@ -300,10 +294,7 @@ namespace ME
             condReg           = ensureType(condReg, condType, DataType::I1);
             insert(createBranchInst(condReg, bodyBlock->blockId, endBlock->blockId));
         }
-        else
-        {
-            insert(createBranchInst(bodyBlock->blockId));
-        }
+        else { insert(createBranchInst(bodyBlock->blockId)); }
 
         pushLoopContext(stepBlock->blockId, endBlock->blockId);
 

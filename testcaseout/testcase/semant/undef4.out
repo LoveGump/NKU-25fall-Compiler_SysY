@@ -1,8 +1,12 @@
 Input file: testcase/semant/undef4.sy
 Step: -llvm
-Output: a.out
+Output: standard output
 Optimize level: 0
 Defining function: main
+this is Root ASTChecker
+this is LeftValExpr ASTchecker
+this is LeftValExpr ASTchecker
+this is LeftValExpr ASTchecker
 Semantic check failed with 2 errors.
 Error: Undeclared variable 'z' at line 7
 Error: While condition cannot be void type at line 7

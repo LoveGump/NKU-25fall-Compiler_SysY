@@ -520,7 +520,7 @@ namespace ME
     // 以下为指令创建辅助函数（Factory Methods）
     // 这些函数封装了指令对象的创建，简化代码生成逻辑
 
-     // LoadInst: 从内存加载值到寄存器
+    // LoadInst: 从内存加载值到寄存器
     LoadInst* ASTCodeGen::createLoadInst(DataType t, Operand* ptr, size_t resReg)
     {
         return new LoadInst(t, ptr, getRegOperand(resReg));
@@ -531,7 +531,6 @@ namespace ME
     {
         return new StoreInst(t, getRegOperand(valReg), ptr);
     }
-
 
     StoreInst* ASTCodeGen::createStoreInst(DataType t, Operand* val, Operand* ptr)
     {
@@ -612,7 +611,6 @@ namespace ME
         return new ZextInst(DataType::I1, DataType::I32, getRegOperand(srcReg), getRegOperand(destReg));
     }
 
-
     // GEPInst: GetElementPtr 指令创建函数（用于数组索引）
     // dims: 数组维度，如 [10, 20] 表示 10x20 的二维数组
     // is: 索引操作数列表，第一个通常是 0（基地址），后续是各维索引
@@ -665,17 +663,17 @@ namespace ME
     }
 
     // createTypeConvertInst: 创建类型转换指令序列
-    // 
+    //
     // 功能：根据源类型和目标类型，生成必要的类型转换指令
     // 返回：指令列表（可能为空，如果类型相同；可能包含多条指令，如 i1->f32 需要两步）
-    // 
+    //
     // 支持的转换：
     //   - i1 <-> i32: 使用 zext 或 icmp
     //   - i32 <-> f32: 使用 sitofp 或 fptosi
     //   - i1 -> f32: 先 zext 到 i32，再 sitofp 到 f32
     std::list<Instruction*> ASTCodeGen::createTypeConvertInst(DataType from, DataType to, size_t srcReg)
     {
-        if (from == to) return {};// 类型相同，无需转换
+        if (from == to) return {};  // 类型相同，无需转换
         ASSERT((from == DataType::I1) || (from == DataType::I32) || (from == DataType::F32));
         ASSERT((to == DataType::I1) || (to == DataType::I32) || (to == DataType::F32));
 

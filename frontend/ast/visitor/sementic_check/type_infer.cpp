@@ -8,10 +8,13 @@ namespace FE::AST
 { /*
    * 本文件实现了两个typeInfer函数。读懂这段代码，你能更好地理解如何在编译期进行常量计算。
    */
+
+    /**
+     * 类型提升规则float > long long > int
+     * 根据a、b的类型，返回提升后的类型
+     */
     static Type* promoteType(Type* a, Type* b)
     {
-        // 类型提升规则：float > long long > int
-        // 获取类型A、B的基本类型
         Type_t kindA = a->getBaseType();
         Type_t kindB = b->getBaseType();
 
@@ -20,9 +23,14 @@ namespace FE::AST
         return intType;
     }
 
+    /**
+     * 根据操作符确定结果类型
+     * @param operandType 操作数类型
+     * @param op 操作符
+     * @return 结果类型
+     */
     static Type* getResultType(Type* operandType, Operator op)
     {
-        // 根据操作符确定结果类型
         if (op == Operator::GT || op == Operator::GE || op == Operator::LT || op == Operator::LE ||
             op == Operator::EQ || op == Operator::NEQ || op == Operator::AND || op == Operator::OR ||
             op == Operator::NOT)
@@ -34,6 +42,12 @@ namespace FE::AST
         return operandType;
     }
 
+    /**
+     * 根据 VarValue 获取对应类型的值
+     * @tparam T 目标类型（int、long long、float、bool）
+     * @param val VarValue 对象
+     * @return 转换后的值
+     */
     template <typename T>
     static T getValue(const VarValue& val)
     {
@@ -88,6 +102,12 @@ namespace FE::AST
             static_assert(sizeof(T) == 0, "Unsupported type");
     }
 
+    /**
+     * 根据传入的值类型创建对应的 VarValue
+     * @tparam T 目标类型（int、long long、float、bool）
+     * @param value 传入的值
+     * @return 创建的 VarValue 对象
+     */
     template <typename T>
     static VarValue makeVarValue(T value)
     {
@@ -104,6 +124,13 @@ namespace FE::AST
             static_assert(sizeof(T) == 0, "Unsupported type");
     }
 
+    /**
+     * 根据计算结果和期望类型创建 ExprValue
+     * @param result 计算结果
+     * @param preferredType 期望类型
+     * @param isConst 是否为编译期常量
+     * @return 创建的 ExprValue 对象
+     */
     static ExprValue handleIntegerResult(long long result, Type* preferredType, bool isConst)
     {
         // 根据结果值和期望类型创建 ExprValue
@@ -123,6 +150,17 @@ namespace FE::AST
         return exprVal;
     }
 
+    /**
+     * 执行一元操作符计算
+     * @tparam T 操作数类型
+     * @param operand 操作数表达式值
+     * @param op 操作符
+     * @param resultType 结果类型
+     * @param errors 错误信息列表
+     * @param lineNum 行号
+     * @param hasError 是否有错误标志
+     * @return 计算结果表达式值
+     */
     template <typename T>
     static ExprValue performUnaryOp(const ExprValue& operand, Operator op, Type* resultType,
         std::vector<std::string>& errors, int lineNum, bool& hasError)
@@ -163,6 +201,18 @@ namespace FE::AST
         return result;
     }
 
+    /**
+     * 执行二元操作符计算
+     * @tparam T 操作数类型
+     * @param lhs 左操作数表达式值
+     * @param rhs 右操作数表达式值
+     * @param op 操作符
+     * @param resultType 结果类型
+     * @param errors 错误信息列表
+     * @param lineNum 行号
+     * @param hasError 是否有错误标志
+     * @return 计算结果表达式值
+     */
     template <typename T>
     static ExprValue performBinaryOp(const ExprValue& lhs, const ExprValue& rhs, Operator op, Type* resultType,
         std::vector<std::string>& errors, int lineNum, bool& hasError)
@@ -275,6 +325,17 @@ namespace FE::AST
         return result;
     }
 
+    /**
+     * 一元操作符类型推断
+     * @param kind 操作数类型
+     * @param operand 操作数表达式值
+     * @param op 操作符
+     * @param resultType 结果类型
+     * @param errors 错误信息列表
+     * @param lineNum 行号
+     * @param hasError 是否有错误标志
+     * @return 计算结果表达式值
+     */
     static ExprValue dispatchUnaryOp(Type_t kind, const ExprValue& operand, Operator op, Type* resultType,
         std::vector<std::string>& errors, int lineNum, bool& hasError)
     {
@@ -295,6 +356,18 @@ namespace FE::AST
         }
     }
 
+    /**
+     * 二元操作符类型推断
+     * @param kind 操作数类型
+     * @param lhs 左操作数表达式值
+     * @param rhs 右操作数表达式值
+     * @param op 操作符
+     * @param resultType 结果类型
+     * @param errors 错误信息列表
+     * @param lineNum 行号
+     * @param hasError 是否有错误标志
+     * @return 计算结果表达式值
+     */
     static ExprValue dispatchBinaryOp(Type_t kind, const ExprValue& lhs, const ExprValue& rhs, Operator op,
         Type* resultType, std::vector<std::string>& errors, int lineNum, bool& hasError)
     {

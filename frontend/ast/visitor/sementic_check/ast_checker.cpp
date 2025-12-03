@@ -31,14 +31,14 @@ namespace FE::AST
             if (!stmt) continue;  // 空语句，跳过
             if (auto* varDecl = dynamic_cast<VarDeclStmt*>(stmt))
             {
-                // 对于变量声明语句
+                // 对于全局变量声明语句，在这里判断是否重复定义
                 success = apply(*this, *varDecl) && success;
                 // 如果有变量声明，提取其信息到全局符号表
                 if (varDecl->decl && this->symTable.isGlobalScope())
                 {
                     for (auto* decl : *(varDecl->decl->decls))
                     {
-                        // 遍历每个变量声明
+                        // 遍历每个变量声明器
                         if (!decl || !decl->lval) continue;
                         if (auto* Lval = dynamic_cast<LeftValExpr*>(decl->lval))
                         {
@@ -65,7 +65,6 @@ namespace FE::AST
                                            "' at line " + std::to_string(funcDecl->line_num) + ".");
                     success = false;
                     continue;
-                    ;
                 }
                 // 记录函数声明
                 this->funcDecls[funcDecl->entry] = funcDecl;
@@ -90,6 +89,7 @@ namespace FE::AST
                         success = false;
                     }
                 }
+                // 对函数内部进行检查
                 success = apply(*this, *funcDecl) && success;
             }
             else

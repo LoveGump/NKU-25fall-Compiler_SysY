@@ -33,52 +33,126 @@ namespace FE::AST
     {
         // TODO(Lab3-1): 实现变量声明器的语义检查
         // 访问左值表达式，同步属性，处理初始化器（如果有）
-        if (!node.lval)
+        auto* lval = dynamic_cast<LeftValExpr*>(node.lval);
+        if (!lval || !lval->entry)
         {
-            // 左值表达式不能为空
             errors.emplace_back("Invalid variable declarator at line " + std::to_string(node.line_num));
             return false;
         }
 
-        bool success = apply(*this, *node.lval);
-        node.attr    = node.lval->attr;  // 同步属性
+        bool success = true;
+        node.declDims.clear();  // 清空之前的维度信息
 
-        if (!node.init) return success;  // 无初始化器，直接返回
+        if (lval->indices)
+        {  // 数组类型
+            for (auto* dimExpr : *lval->indices)
+            {
+                // 遍历数组下标表达式
+                if (!dimExpr) continue;
+                success &= apply(*this, *dimExpr);
 
-        // 处理初始化器
-        success &= apply(*this, *node.init);
-        Type* varType  = node.lval->attr.val.value.type;  // 变量类型
-        Type* initType = node.init->attr.val.value.type;  // 初始化器类型
-        if (!varType || !initType)
-        {
-            // 类型不能为空
-            errors.emplace_back(
-                "Cannot determine variable or initializer type at line " + std::to_string(node.line_num));
-            return false;
-        }
-        if (initType->getBaseType() == Type_t::VOID)
-        {
-            // 变量不能用void类型初始化
-            errors.emplace_back(
-                "Variable cannot be initialized with void type at line " + std::to_string(node.line_num));
-            return false;
+                auto* lit = dynamic_cast<LiteralExpr*>(dimExpr);
+                if (lit && lit->literal.getInt() == -1)
+                {
+                    // 如果字面量的值为 -1，表示数组维度省略
+                    node.declDims.emplace_back(-1);
+                    continue;
+                }
+
+                if (!dimExpr->attr.val.isConstexpr)
+                {
+                    // 数组维度必须是编译期常量
+                    errors.emplace_back(
+                        "Array dimension must be integer constant at line " + std::to_string(dimExpr->line_num));
+                    success = false;
+                    continue;
+                }
+
+                Type* dimType = dimExpr->attr.val.value.type;
+
+                if (!dimType || dimType->getTypeGroup() == TypeGroup::POINTER || dimType->getBaseType() == Type_t::VOID)
+                {
+                    // 数组下标表达式必须是整数类型
+                    errors.emplace_back(
+                        "Array dimension must be integer constant at line " + std::to_string(dimExpr->line_num));
+                    success = false;
+                    continue;
+                }
+                // 其他类型进行隐式转换为整数类型
+                node.declDims.emplace_back(dimExpr->attr.val.getInt());
+            }
         }
 
-        // 检查指针与非指针类型的匹配
-        bool lhsPtr = varType->getTypeGroup() == TypeGroup::POINTER;
-        bool rhsPtr = initType->getTypeGroup() == TypeGroup::POINTER;
-        if (lhsPtr != rhsPtr)
+        Type* declaredType = node.attr.val.value.type;  // 变量声明的类型
+
+        if (node.init)
         {
-            errors.emplace_back("Initializer type mismatch at line " + std::to_string(node.line_num));
-            return false;
+            // 有初始化列表
+            success &= apply(*this, *node.init);  // 检查初始化列表
+
+            if (node.init->singleInit)
+            {
+                // 单个初始化器
+                int   errLine = node.init->line_num;             // 获取错误行号
+                Type* rhsTy   = node.init->attr.val.value.type;  // 获取右侧初始化值类型
+                if (!declaredType || !rhsTy)
+                {
+                    // 类型不能为空
+                    errors.emplace_back("Invalid initializer at line " + std::to_string(errLine));
+                    success = false;
+                }
+                else if (rhsTy->getBaseType() == Type_t::VOID)
+                {
+                    // 不能为 void 类型
+                    errors.emplace_back("Initializer cannot be void at line " + std::to_string(errLine));
+                    success = false;
+                }
+                else
+                {
+                    // 检查指针类型匹配
+                    bool lhsPtr = declaredType->getTypeGroup() == TypeGroup::POINTER;
+                    bool rhsPtr = rhsTy->getTypeGroup() == TypeGroup::POINTER;
+                    if (lhsPtr != rhsPtr)
+                    {
+                        errors.emplace_back("Initializer type mismatch at line " + std::to_string(errLine));
+                        success = false;
+                    }
+                    else if (lhsPtr && rhsPtr && declaredType != rhsTy)
+                    {
+                        errors.emplace_back("Initializer pointer type mismatch at line " + std::to_string(errLine));
+                        success = false;
+                    }
+                }
+            }
         }
-        if (lhsPtr && rhsPtr && varType != initType)
+
+        if (!node.declDims.empty() && node.declDims[0] == -1)
         {
-            // 指针类型还需进一步检查是否完全相同
-            errors.emplace_back("Initializer pointer type mismatch at line " + std::to_string(node.line_num));
-            return false;
+            // 如果第一个维度是 -1，尝试从初始化列表推断大小
+            if (auto* il = dynamic_cast<InitializerList*>(node.init))
+            {
+                // 使用初始化列表的大小推断数组维度
+                int inferred = static_cast<int>(il->size());
+                if (inferred <= 0)
+                {
+                    // 初始化列表为空，无法推断数组大小
+                    errors.emplace_back(
+                        "Cannot infer array size from empty initializer list at line " + std::to_string(node.line_num));
+                    success = false;
+                }
+                else
+                {
+                    // 成功推断数组大小
+                    node.declDims[0] = inferred;
+                }
+            }
+            else
+            {
+                errors.emplace_back("Array with omitted first dimension requires an initializer list at line " +
+                                    std::to_string(node.line_num));
+                success = false;
+            }
         }
-        // 基本类型可以进行隐式类型转换
 
         return success;
     }
@@ -152,21 +226,20 @@ namespace FE::AST
     {
         // TODO(Lab3-1): 实现变量声明的语义检查
         // 遍历声明列表，检查重定义，处理数组维度和初始化，将符号加入符号表
+
         if (!node.decls) return true;  // 无声明，直接返回
         bool success = true;
 
         for (auto* vd : *node.decls)
         {
-            // 遍历每个变量声明器
             if (!vd) continue;
-            auto* lval = dynamic_cast<LeftValExpr*>(vd->lval);
-            if (!lval || !lval->entry)
-            {
-                // 左值表达式和符号表项不能为空
-                errors.emplace_back("Invalid declarator in declaration at line " + std::to_string(node.line_num));
-                success = false;
-                continue;
-            }
+
+            vd->attr.val.value.type  = node.type;
+            vd->attr.val.isConstexpr = node.isConstDecl;
+
+            success &= apply(*this, *vd);  // 对数组维度的处理
+
+            auto* lval = dynamic_cast<LeftValExpr*>(vd->lval);  // 左值已经检查过了
 
             // 检查重定义
             if (!symTable.isGlobalScope())
@@ -195,121 +268,17 @@ namespace FE::AST
                 }
             }
 
-            // 数组的维度表达式
-            std::vector<int> dims;
-            if (lval->indices)
-            {
-                // 如果左值是数组，记录对应的数组下标
-                for (auto* d : *lval->indices)
-                {
-                    if (!d) continue;
-                    success &= apply(*this, *d);  // 访问下标表达式
-
-                    auto* lit = dynamic_cast<LiteralExpr*>(d);
-                    if (lit && lit->literal.getInt() == -1)
-                    {
-                        // 如果为空 第一个是-1占位符
-                        dims.push_back(-1);
-                        continue;
-                    }
-
-                    if (!d->attr.val.isConstexpr)
-                    {
-                        // 如果不是编译期常量，报错
-                        errors.emplace_back(
-                            "Array dimension must be integer constant at line " + std::to_string(d->line_num));
-                        success = false;
-                        continue;
-                    }
-
-                    // 获取对应的类型
-                    Type* t = d->attr.val.value.type;
-                    if (!t || t->getTypeGroup() == TypeGroup::POINTER || t->getBaseType() == Type_t::VOID)
-                    {
-                        // 下标不能为void 或者 指针
-                        errors.emplace_back(
-                            "Array dimension must be integer constant at line " + std::to_string(d->line_num));
-                        success = false;
-                        continue;
-                    }
-                    // 其他类型转换
-                    dims.push_back(d->attr.val.getInt());
-                }
-            }
-
-            // 如果存在对应的初始化器
-            if (vd->init)
-            {
-                success &= apply(*this, *vd->init);  // 访问初始化器
-                if (vd->init->singleInit)
-                {
-                    // 如果是单个初始化表达式，检查类型匹配
-                    Type* lhsTy = node.type;
-                    Type* rhsTy = vd->init->attr.val.value.type;
-                    if (!rhsTy)
-                    {
-                        // 如果初始化器类型无效
-                        int errLine = vd->init ? vd->init->line_num : vd->line_num;
-                        errors.emplace_back("Invalid initializer at line " + std::to_string(errLine));
-                        success = false;
-                    }
-                    else if (rhsTy->getBaseType() == Type_t::VOID)
-                    {
-                        // 如果初始化器类型为void，报错
-                        int errLine = vd->init ? vd->init->line_num : vd->line_num;
-                        errors.emplace_back("Initializer cannot be void at line " + std::to_string(errLine));
-                        success = false;
-                    }
-                    else
-                    {
-                        // 如果初始化器类型为指针与左值类型不匹配，报错
-                        bool lhsPtr = lhsTy->getTypeGroup() == TypeGroup::POINTER;
-                        bool rhsPtr = rhsTy->getTypeGroup() == TypeGroup::POINTER;
-                        if (lhsPtr != rhsPtr)
-                        {
-                            int errLine = vd->init ? vd->init->line_num : vd->line_num;
-                            errors.emplace_back("Initializer type mismatch at line " + std::to_string(errLine));
-                            success = false;
-                        }
-                    }
-                }
-            }
-
-            // 处理数组维度推导
-            if (!dims.empty() && dims[0] == -1)
-            {
-                if (auto* il = dynamic_cast<InitializerList*>(vd->init))
-                {
-                    int inferred = static_cast<int>(il->size());
-                    if (inferred <= 0)
-                    {
-                        errors.emplace_back("Cannot infer array size from empty initializer list at line " +
-                                            std::to_string(vd->line_num));
-                        success = false;
-                    }
-                    else
-                    {
-                        // 推导出第一个维度大小 至少为1
-                        dims[0] = inferred;
-                    }
-                }
-                else
-                {
-                    // 非初始化列表无法推导出第一个维度大小 报错
-                    errors.emplace_back("Array with omitted first dimension requires an initializer list at line " +
-                                        std::to_string(vd->line_num));
-                    success = false;
-                }
-            }
-
-            // 将变量加入符号表
+            // 将变量信息加入符号表
             VarAttr attr(node.type, node.isConstDecl, symTable.getScopeDepth());
-            attr.arrayDims = dims;
+
+            attr.arrayDims = vd->declDims;  // 记录数组维度
+
             if (vd->init && vd->init->singleInit && vd->init->attr.val.isConstexpr)
             {
+                // 如果有初始化且是单个常量表达式，记录初始化值
                 attr.initList.clear();
                 const ExprValue& initExpr = vd->init->attr.val;
-                switch (node.type ? node.type->getBaseType() : Type_t::INT)
+                switch (node.type->getBaseType())
                 {
                     case Type_t::BOOL: attr.initList.emplace_back(initExpr.getBool()); break;
                     case Type_t::FLOAT: attr.initList.emplace_back(initExpr.getFloat()); break;
