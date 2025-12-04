@@ -34,7 +34,7 @@ namespace FE::AST
     class LeftValExpr : public ExprNode
     {
       public:
-        bool                    isLval;
+        bool                    isLval;   // 是否为左值
         Entry*                  entry;    // 符号表项
         std::vector<ExprNode*>* indices;  // 数组下标表达式列表
 

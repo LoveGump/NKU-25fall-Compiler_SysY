@@ -1,0 +1,169 @@
+; Function Declarations
+declare i32 @getint()
+declare i32 @getch()
+declare i32 @getarray(i32*)
+declare float @getfloat()
+declare i32 @getfarray(float*)
+declare void @putint(i32)
+declare void @putch(i32)
+declare void @putarray(i32, i32*)
+declare void @putfloat(float)
+declare void @putfarray(i32, float*)
+declare void @_sysy_starttime(i32)
+declare void @_sysy_stoptime(i32)
+declare void @llvm.memset.p0.i32(i8*, i8, i32, i1)
+
+; Global Variable Declarations
+@N = global i32 zeroinitializer
+
+; Function Definitions
+define i32 @insert(i32* %reg_1, i32 %reg_2)
+{
+Block0: ; insert.entry
+	%reg_3 = alloca i32
+	store i32 %reg_2, i32* %reg_3
+	%reg_4 = alloca i32
+	store i32 0, i32* %reg_4
+	%reg_5 = alloca i32
+	store i32 0, i32* %reg_5
+	%reg_6 = add i32 0, 0
+	store i32 %reg_6, i32* %reg_4
+	br label %Block1
+Block1: ; while.cond
+	%reg_7 = load i32, i32* %reg_3
+	%reg_8 = load i32, i32* %reg_4
+	%reg_9 = getelementptr i32, i32* %reg_1, i32 %reg_8
+	%reg_10 = load i32, i32* %reg_9
+	%reg_11 = icmp sgt i32 %reg_7, %reg_10
+	br i1 %reg_11, label %Block4, label %Block5
+Block2: ; while.body
+	%reg_16 = load i32, i32* %reg_4
+	%reg_17 = add i32 1, 0
+	%reg_18 = add i32 %reg_16, %reg_17
+	store i32 %reg_18, i32* %reg_4
+	br label %Block1
+Block3: ; while.end
+	%reg_19 = load i32, i32* @N
+	store i32 %reg_19, i32* %reg_5
+	br label %Block6
+Block4: ; and.rhs
+	%reg_12 = load i32, i32* %reg_4
+	%reg_13 = load i32, i32* @N
+	%reg_14 = icmp slt i32 %reg_12, %reg_13
+	br label %Block5
+Block5: ; and.end
+	%reg_15 = phi i1 [ %reg_11, %Block1 ], [ %reg_14, %Block4 ]
+	br i1 %reg_15, label %Block2, label %Block3
+Block6: ; while.cond
+	%reg_20 = load i32, i32* %reg_5
+	%reg_21 = load i32, i32* %reg_4
+	%reg_22 = icmp sgt i32 %reg_20, %reg_21
+	br i1 %reg_22, label %Block7, label %Block8
+Block7: ; while.body
+	%reg_23 = load i32, i32* %reg_5
+	%reg_24 = getelementptr i32, i32* %reg_1, i32 %reg_23
+	%reg_25 = load i32, i32* %reg_5
+	%reg_26 = add i32 1, 0
+	%reg_27 = sub i32 %reg_25, %reg_26
+	%reg_28 = getelementptr i32, i32* %reg_1, i32 %reg_27
+	%reg_29 = load i32, i32* %reg_28
+	store i32 %reg_29, i32* %reg_24
+	%reg_30 = load i32, i32* %reg_4
+	%reg_31 = getelementptr i32, i32* %reg_1, i32 %reg_30
+	%reg_32 = load i32, i32* %reg_3
+	store i32 %reg_32, i32* %reg_31
+	%reg_33 = load i32, i32* %reg_5
+	%reg_34 = add i32 1, 0
+	%reg_35 = sub i32 %reg_33, %reg_34
+	store i32 %reg_35, i32* %reg_5
+	br label %Block6
+Block8: ; while.end
+	%reg_36 = add i32 0, 0
+	ret i32 %reg_36
+}
+
+define i32 @main()
+{
+Block0: ; main.entry
+	%reg_1 = add i32 10, 0
+	store i32 %reg_1, i32* @N
+	%reg_2 = alloca [11 x i32]
+	%reg_3 = add i32 0, 0
+	%reg_4 = getelementptr [11 x i32], [11 x i32]* %reg_2, i32 0, i32 %reg_3
+	%reg_5 = add i32 1, 0
+	store i32 %reg_5, i32* %reg_4
+	%reg_6 = add i32 1, 0
+	%reg_7 = getelementptr [11 x i32], [11 x i32]* %reg_2, i32 0, i32 %reg_6
+	%reg_8 = add i32 3, 0
+	store i32 %reg_8, i32* %reg_7
+	%reg_9 = add i32 2, 0
+	%reg_10 = getelementptr [11 x i32], [11 x i32]* %reg_2, i32 0, i32 %reg_9
+	%reg_11 = add i32 4, 0
+	store i32 %reg_11, i32* %reg_10
+	%reg_12 = add i32 3, 0
+	%reg_13 = getelementptr [11 x i32], [11 x i32]* %reg_2, i32 0, i32 %reg_12
+	%reg_14 = add i32 7, 0
+	store i32 %reg_14, i32* %reg_13
+	%reg_15 = add i32 4, 0
+	%reg_16 = getelementptr [11 x i32], [11 x i32]* %reg_2, i32 0, i32 %reg_15
+	%reg_17 = add i32 8, 0
+	store i32 %reg_17, i32* %reg_16
+	%reg_18 = add i32 5, 0
+	%reg_19 = getelementptr [11 x i32], [11 x i32]* %reg_2, i32 0, i32 %reg_18
+	%reg_20 = add i32 11, 0
+	store i32 %reg_20, i32* %reg_19
+	%reg_21 = add i32 6, 0
+	%reg_22 = getelementptr [11 x i32], [11 x i32]* %reg_2, i32 0, i32 %reg_21
+	%reg_23 = add i32 13, 0
+	store i32 %reg_23, i32* %reg_22
+	%reg_24 = add i32 7, 0
+	%reg_25 = getelementptr [11 x i32], [11 x i32]* %reg_2, i32 0, i32 %reg_24
+	%reg_26 = add i32 18, 0
+	store i32 %reg_26, i32* %reg_25
+	%reg_27 = add i32 8, 0
+	%reg_28 = getelementptr [11 x i32], [11 x i32]* %reg_2, i32 0, i32 %reg_27
+	%reg_29 = add i32 56, 0
+	store i32 %reg_29, i32* %reg_28
+	%reg_30 = add i32 9, 0
+	%reg_31 = getelementptr [11 x i32], [11 x i32]* %reg_2, i32 0, i32 %reg_30
+	%reg_32 = add i32 78, 0
+	store i32 %reg_32, i32* %reg_31
+	%reg_33 = alloca i32
+	store i32 0, i32* %reg_33
+	%reg_34 = alloca i32
+	store i32 0, i32* %reg_34
+	%reg_35 = add i32 0, 0
+	store i32 %reg_35, i32* %reg_34
+	%reg_36 = call i32 @getint()
+	store i32 %reg_36, i32* %reg_33
+	%reg_37 = getelementptr [11 x i32], [11 x i32]* %reg_2, i32 0
+	%reg_38 = getelementptr [11 x i32], [11 x i32]* %reg_2, i32 0, i32 0
+	%reg_39 = load i32, i32* %reg_33
+	%reg_40 = call i32 @insert(i32* %reg_38, i32 %reg_39)
+	store i32 %reg_40, i32* %reg_33
+	br label %Block1
+Block1: ; while.cond
+	%reg_41 = load i32, i32* %reg_34
+	%reg_42 = load i32, i32* @N
+	%reg_43 = icmp slt i32 %reg_41, %reg_42
+	br i1 %reg_43, label %Block2, label %Block3
+Block2: ; while.body
+	%reg_44 = load i32, i32* %reg_34
+	%reg_45 = getelementptr [11 x i32], [11 x i32]* %reg_2, i32 0, i32 %reg_44
+	%reg_46 = load i32, i32* %reg_45
+	store i32 %reg_46, i32* %reg_33
+	%reg_47 = load i32, i32* %reg_33
+	call void @putint(i32 %reg_47)
+	%reg_48 = add i32 10, 0
+	store i32 %reg_48, i32* %reg_33
+	%reg_49 = load i32, i32* %reg_33
+	call void @putch(i32 %reg_49)
+	%reg_50 = load i32, i32* %reg_34
+	%reg_51 = add i32 1, 0
+	%reg_52 = add i32 %reg_50, %reg_51
+	store i32 %reg_52, i32* %reg_34
+	br label %Block1
+Block3: ; while.end
+	%reg_53 = add i32 0, 0
+	ret i32 %reg_53
+}

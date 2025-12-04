@@ -3,7 +3,6 @@
 namespace ME
 {
     // 类型映射表：将前端 AST 类型转换为 IR 数据类型
-    //
     // 使用静态初始化，在程序启动时构建映射表
     namespace
     {
@@ -22,7 +21,7 @@ namespace ME
         }();
     }  // namespace
 
-    // 将 FE::AST 类型 转换为中间表示的 类型
+    // 将 FE::AST 类型 转换为中间表示 IR 的 类型
     DataType ASTCodeGen::convert(FE::AST::Type* at)
     {
         if (!at) return DataType::UNK;

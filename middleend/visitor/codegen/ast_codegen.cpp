@@ -4,107 +4,6 @@
 #include <sstream>
 #include <string>
 
-namespace
-{
-    using FE::AST::InitDecl;
-    using FE::AST::Initializer;
-    using FE::AST::InitializerList;
-    using FE::AST::Type;
-    using FE::AST::VarValue;
-
-    void assignScalarInit(InitDecl* init, Type* elemType, size_t offset, std::vector<VarValue>& storage)
-    {
-        if (!init || offset >= storage.size()) return;
-        if (auto* list = dynamic_cast<InitializerList*>(init))
-        {
-            if (!list->init_list) return;
-            size_t idx = offset;
-            for (auto* child : *(list->init_list))
-            {
-                assignScalarInit(child, elemType, idx, storage);
-                ++idx;
-                if (idx >= storage.size()) break;
-            }
-            return;
-        }
-
-        auto* scalar = dynamic_cast<Initializer*>(init);
-        if (!scalar || !scalar->init_val) return;
-
-        const auto& val = scalar->init_val->attr.val.value;
-        if (!elemType)
-        {
-            storage[offset] = val;
-            return;
-        }
-
-        switch (elemType->getBaseType())
-        {
-            case FE::AST::Type_t::BOOL: storage[offset] = VarValue(val.getBool()); break;
-            case FE::AST::Type_t::FLOAT: storage[offset] = VarValue(val.getFloat()); break;
-            case FE::AST::Type_t::LL: storage[offset] = VarValue(val.getLL()); break;
-            case FE::AST::Type_t::INT:
-            default: storage[offset] = VarValue(val.getInt()); break;
-        }
-    }
-
-    size_t aggregateArrayInit(InitDecl* init, Type* elemType, size_t dimIdx, const std::vector<int>& dims,
-        const std::vector<size_t>& strides, size_t offset, std::vector<VarValue>& storage)
-    {
-        if (!init) return 0;
-        if (dimIdx >= dims.size())
-        {
-            assignScalarInit(init, elemType, offset, storage);
-            return 1;
-        }
-
-        auto* list = dynamic_cast<InitializerList*>(init);
-        if (!list) { return aggregateArrayInit(init, elemType, dimIdx + 1, dims, strides, offset, storage); }
-
-        if (!list->init_list) return 0;
-
-        size_t blockSize     = strides.empty() ? 1 : strides[dimIdx];
-        size_t elementCount  = static_cast<size_t>(std::max(dims[dimIdx], 0));
-        size_t idx           = 0;
-        size_t innerProgress = 0;
-        size_t totalConsumed = 0;
-
-        for (auto* child : *(list->init_list))
-        {
-            if (!child) continue;
-            if (idx >= elementCount) break;
-
-            bool   childIsList   = dynamic_cast<InitializerList*>(child) != nullptr;
-            size_t childConsumed = aggregateArrayInit(
-                child, elemType, dimIdx + 1, dims, strides, offset + idx * blockSize + innerProgress, storage);
-
-            totalConsumed += childConsumed;
-
-            if (childIsList)
-            {
-                innerProgress = 0;
-                ++idx;
-            }
-            else
-            {
-                innerProgress += childConsumed;
-                while (innerProgress >= blockSize)
-                {
-                    innerProgress -= blockSize;
-                    ++idx;
-                    if (idx >= elementCount)
-                    {
-                        innerProgress = 0;
-                        break;
-                    }
-                }
-            }
-        }
-
-        return totalConsumed;
-    }
-}  // namespace
-
 namespace ME
 {
     // libFuncRegister: 注册评测系统所需的库函数声明
@@ -175,7 +74,7 @@ namespace ME
         size_t reg = name2reg.getReg(entry);
         if (reg != static_cast<size_t>(-1))
         {
-            // 如果不在作用域中，直接返回变量属性
+            // 如果在作用域中，直接返回变量属性
             auto locIt = reg2attr.find(reg);
             if (locIt != reg2attr.end()) return &locIt->second;
         }
@@ -200,26 +99,24 @@ namespace ME
         for (auto* vd : *(decls->decl->decls))
         {
             if (!vd) continue;
-            // 左值表达式必须有效且关联符号表项
+            // 获取左值表达式
             auto* lval = dynamic_cast<FE::AST::LeftValExpr*>(vd->lval);
-            if (!lval || !lval->entry) continue;
 
             // 获取变量属性
-            const FE::AST::VarAttr* attr = getVarAttr(lval->entry);
-            if (!attr) continue;  // 跳过无效变量属性
+            const FE::AST::VarAttr attr = glbSymbols.at(lval->entry);
 
-            DataType elemType = convert(attr->type);  // 获取变量的基本数据类型
-            if (attr->arrayDims.empty())
+            DataType elemType = convert(attr.type);  // 获取变量的 ir 数据类型
+            if (attr.arrayDims.empty())
             {
-                // 标量变量
-                Operand* initOp = nullptr;
-                if (!attr->initList.empty())
+                // 非数组变量
+                Operand* initOp = nullptr;  // 初始化操作数
+                if (!attr.initList.empty())
                 {
                     // 如果有初始值 根据类型生成对应的立即数操作数
                     if (elemType == DataType::I32 || elemType == DataType::I1 || elemType == DataType::I8)
-                        initOp = getImmeI32Operand(attr->initList[0].getInt());
+                        initOp = getImmeI32Operand(attr.initList[0].getInt());
                     else if (elemType == DataType::F32)
-                        initOp = getImmeF32Operand(attr->initList[0].getFloat());
+                        initOp = getImmeF32Operand(attr.initList[0].getFloat());
                 }
                 // 没有初始值则为零初始化
 
@@ -229,51 +126,21 @@ namespace ME
             else
             {
                 // 数组变量
-                FE::AST::VarAttr arrayAttr = *attr;
-                size_t           totalSize = 1;  // 计算数组总大小
+                FE::AST::VarAttr arrayAttr = attr;  // 复制变量属性以修改
+                size_t           totalSize = 1;     // 计算数组总大小
                 // 变量初始化
-                for (int dim : arrayAttr.arrayDims) totalSize *= static_cast<size_t>(std::max(dim, 0));
+                for (int dim : arrayAttr.arrayDims) { totalSize *= static_cast<size_t>(std::max(dim, 0)); }
                 if (totalSize == 0) totalSize = 1;  // 防止零大小数组
                 // 初始化数组元素为零值
                 arrayAttr.initList.assign(totalSize, makeZeroValue(arrayAttr.type));
-                // 如果有初始值 根据初始值填充数组
+                // 如果有初始值 根据初始值填充数组 TODO
                 if (vd->init) fillGlobalArrayInit(vd->init, arrayAttr.type, arrayAttr.arrayDims, arrayAttr.initList);
                 m->globalVars.emplace_back(new GlbVarDeclInst(elemType, lval->entry->getName(), arrayAttr));
             }
         }
     }
 
-    // 寄存器中的值 被转为指定类型，返回转换后的寄存器编号
-    size_t ASTCodeGen::ensureType(size_t reg, DataType from, DataType to)
-    {
-        if (reg == static_cast<size_t>(-1) || from == to || to == DataType::UNK || from == DataType::UNK) return reg;
-
-        auto insts = createTypeConvertInst(from, to, reg);
-        // 插入转换指令
-        for (auto* inst : insts) insert(inst);
-        if (insts.empty()) return reg;
-        return getMaxReg();
-    }
-
-    // 收集数组维度信息 收集给定表达式列表中的维度值
-    std::vector<int> ASTCodeGen::collectArrayDims(const std::vector<FE::AST::ExprNode*>* dimExprs) const
-    {
-        std::vector<int> ret;
-        if (!dimExprs) return ret;
-        for (auto* expr : *dimExprs)
-        {
-            if (!expr) continue;
-            ret.push_back(expr->attr.val.getInt());
-        }
-        return ret;
-    }
-
-    std::string ASTCodeGen::formatIRType(FE::AST::Type* type, bool asPointer) const
-    {
-        static const std::vector<int> emptyDims;
-        return formatIRType(type, emptyDims, asPointer);
-    }
-
+    // 格式化类型字符串，考虑数组维度和指针
     std::string ASTCodeGen::formatIRType(FE::AST::Type* type, const std::vector<int>& arrayDims, bool asPointer) const
     {
         using namespace FE::AST;
@@ -281,6 +148,7 @@ namespace ME
         Type* baseType  = type;
         if (baseType && baseType->getTypeGroup() == TypeGroup::POINTER)
         {
+            // 如果是指针类型，设置标志并获取基类型
             isPointer = true;
             if (auto* ptrTy = dynamic_cast<PtrType*>(baseType)) baseType = ptrTy->base;
         }
@@ -299,22 +167,24 @@ namespace ME
             }
         }
 
-        auto wrapWithArrayDims = [&](const std::string& elem) {
-            size_t            validDims = 0;
-            std::stringstream ss;
-            for (int dim : arrayDims)
-            {
-                if (dim <= 0) continue;
-                ss << "[" << dim << " x ";
-                ++validDims;
-            }
-            if (validDims == 0) return elem;
-            ss << elem;
-            for (size_t i = 0; i < validDims; ++i) ss << "]";
-            return ss.str();
-        };
+        // 对于数组而言，构建多维数组类型字符串
+        size_t            validDims = 0;
+        std::stringstream dimBuilder;
+        for (int dim : arrayDims)
+        {
+            if (dim <= 0) continue;
+            dimBuilder << "[" << dim << " x ";
+            ++validDims;
+        }
 
-        std::string typeStr = wrapWithArrayDims(baseStr);
+        std::string typeStr = baseStr;
+        if (validDims > 0)
+        {
+            dimBuilder << baseStr;
+            for (size_t i = 0; i < validDims; ++i) dimBuilder << "]";
+            typeStr = dimBuilder.str();
+        }
+
         if (isPointer) typeStr += "*";
         return typeStr;
     }
@@ -336,6 +206,7 @@ namespace ME
         return loopStack.back();
     }
 
+    // 插入alloca指令到函数入口块
     void ASTCodeGen::insertAllocaInst(Instruction* inst)
     {
         if (!funcEntryBlock)
@@ -353,7 +224,7 @@ namespace ME
         funcEntryBlock->insertFront(inst);
     }
 
-    // 生成类型对应的零值
+    // 生成对应类型的零值
     FE::AST::VarValue ASTCodeGen::makeZeroValue(FE::AST::Type* type) const
     {
         if (!type) return FE::AST::VarValue(0);
@@ -367,20 +238,217 @@ namespace ME
         }
     }
 
-    // 填充全局数组初始值
+    size_t ASTCodeGen::fillGlobalArrayInitRecursive(FE::AST::InitDecl* node, FE::AST::Type* elemType,
+        const std::vector<int>& dims, const std::vector<size_t>& strides, size_t dimIdx, size_t offset,
+        std::vector<FE::AST::VarValue>& storage) const
+    {
+        if (!node) return 0;
+
+        if (dimIdx >= dims.size())
+        {
+            auto* listNode = dynamic_cast<FE::AST::InitializerList*>(node);
+            if (listNode)
+            {
+                if (!listNode->init_list) return 0;
+                size_t consumed = 0;
+                for (auto* child : *(listNode->init_list))
+                {
+                    consumed += fillGlobalArrayInitRecursive(
+                        child, elemType, dims, strides, dimIdx, offset + consumed, storage);
+                    if (offset + consumed >= storage.size()) break;
+                }
+                return consumed;
+            }
+
+            auto* scalarNode = dynamic_cast<FE::AST::Initializer*>(node);
+            if (!scalarNode || !scalarNode->init_val || offset >= storage.size()) return 0;
+
+            const auto& val = scalarNode->init_val->attr.val.value;
+            if (!elemType) { storage[offset] = val; }
+            else
+            {
+                switch (elemType->getBaseType())
+                {
+                    case FE::AST::Type_t::BOOL: storage[offset] = FE::AST::VarValue(val.getBool()); break;
+                    case FE::AST::Type_t::FLOAT: storage[offset] = FE::AST::VarValue(val.getFloat()); break;
+                    case FE::AST::Type_t::LL: storage[offset] = FE::AST::VarValue(val.getLL()); break;
+                    case FE::AST::Type_t::INT:
+                    default: storage[offset] = FE::AST::VarValue(val.getInt()); break;
+                }
+            }
+            return 1;
+        }
+
+        auto* listNode = dynamic_cast<FE::AST::InitializerList*>(node);
+        if (!listNode) return fillGlobalArrayInitRecursive(node, elemType, dims, strides, dimIdx + 1, offset, storage);
+        if (!listNode->init_list) return 0;
+
+        size_t blockSize = (dimIdx < strides.size()) ? strides[dimIdx] : 1;
+        if (blockSize == 0) blockSize = 1;
+        size_t elementCount  = static_cast<size_t>(std::max(dims[dimIdx], 0));
+        size_t idx           = 0;
+        size_t innerProgress = 0;
+        size_t totalConsumed = 0;
+
+        for (auto* child : *(listNode->init_list))
+        {
+            if (!child) continue;
+            if (idx >= elementCount) break;
+
+            bool   childIsList   = dynamic_cast<FE::AST::InitializerList*>(child) != nullptr;
+            size_t childConsumed = fillGlobalArrayInitRecursive(
+                child, elemType, dims, strides, dimIdx + 1, offset + idx * blockSize + innerProgress, storage);
+            totalConsumed += childConsumed;
+
+            if (childIsList)
+            {
+                innerProgress = 0;
+                ++idx;
+            }
+            else
+            {
+                innerProgress += childConsumed;
+                while (innerProgress >= blockSize)
+                {
+                    innerProgress -= blockSize;
+                    ++idx;
+                    if (idx >= elementCount)
+                    {
+                        innerProgress = 0;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return totalConsumed;
+    }
+
+    // 填充根据初始化语句 填充数组初始值
     void ASTCodeGen::fillGlobalArrayInit(FE::AST::InitDecl* init, FE::AST::Type* elemType, const std::vector<int>& dims,
         std::vector<FE::AST::VarValue>& storage) const
     {
-        if (!init) return;  // 无初始值直接返回
+        if (!init || storage.empty()) return;
 
-        // 计算数组每一维的步长
         std::vector<size_t> strides(dims.size(), 1);
         for (int i = static_cast<int>(dims.size()) - 2; i >= 0; --i)
         {
-            strides[i] = strides[i + 1] * static_cast<size_t>(dims[i + 1]);
+            size_t nextLen = static_cast<size_t>(std::max(dims[i + 1], 0));
+            if (nextLen == 0) nextLen = 1;
+            strides[i] = strides[i + 1] * nextLen;
         }
 
-        ::aggregateArrayInit(init, elemType, 0, dims, strides, 0, storage);
+        fillGlobalArrayInitRecursive(init, elemType, dims, strides, 0, 0, storage);
+    }
+
+    // 递归生成运行时数组初始化指令
+    void ASTCodeGen::emitRuntimeArrayScalar(FE::AST::InitDecl* node, Operand* basePtr, DataType elemDataType,
+        const std::vector<int>& dims, const std::vector<size_t>& strides, size_t curOffset, Module* m)
+    {
+        if (!node) return;
+
+        if (auto* list = dynamic_cast<FE::AST::InitializerList*>(node))
+        {
+            if (!list->init_list) return;
+            size_t localOffset = curOffset;
+            for (auto* child : *(list->init_list))
+            {
+                emitRuntimeArrayScalar(child, basePtr, elemDataType, dims, strides, localOffset, m);
+                ++localOffset;
+            }
+            return;
+        }
+
+        auto* scalar = dynamic_cast<FE::AST::Initializer*>(node);
+        if (!scalar || !scalar->init_val) return;
+
+        apply(*this, *(scalar->init_val), m);
+        size_t   valueReg  = getMaxReg();
+        DataType valueType = convert(scalar->init_val->attr.val.value.type);
+        if (valueType == DataType::UNK) valueType = elemDataType;
+        auto insts = createTypeConvertInst(valueType, elemDataType, valueReg);
+        if (!insts.empty())
+        {
+            valueReg = getMaxReg();  // 使用新的寄存器来存放变量
+            for (auto* inst : insts) { insert(inst); }
+        }
+
+        std::vector<Operand*> idxOps;
+        idxOps.reserve(dims.size() + 1);
+        idxOps.push_back(getImmeI32Operand(0));
+
+        size_t remaining = curOffset;
+        for (size_t dimIdx = 0; dimIdx < dims.size(); ++dimIdx)
+        {
+            size_t stride = (dimIdx < strides.size()) ? strides[dimIdx] : 1;
+            if (stride == 0) stride = 1;
+            size_t idxVal  = stride ? remaining / stride : 0;
+            int    dimSize = dims[dimIdx];
+            if (dimSize > 0) idxVal %= static_cast<size_t>(dimSize);
+            idxOps.push_back(getImmeI32Operand(static_cast<int>(idxVal)));
+            remaining -= idxVal * stride;
+        }
+
+        size_t gepReg = getNewRegId();
+        insert(createGEP_I32Inst(elemDataType, basePtr, dims, idxOps, gepReg));
+        insert(createStoreInst(elemDataType, valueReg, getRegOperand(gepReg)));
+    }
+
+    // 递归生成运行时数组初始化指令
+    size_t ASTCodeGen::emitRuntimeArrayRecursive(FE::AST::InitDecl* node, Operand* basePtr, DataType elemDataType,
+        const std::vector<int>& dims, const std::vector<size_t>& strides, size_t dimIdx, size_t offset, Module* m)
+    {
+        if (!node) return 0;
+        if (dimIdx >= dims.size())
+        {
+            emitRuntimeArrayScalar(node, basePtr, elemDataType, dims, strides, offset, m);
+            return 1;
+        }
+
+        auto* list = dynamic_cast<FE::AST::InitializerList*>(node);
+        if (!list) return emitRuntimeArrayRecursive(node, basePtr, elemDataType, dims, strides, dimIdx + 1, offset, m);
+        if (!list->init_list) return 0;
+
+        size_t blockSize = (dimIdx < strides.size()) ? strides[dimIdx] : 1;
+        if (blockSize == 0) blockSize = 1;
+        size_t elementCount = dims[dimIdx] > 0 ? static_cast<size_t>(dims[dimIdx]) : 0;
+
+        size_t idx           = 0;
+        size_t innerProgress = 0;
+        size_t totalConsumed = 0;
+
+        for (auto* child : *(list->init_list))
+        {
+            if (!child) continue;
+            if (idx >= elementCount) break;
+
+            bool   childIsList   = dynamic_cast<FE::AST::InitializerList*>(child) != nullptr;
+            size_t childConsumed = emitRuntimeArrayRecursive(
+                child, basePtr, elemDataType, dims, strides, dimIdx + 1, offset + idx * blockSize + innerProgress, m);
+            totalConsumed += childConsumed;
+
+            if (childIsList)
+            {
+                innerProgress = 0;
+                ++idx;
+            }
+            else
+            {
+                innerProgress += childConsumed;
+                while (innerProgress >= blockSize)
+                {
+                    innerProgress -= blockSize;
+                    ++idx;
+                    if (idx >= elementCount)
+                    {
+                        innerProgress = 0;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return totalConsumed;
     }
 
     void ASTCodeGen::emitRuntimeArrayInit(
@@ -391,112 +459,15 @@ namespace ME
         std::vector<size_t> strides(dims.size(), 1);
         for (int i = static_cast<int>(dims.size()) - 2; i >= 0; --i)
         {
-            strides[i] = strides[i + 1] * static_cast<size_t>(std::max(dims[i + 1], 0));
+            size_t nextLen = static_cast<size_t>(std::max(dims[i + 1], 0));
+            if (nextLen == 0) nextLen = 1;
+            strides[i] = strides[i + 1] * nextLen;
         }
 
-        auto emitScalar = [&](auto&& self, FE::AST::InitDecl* node, size_t curOffset) -> void {
-            if (!node) return;
-
-            if (auto* list = dynamic_cast<FE::AST::InitializerList*>(node))
-            {
-                if (!list->init_list) return;
-                size_t localOffset = curOffset;
-                for (auto* child : *(list->init_list))
-                {
-                    self(self, child, localOffset);
-                    ++localOffset;
-                }
-                return;
-            }
-
-            auto* scalar = dynamic_cast<FE::AST::Initializer*>(node);
-            if (!scalar || !scalar->init_val) return;
-
-            apply(*this, *(scalar->init_val), m);
-            size_t   valueReg  = getMaxReg();
-            DataType valueType = convert(scalar->init_val->attr.val.value.type);
-            if (valueType == DataType::UNK) valueType = elemDataType;
-            valueReg = ensureType(valueReg, valueType, elemDataType);
-
-            std::vector<Operand*> idxOps;
-            idxOps.reserve(dims.size() + 1);
-            idxOps.push_back(getImmeI32Operand(0));
-
-            size_t remaining = curOffset;
-            for (size_t i = 0; i < dims.size(); ++i)
-            {
-                size_t stride = (i < strides.size()) ? strides[i] : 1;
-                if (stride == 0) stride = 1;
-                size_t idxVal  = remaining / stride;
-                int    dimSize = std::max(dims[i], 0);
-                if (dimSize > 0) idxVal %= static_cast<size_t>(dimSize);
-                idxOps.push_back(getImmeI32Operand(static_cast<int>(idxVal)));
-                remaining -= idxVal * stride;
-            }
-
-            size_t gepReg = getNewRegId();
-            insert(createGEP_I32Inst(elemDataType, basePtr, dims, idxOps, gepReg));
-            insert(createStoreInst(elemDataType, valueReg, getRegOperand(gepReg)));
-        };
-
-        auto emitArray = [&](auto&& self, FE::AST::InitDecl* node, size_t dimIdx, size_t offset) -> size_t {
-            if (!node) return 0;
-            if (dimIdx >= dims.size())
-            {
-                emitScalar(emitScalar, node, offset);
-                return 1;
-            }
-
-            auto* list = dynamic_cast<FE::AST::InitializerList*>(node);
-            if (!list) { return self(self, node, dimIdx + 1, offset); }
-            if (!list->init_list) return 0;
-
-            size_t blockSize = (dimIdx < strides.size()) ? strides[dimIdx] : 1;
-            if (blockSize == 0) blockSize = 1;
-            size_t elementCount = static_cast<size_t>(std::max(dims[dimIdx], 0));
-
-            size_t idx           = 0;
-            size_t innerProgress = 0;
-            size_t totalConsumed = 0;
-
-            for (auto* child : *(list->init_list))
-            {
-                if (!child) continue;
-                if (idx >= elementCount) break;
-
-                bool   childIsList   = dynamic_cast<FE::AST::InitializerList*>(child) != nullptr;
-                size_t childConsumed = self(self, child, dimIdx + 1, offset + idx * blockSize + innerProgress);
-                totalConsumed += childConsumed;
-
-                if (childIsList)
-                {
-                    innerProgress = 0;
-                    ++idx;
-                }
-                else
-                {
-                    innerProgress += childConsumed;
-                    while (innerProgress >= blockSize)
-                    {
-                        innerProgress -= blockSize;
-                        ++idx;
-                        if (idx >= elementCount)
-                        {
-                            innerProgress = 0;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            return totalConsumed;
-        };
-
-        emitArray(emitArray, init, 0, 0);
+        emitRuntimeArrayRecursive(init, basePtr, elemDataType, dims, strides, 0, 0, m);
     }
 
     // visit(Root): 模块级代码生成入口
-    // 类似之前的访问者模式？
     void ASTCodeGen::visit(FE::AST::Root& node, Module* m)
     {
         // 示例：注册库函数
@@ -505,15 +476,21 @@ namespace ME
         // TODO(Lab 3-2): 生成模块级 IR
         // 处理顶层语句：全局变量声明、函数定义等
         auto* stmts = node.getStmts();
-        if (!stmts) return;
+        if (!stmts) return;  // 空语句直接返回
 
         for (auto* stmt : *stmts)
         {
             if (!stmt) continue;
             if (auto* var = dynamic_cast<FE::AST::VarDeclStmt*>(stmt))
+            {
+                // 变量声明语句
                 handleGlobalVarDecl(var, m);
+            }
             else if (auto* func = dynamic_cast<FE::AST::FuncDeclStmt*>(stmt))
+            {
+                // 函数声明语句
                 apply(*this, *func, m);
+            }
         }
     }
 
@@ -614,6 +591,7 @@ namespace ME
     // GEPInst: GetElementPtr 指令创建函数（用于数组索引）
     // dims: 数组维度，如 [10, 20] 表示 10x20 的二维数组
     // is: 索引操作数列表，第一个通常是 0（基地址），后续是各维索引
+    // resReg: 结果寄存器编号
     GEPInst* ASTCodeGen::createGEP_I32Inst(
         DataType t, Operand* ptr, std::vector<int> dims, std::vector<Operand*> is, size_t resReg)
     {

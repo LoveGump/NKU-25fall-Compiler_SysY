@@ -10,7 +10,7 @@ namespace ME
     std::string LoadInst::toString() const
     {
         std::stringstream ss;
-        ss << res << " = load " << dt << ", " << dt << "* " << ptr << getComment();
+        ss << res << " = load " << dt << ", ptr " << ptr << getComment();
         return ss.str();
     }
 
@@ -19,7 +19,7 @@ namespace ME
     std::string StoreInst::toString() const
     {
         std::stringstream ss;
-        ss << "store " << dt << " " << val << ", " << dt << "* " << ptr << getComment();
+         ss << "store " << dt << " " << val << ", ptr " << ptr << getComment();
         return ss.str();
     }
 
@@ -316,12 +316,26 @@ namespace ME
     }
     std::string GEPInst::toString() const
     {
+        // std::stringstream ss;
+        // ss << res << " = getelementptr ";
+        // std::string aggType = aggregateTypeString(dt, dims);
+        // ss << aggType;
+
+        // ss << ", " << aggType << "* " << basePtr;
+        // for (auto& idx : idxs) ss << ", " << idxType << " " << idx;
+        // ss << getComment();
+        // return ss.str();
         std::stringstream ss;
         ss << res << " = getelementptr ";
-        std::string aggType = aggregateTypeString(dt, dims);
-        ss << aggType;
+        if (dims.empty())
+            ss << dt;
+        else
+        {
+            for (int dim : dims) ss << "[" << dim << " x ";
+            ss << dt << std::string(dims.size(), ']');
+        }
 
-        ss << ", " << aggType << "* " << basePtr;
+        ss << ", ptr " << basePtr;
         for (auto& idx : idxs) ss << ", " << idxType << " " << idx;
         ss << getComment();
         return ss.str();

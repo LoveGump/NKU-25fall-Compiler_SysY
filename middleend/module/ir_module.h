@@ -5,6 +5,7 @@
 
 namespace ME
 {
+    // LLVM IR模块类，包含全局变量和函数列表
     class Module : public Visitable
     {
       public:

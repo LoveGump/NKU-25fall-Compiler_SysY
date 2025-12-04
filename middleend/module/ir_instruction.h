@@ -344,7 +344,7 @@ namespace ME
         using argPair = std::pair<argType, argOp>;
         using argList = std::vector<argPair>;
         argList                  argRegs;      // 参数列表：类型-寄存器对
-        std::vector<std::string> argTypeStrs;  // 指针可选：类型字符串覆盖
+        std::vector<std::string> argTypeStrs;  // 有指针可选：类型字符串覆盖 会使用具体的i32*而不是ptr
 
       public:
         FuncDefInst(DataType rt, const std::string& fn, argList ar = {}, const std::string& c = "")
@@ -366,14 +366,16 @@ namespace ME
     class GEPInst : public Instruction
     {
         // %r = getelementptr i32, ptr %p, i32 %i
-        // %r = getelementptr [5 x [10 x i32]], ptr %p, i32 %i, i32 %j
+        // a[1][2] 的地址计算示例：
+        // %p = getelementptr [2 x [3 x i32]], [2 x [3 x i32]]* %a, i32 0, i32 1, i32 2
+        //    res              dims       dt                   ptr   idxs
       public:
         DataType              dt;
-        DataType              idxType;
+        DataType              idxType;  // 索引类型，通常为 i32
         Operand*              basePtr;  // 基址指针
-        Operand*              res;
-        std::vector<int>      dims;  // 数组各维度大小，用于多维数组寻址计算
-        std::vector<Operand*> idxs;  // 索引操作数列表
+        Operand*              res;      // 结果寄存器
+        std::vector<int>      dims;     // 数组各维度大小，用于多维数组寻址计算
+        std::vector<Operand*> idxs;     // 索引操作数列表
 
       public:
         GEPInst(

@@ -55,7 +55,10 @@ namespace ME
         Function* curFunc;
         // 当前正在生成的基本块（IR Block对象）
         Block* curBlock;
-        Block* funcEntryBlock;  // 当前函数的入口基本块
+
+        // ---- new fields ----
+        Block* funcEntryBlock;  // 当前函数的入口基本块，用于插入alloca指令 在函数开始处统一分配
+
         class RegTab
         {
           public:
@@ -117,14 +120,16 @@ namespace ME
         std::map<FE::AST::LeftValExpr*, Operand*> lval2ptr;     // 左值表达式 -> 地址指令
 
         // ---- new fields ----
-        DataType curRetType;  // 当前函数的返回值类型
-        int      scopeDepth;  // 当前作用域深度
-        struct LoopContext    // 与循环相关的上下文信息
+        int scopeDepth;     // 当前作用域深度：创建变量属性时使用,其实也没啥用。。。
+        struct LoopContext  // 与循环相关的上下文信息
         {
             size_t continueLabel;  // continue标签
             size_t breakLabel;     // break标签
         };
         std::vector<LoopContext> loopStack;  // 循环上下文栈
+        void                     pushLoopContext(size_t continueLabel, size_t breakLabel);
+        void                     popLoopContext();
+        LoopContext              currentLoopContext() const;
 
       public:
         ASTCodeGen(const std::map<FE::Sym::Entry*, FE::AST::VarAttr>& glbSymbols,
@@ -138,8 +143,7 @@ namespace ME
               reg2attr(),
               paramPtrTab(),
               lval2ptr(),
-              curRetType(DataType::VOID),
-              scopeDepth(0),
+              scopeDepth(-1),
               loopStack()
         {}
 
@@ -162,24 +166,30 @@ namespace ME
         void visit(FE::AST::CallExpr& node, Module* m) override;
         void visit(FE::AST::CommaExpr& node, Module* m) override;
 
-        // Statement nodes
         // ---new functions ---
         Operand* ensureLValueAddress(FE::AST::LeftValExpr& node, Module* m, size_t extraZeros = 0);  // 确保左值地址
-        const FE::AST::VarAttr* getVarAttr(FE::Sym::Entry* entry) const;  // 获取变量属性
-        size_t                  ensureType(size_t reg, DataType from, DataType to);
-        std::vector<int>        collectArrayDims(const std::vector<FE::AST::ExprNode*>* dimExprs) const;
-        std::string             formatIRType(FE::AST::Type* type, bool asPointer = false) const;
+        const FE::AST::VarAttr* getVarAttr(FE::Sym::Entry* entry) const;
+        // needtodo
         std::string formatIRType(FE::AST::Type* type, const std::vector<int>& arrayDims, bool asPointer = false) const;
-        void        pushLoopContext(size_t continueLabel, size_t breakLabel);
-        void        popLoopContext();
-        LoopContext currentLoopContext() const;
-        void        insertAllocaInst(Instruction* inst);
-        void        fillGlobalArrayInit(FE::AST::InitDecl* init, FE::AST::Type* elemType, const std::vector<int>& dims,
-                   std::vector<FE::AST::VarValue>& storage) const;
-        void        emitRuntimeArrayInit(
-                   FE::AST::InitDecl* init, Operand* basePtr, DataType elemDataType, const std::vector<int>& dims, Module* m);
         FE::AST::VarValue makeZeroValue(FE::AST::Type* type) const;
 
+        // 格式化类型字符串，考虑数组维度和指针
+        void insertAllocaInst(Instruction* inst);
+        // 填充全局数组初始化列表到数组
+        void   fillGlobalArrayInit(FE::AST::InitDecl* init, FE::AST::Type* elemType, const std::vector<int>& dims,
+              std::vector<FE::AST::VarValue>& storage) const;
+        size_t fillGlobalArrayInitRecursive(FE::AST::InitDecl* node, FE::AST::Type* elemType,
+            const std::vector<int>& dims, const std::vector<size_t>& strides, size_t dimIdx, size_t offset,
+            std::vector<FE::AST::VarValue>& storage) const;
+        // 运行时数组初始化
+        void emitRuntimeArrayInit(
+            FE::AST::InitDecl* init, Operand* basePtr, DataType elemDataType, const std::vector<int>& dims, Module* m);
+        void              emitRuntimeArrayScalar(FE::AST::InitDecl* node, Operand* basePtr, DataType elemDataType,
+                         const std::vector<int>& dims, const std::vector<size_t>& strides, size_t curOffset, Module* m);
+        size_t            emitRuntimeArrayRecursive(FE::AST::InitDecl* node, Operand* basePtr, DataType elemDataType,
+                       const std::vector<int>& dims, const std::vector<size_t>& strides, size_t dimIdx, size_t offset, Module* m);
+
+        // Statement nodes
         void visit(FE::AST::ExprStmt& node, Module* m) override;
         void visit(FE::AST::FuncDeclStmt& node, Module* m) override;
         void visit(FE::AST::VarDeclStmt& node, Module* m) override;
@@ -219,8 +229,7 @@ namespace ME
                 FE::AST::ExprNode& lhs, FE::AST::ExprNode& rhs, FE::AST::Operator bop, Block* block, Module* m);
 
       private:
-        LoadInst* createLoadInst(DataType t, Operand* ptr, size_t resReg);
-
+        LoadInst*  createLoadInst(DataType t, Operand* ptr, size_t resReg);
         StoreInst* createStoreInst(DataType t, size_t valReg, Operand* ptr);
         StoreInst* createStoreInst(DataType t, Operand* val, Operand* ptr);
 
