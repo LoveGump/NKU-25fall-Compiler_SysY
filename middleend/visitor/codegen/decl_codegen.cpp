@@ -1,5 +1,6 @@
 #include <middleend/visitor/codegen/ast_codegen.h>
 #include <debug.h>
+#include <algorithm>
 
 namespace ME
 {
@@ -24,125 +25,200 @@ namespace ME
         ERROR("ParamDeclarator should not appear here, at line %d", node.line_num);
     }
 
+    size_t ASTCodeGen::fillArrayChunk(FE::AST::InitDecl* init, const std::vector<int>& dims, size_t dimIdx,
+        size_t baseOffset, size_t chunkSize, std::vector<std::pair<size_t, FE::AST::Initializer*>>& slots)
+    {
+        if (!init || chunkSize == 0) return 0;
+
+        if (dimIdx >= dims.size())
+        {
+            if (init->singleInit)
+            {
+                auto* single = dynamic_cast<FE::AST::Initializer*>(init);
+                if (!single) return 0;
+                slots.emplace_back(baseOffset, single);
+                return 1;
+            }
+
+            auto* list = dynamic_cast<FE::AST::InitializerList*>(init);
+            if (!list || !list->init_list) return 0;
+
+            size_t used = 0;
+            for (auto* child : *(list->init_list))
+            {
+                if (used >= chunkSize) break;
+                used += fillArrayChunk(child, dims, dimIdx, baseOffset + used, chunkSize - used, slots);
+            }
+            return used > chunkSize ? chunkSize : used;
+        }
+
+        size_t dimBound = dims[dimIdx] > 0 ? static_cast<size_t>(dims[dimIdx]) : 1;
+        if (dimBound == 0) dimBound = 1;
+        size_t subChunk = chunkSize / dimBound;
+        if (subChunk == 0) subChunk = 1;
+
+        auto* list = init->singleInit ? nullptr : dynamic_cast<FE::AST::InitializerList*>(init);
+        if (!list || !list->init_list)
+        {
+            return fillArrayChunk(init, dims, dimIdx + 1, baseOffset, chunkSize, slots);
+        }
+
+        size_t used = 0;
+        for (auto* child : *(list->init_list))
+        {
+            if (!child || used >= chunkSize) break;
+
+            if (!child->singleInit)
+            {
+                size_t targetIdx = subChunk ? (used / subChunk) : 0;
+                if (targetIdx >= dimBound) break;
+                size_t chunkBase = baseOffset + targetIdx * subChunk;
+                fillArrayChunk(child, dims, dimIdx + 1, chunkBase, subChunk, slots);
+                used = (targetIdx + 1) * subChunk;
+                continue;
+            }
+
+            size_t consumed = fillArrayChunk(child, dims, dimIdx + 1, baseOffset + used, chunkSize - used, slots);
+            used += consumed;
+        }
+
+        return used > chunkSize ? chunkSize : used;
+    }
+
+    void ASTCodeGen::gatherArrayInitializers(FE::AST::InitDecl* init, const std::vector<int>& dims,
+        std::vector<std::pair<size_t, FE::AST::Initializer*>>& slots)
+    {
+        slots.clear();
+        if (!init || dims.empty()) return;
+        size_t total = 1;
+        for (int dim : dims)
+        {
+            size_t len = dim > 0 ? static_cast<size_t>(dim) : 1;
+            total *= len;
+        }
+
+        if (total == 0) return;
+        fillArrayChunk(init, dims, 0, 0, total, slots);
+        for (auto it = slots.begin(); it != slots.end();)
+        {
+            if (it->first >= total)
+                it = slots.erase(it);
+            else
+                ++it;
+        }
+    }
+
     void ASTCodeGen::visit(FE::AST::VarDeclaration& node, Module* m)
     {
         // TODO(Lab 3-2): 生成变量声明 IR（alloca、数组零初始化、可选初始化表达式）
-        if (!curFunc || !node.decls) return;
+        if (!curFunc || !node.decls) return;  // 确保在函数内且有声明列表
 
-        DataType elemType = convert(node.type);
+        DataType elemType = convert(node.type);  // 获取变量元素类型
 
         for (auto* vd : *(node.decls))
         {
             // 遍历变量声明语句
             if (!vd) continue;
-            auto* lval = dynamic_cast<FE::AST::LeftValExpr*>(vd->lval);
+            auto* lval = dynamic_cast<FE::AST::LeftValExpr*>(vd->lval);  // 获取左值表达式
             if (!lval || !lval->entry) continue;
 
-            // needtodo
             std::vector<int> dims = vd->declDims;
-
-            size_t      allocaReg  = getNewRegId();  // 分配新的寄存器id
-            AllocaInst* allocaInst = nullptr;        // alloca 指令
-            if (dims.empty())
-            {
-                // 单变量
-                allocaInst = createAllocaInst(elemType, allocaReg);
-            }
-            else
-            {
-                // 数组
-                allocaInst = createAllocaInst(elemType, allocaReg, dims);
-            }
-            insertAllocaInst(allocaInst);  // 插入指令
+            size_t           allocaReg = getNewRegId();
+            AllocaInst*      allocaInst = dims.empty() ? createAllocaInst(elemType, allocaReg)
+                                                       : createAllocaInst(elemType, allocaReg, dims);
+            insertAllocaInst(allocaInst);
 
             name2reg.addSymbol(lval->entry, allocaReg);  // 插入符号表
 
             // 储存变量信息
             FE::AST::VarAttr attr(node.type, node.isConstDecl, scopeDepth);
             attr.arrayDims      = dims;
-            reg2attr[allocaReg] = attr;  // 加入变量属性表
+            reg2attr[allocaReg] = attr;
 
-            Operand* ptr = getRegOperand(allocaReg);  // 获取变量地址
+            Operand* ptr = getRegOperand(allocaReg);
 
             if (vd->init)
             {
-                // 有初始化语句
                 if (dims.empty())
                 {
-                    // 单变量
-                    if (auto* init = dynamic_cast<FE::AST::Initializer*>(vd->init))
+                    auto* init = dynamic_cast<FE::AST::Initializer*>(vd->init);
+                    if (init && init->init_val)
                     {
-                        // 如果有初始化语句
-                        if (init->init_val)
+                        apply(*this, *init->init_val, m);
+                        size_t   initReg  = getMaxReg();
+                        DataType initType = convert(init->init_val->attr.val.value.type);
+                        auto     convInsts = createTypeConvertInst(initType, elemType, initReg);
+                        if (!convInsts.empty())
                         {
-                            // 为初始化语句生成ir
-                            apply(*this, *init->init_val, m);
-                            size_t   initReg = getMaxReg();  // 获取初始化值寄存器
-                            DataType initType = convert(init->init_val->attr.val.value.type);  // 获取初始化值类型
-                            // needtodo
-                            auto insert_insts = createTypeConvertInst(initType, elemType, initReg);
-                            if (!insert_insts.empty())
-                            {
-                                initReg = getMaxReg();  // 使用新的寄存器来存放变量
-                                for (auto inst : insert_insts)
-                                {
-                                    insert(inst);  // 插入类型转换指令
-                                }
-                            }
-                            // 插入储存指令
-                            insert(createStoreInst(elemType, initReg, ptr));
+                            initReg = getMaxReg();
+                            for (auto* inst : convInsts) insert(inst);
                         }
+                        insert(createStoreInst(elemType, initReg, ptr));
                     }
                 }
                 else
                 {
+                    emitArrayZeroInit(ptr, elemType, dims);
 
                     size_t totalElems = 1;  // 计算数组总元素数量
-                    for (int dim : vd->declDims) totalElems *= static_cast<size_t>(dim);
-                    if (totalElems == 0) totalElems = 1;
-                    // 使用初始化值填充数组
-                    std::vector<FE::AST::VarValue> initValues(totalElems, makeZeroValue(node.type));
-                    fillGlobalArrayInit(vd->init, node.type, vd->declDims, initValues);  // 展平填充
-
-                    // 生成对应的指令 将展平的初始化值存入数组
-                    // strides 用于计算多维数组的偏移
-                    std::vector<size_t> strides(vd->declDims.size(), 1);
-                    for (int idx = static_cast<int>(vd->declDims.size()) - 2; idx >= 0; --idx)
+                    for (int dim : dims)
                     {
-                        strides[idx] = strides[idx + 1] * static_cast<size_t>(vd->declDims[idx + 1]);
+                        size_t len = dim > 0 ? static_cast<size_t>(dim) : 1;
+                        totalElems *= len;
+                    }
+                    if (totalElems == 0) totalElems = 1;
+
+                    std::vector<std::pair<size_t, FE::AST::Initializer*>> initSlots;
+                    gatherArrayInitializers(vd->init, dims, initSlots);
+                    if (initSlots.empty()) continue;
+
+                    std::vector<size_t> strides(dims.size(), 1);
+                    if (dims.size() >= 2)
+                    {
+                        for (int idx = static_cast<int>(dims.size()) - 2; idx >= 0; --idx)
+                        {
+                            size_t len = dims[idx + 1] > 0 ? static_cast<size_t>(dims[idx + 1]) : 1;
+                            strides[idx] = strides[idx + 1] * len;
+                        }
                     }
 
-                    for (size_t offset = 0; offset < initValues.size(); ++offset)
+                    for (const auto& slot : initSlots)
                     {
-                        // offset 是展平后的位置，这里将它还原成 GEP 需要的多维索引链
-                        std::vector<Operand*> idxOps;  // 索引操作数
-                        idxOps.reserve(vd->declDims.size() + 1);
-                        idxOps.push_back(getImmeI32Operand(0));  // 先放基地址 0
+                        size_t offset = slot.first;
+                        auto*  initNode = slot.second;
+                        if (!initNode || !initNode->init_val || offset >= totalElems) continue;
 
-                        size_t remaining = offset;  // 当前的偏移量
-                        for (size_t dimIdx = 0; dimIdx < vd->declDims.size(); ++dimIdx)
+                        apply(*this, *initNode->init_val, m);
+                        size_t   valueReg  = getMaxReg();
+                        DataType valueType = convert(initNode->init_val->attr.val.value.type);
+                        if (valueType != elemType && valueType != DataType::PTR && elemType != DataType::PTR)
                         {
-                            // 遍历所有的维度
-                            size_t stride = strides[dimIdx];                  // stride = 当前维后续元素数
-                            if (stride == 0) stride = 1;                      // 防止零维度
-                            size_t idxVal = stride ? remaining / stride : 0;  // 计算当前维度的索引
-                            idxOps.push_back(getImmeI32Operand(static_cast<int>(idxVal)));
-                            remaining -= idxVal * stride;  // 去掉已定位的这部分 offset
+                            auto convInsts = createTypeConvertInst(valueType, elemType, valueReg);
+                            if (!convInsts.empty())
+                            {
+                                valueReg = getMaxReg();
+                                for (auto* inst : convInsts) insert(inst);
+                            }
                         }
 
-                        // 根据索引链发射 GEP + store，将常量初值写入栈上数组
+                        std::vector<Operand*> idxOps;  // 索引操作数
+                        idxOps.reserve(dims.size() + 1);
+                        idxOps.push_back(getImmeI32Operand(0));
+
+                        size_t remaining = offset;  // 当前的偏移量
+                        for (size_t dimIdx = 0; dimIdx < dims.size(); ++dimIdx)
+                        {
+                            size_t stride = dimIdx < strides.size() ? strides[dimIdx] : 1;
+                            if (stride == 0) stride = 1;
+                            size_t idxVal = stride ? remaining / stride : 0;
+                            idxOps.push_back(getImmeI32Operand(static_cast<int>(idxVal)));
+                            remaining -= idxVal * stride;
+                        }
+
                         size_t gepReg = getNewRegId();  // GEP 结果寄存器
-                        insert(createGEP_I32Inst(elemType, ptr, vd->declDims, idxOps, gepReg));
-
-                        Operand* valOp = nullptr;
-                        if (elemType == DataType::F32) { valOp = getImmeF32Operand(initValues[offset].getFloat()); }
-                        else { valOp = getImmeI32Operand(initValues[offset].getInt()); }
-                        // 插入存储指令，将初始值存入数组元素
-                        insert(createStoreInst(elemType, valOp, getRegOperand(gepReg)));
+                        insert(createGEP_I32Inst(elemType, ptr, dims, idxOps, gepReg));
+                        insert(createStoreInst(elemType, valueReg, getRegOperand(gepReg)));
                     }
-
-                    // 运行时数组初始化，因为SysY支持变量作为数组元素，所以需要运行时初始化
-                    emitRuntimeArrayInit(vd->init, ptr, elemType, vd->declDims, m);
                 }
             }
             else if (dims.empty())
@@ -152,6 +228,7 @@ namespace ME
                                                             : static_cast<Operand*>(getImmeI32Operand(0));
                 insert(createStoreInst(elemType, zero, ptr));
             }
+            // 没有初始化的数组变量，默认不处理，保持未初始化状态
         }
     }
 }  // namespace ME

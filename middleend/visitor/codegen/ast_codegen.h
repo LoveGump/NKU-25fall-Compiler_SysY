@@ -170,24 +170,17 @@ namespace ME
         Operand* ensureLValueAddress(FE::AST::LeftValExpr& node, Module* m, size_t extraZeros = 0);  // 确保左值地址
         const FE::AST::VarAttr* getVarAttr(FE::Sym::Entry* entry) const;
         // needtodo
-        std::string formatIRType(FE::AST::Type* type, const std::vector<int>& arrayDims, bool asPointer = false) const;
         FE::AST::VarValue makeZeroValue(FE::AST::Type* type) const;
+        size_t  fillArrayChunk(FE::AST::InitDecl* init, const std::vector<int>& dims, size_t dimIdx,
+                 size_t baseOffset, size_t chunkSize,
+                 std::vector<std::pair<size_t, FE::AST::Initializer*>>& slots);
+        void gatherArrayInitializers(FE::AST::InitDecl* init, const std::vector<int>& dims,
+          std::vector<std::pair<size_t, FE::AST::Initializer*>>& slots);
 
         // 格式化类型字符串，考虑数组维度和指针
         void insertAllocaInst(Instruction* inst);
         // 填充全局数组初始化列表到数组
-        void   fillGlobalArrayInit(FE::AST::InitDecl* init, FE::AST::Type* elemType, const std::vector<int>& dims,
-              std::vector<FE::AST::VarValue>& storage) const;
-        size_t fillGlobalArrayInitRecursive(FE::AST::InitDecl* node, FE::AST::Type* elemType,
-            const std::vector<int>& dims, const std::vector<size_t>& strides, size_t dimIdx, size_t offset,
-            std::vector<FE::AST::VarValue>& storage) const;
-        // 运行时数组初始化
-        void emitRuntimeArrayInit(
-            FE::AST::InitDecl* init, Operand* basePtr, DataType elemDataType, const std::vector<int>& dims, Module* m);
-        void              emitRuntimeArrayScalar(FE::AST::InitDecl* node, Operand* basePtr, DataType elemDataType,
-                         const std::vector<int>& dims, const std::vector<size_t>& strides, size_t curOffset, Module* m);
-        size_t            emitRuntimeArrayRecursive(FE::AST::InitDecl* node, Operand* basePtr, DataType elemDataType,
-                       const std::vector<int>& dims, const std::vector<size_t>& strides, size_t dimIdx, size_t offset, Module* m);
+        void emitArrayZeroInit(Operand* basePtr, DataType elemDataType, const std::vector<int>& dims);
 
         // Statement nodes
         void visit(FE::AST::ExprStmt& node, Module* m) override;

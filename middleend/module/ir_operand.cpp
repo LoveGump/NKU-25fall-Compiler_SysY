@@ -76,6 +76,7 @@ namespace ME
     OperandFactory& ofInstance = OperandFactory::getInstance();
 }  // namespace ME
 
+// 全局访问接口，方便外部获取操作数对象
 ME::RegOperand*     getRegOperand(size_t id) { return ME::ofInstance.getRegOperand(id); }
 ME::ImmeI32Operand* getImmeI32Operand(int value) { return ME::ofInstance.getImmeI32Operand(value); }
 ME::ImmeF32Operand* getImmeF32Operand(float value) { return ME::ofInstance.getImmeF32Operand(value); }

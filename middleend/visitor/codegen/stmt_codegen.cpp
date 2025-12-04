@@ -12,33 +12,27 @@ namespace ME
     {
         // TODO(Lab 3-2): 生成函数定义 IR（形参、入口/结束基本块、返回补丁）
         // 设置函数返回类型与参数寄存器，创建基本块骨架，并生成函数体
-        if (!node.entry) return;
+        FuncDefInst* funcDef = new FuncDefInst(convert(node.retType), node.entry->getName());  // 创建函数定义指令
+        Function*    func    = new Function(funcDef);                                          // 创建函数对象
+        m->functions.emplace_back(func);                                                       // 将函数添加到模块中
 
-        DataType     retType = convert(node.retType);
-        std::string  funcName(node.entry->getName());
-        FuncDefInst* funcDef = new FuncDefInst(retType, funcName);  // 创建函数定义指令
-        Function*    func    = new Function(funcDef);               // 创建函数对象
-        m->functions.emplace_back(func);                            // 将函数添加到模块中
-
-        enterFunc(func);        // 进入函数生成上下文
+        enterFunc(func);        // 进入函数
         name2reg.enterScope();  // 进入新作用域
-        scopeDepth = 0;         // 初始化作用域深度
-        // curRetTyp e = retType;// 设置当前函数返回类型
+        // needtodo
+        scopeDepth = 0;     // 重置作用域深度
         loopStack.clear();  // 清空循环栈
-        reg2attr.clear();   // 清空寄存器到变量属性的映射+
+        reg2attr.clear();   // 清空寄存器到变量属性的映射
 
-        Block* entryBlock = createBlock();            // 创建入口基本块
-        entryBlock->setComment(funcName + ".entry");  // 设置基本块注释
-        enterBlock(entryBlock);                       // 进入入口基本块
-        funcEntryBlock = entryBlock;                  // 记录入口基本块
+        Block* entryBlock = createBlock();                         // 创建入口基本块
+        entryBlock->setComment(node.entry->getName() + ".entry");  // 设置基本块注释
+        enterBlock(entryBlock);                                    // 进入入口基本块
+        funcEntryBlock = entryBlock;                               // 记录入口基本块
 
-        std::vector<std::string> paramTypeStrs;  // 记录参数类型字符串
         if (node.params)
         {
             // 处理函数参数
             for (auto* param : *(node.params))
             {
-                // 遍历参数列表
                 if (!param || !param->entry) continue;
                 // 判断参数是否为数组类型
                 bool isArrayParam = param->dims && !param->dims->empty();
@@ -48,9 +42,10 @@ namespace ME
                 std::vector<int> paramDims;
                 if (param->dims)
                 {
+                    // 数组参数，收集维度信息
                     for (auto* expr : *(param->dims))
                     {
-                        if (!expr) continue;
+                        // -1 表示不定长数组
                         paramDims.push_back(expr->attr.val.getInt());
                     }
                 }
@@ -59,12 +54,10 @@ namespace ME
                 FE::AST::VarAttr attr(param->type, false, scopeDepth);
                 attr.arrayDims = paramDims;  // 设置数组维度
 
-                // 加入到参数列表之中
-                paramTypeStrs.emplace_back(formatIRType(param->type, attr.arrayDims, isArrayParam));
-
                 // 为参数分配寄存器
-                size_t argReg = getNewRegId();
-                funcDef->argRegs.emplace_back(paramType, getRegOperand(argReg));
+                size_t argReg = getNewRegId();  // 获取新的寄存器编号
+                funcDef->argRegs.emplace_back(
+                    paramType, getRegOperand(argReg));  // 根据寄存器编号创建操作数并添加到函数定义
 
                 if (isArrayParam)
                 {
@@ -76,21 +69,18 @@ namespace ME
                 {
                     // 非参数组参数 需要在函数体内分配局部变量并存储参数值
                     size_t allocaReg = getNewRegId();
-                    // 在块的开头插入alloca指令
+                    // 在块的开头插入alloca指令，在栈上分配空间
                     insertAllocaInst(createAllocaInst(paramType, allocaReg));
-                    // 存储参数值到局部变量
-                    insert(createStoreInst(paramType, argReg, getRegOperand(allocaReg)));
+                    insert(createStoreInst(paramType, argReg, getRegOperand(allocaReg)));  // 存储参数值到分配的空间
                     // 加入符号表与变量属性表
                     name2reg.addSymbol(param->entry, allocaReg);
                     reg2attr[allocaReg] = attr;
                 }
             }
         }
-        // 设置函数参数类型字符串
-        funcDef->setArgTypeStrs(paramTypeStrs);
 
         // 为函数体生成 IR
-        if (node.body) apply(*this, *node.body, m);
+        if (node.body) { apply(*this, *node.body, m); }
 
         // 处理函数结束时的返回指令补丁
         if (curBlock && (curBlock->insts.empty() || !curBlock->insts.back()->isTerminator()))
@@ -106,7 +96,7 @@ namespace ME
 
         // 清理函数生成上下文
         name2reg.exitScope();
-        scopeDepth = 0;
+        scopeDepth = -1;
         reg2attr.clear();
         exitBlock();
         exitFunc();
@@ -117,13 +107,6 @@ namespace ME
     {
         // TODO(Lab 3-2): 生成变量声明语句 IR（局部变量分配、初始化）
         if (!node.decl) return;
-        if (!curBlock)
-        {
-            // 如果不在Block内，处理为全局变量声明
-            handleGlobalVarDecl(&node, m);
-            return;
-        }
-        // 在块内，处理为局部变量声明
         apply(*this, *node.decl, m);
     }
 
@@ -138,13 +121,6 @@ namespace ME
             {
                 // 遍历子语句列表
                 if (!stmt) continue;
-                if (!curBlock || (!curBlock->insts.empty() && curBlock->insts.back()->isTerminator()))
-                {
-                    // 如果当前不在基本块内 或当前基本块已终止，创建死代码块以保持结构完整
-                    Block* deadBlock = createBlock();
-                    deadBlock->setComment("dead.block");
-                    enterBlock(deadBlock);
-                }
                 apply(*this, *stmt, m);
             }
         }
@@ -156,6 +132,7 @@ namespace ME
     {
         // TODO(Lab 3-2): 生成 return 语句 IR（可选返回值与类型转换）
         (void)m;
+        bool createdRet = false;
         if (node.retExpr)
         {
             // 先创建返回值表达式的 IR
@@ -165,19 +142,22 @@ namespace ME
             {
                 // 函数返回类型为 void，直接生成无返回值的 return 指令
                 insert(createRetInst());
-                return;
+                createdRet = true;
             }
-
-            size_t   retReg  = getMaxReg();  // 获取返回值寄存器
-            DataType retType = convert(node.retExpr->attr.val.value.type);
-
-            auto insts = createTypeConvertInst(retType, curFunc->funcDef->retType, retReg);
-            if (!insts.empty())
+            else
             {
-                retReg = getMaxReg();
-                for (auto* inst : insts) { insert(inst); }
+                size_t   retReg  = getMaxReg();  // 获取返回值寄存器
+                DataType retType = convert(node.retExpr->attr.val.value.type);
+
+                auto insts = createTypeConvertInst(retType, curFunc->funcDef->retType, retReg);
+                if (!insts.empty())
+                {
+                    retReg = getMaxReg();  // 获取新的寄存器值
+                    for (auto* inst : insts) { insert(inst); }
+                }
+                insert(createRetInst(curFunc->funcDef->retType, retReg));
+                createdRet = true;
             }
-            insert(createRetInst(curFunc->funcDef->retType, retReg));
         }
         else
         {
@@ -188,6 +168,14 @@ namespace ME
                 insert(createRetInst(0.0f));
             else
                 insert(createRetInst(0));
+            createdRet = true;
+        }
+
+        if (createdRet)
+        {
+            Block* deadBlock = createBlock();
+            deadBlock->setComment("return.dead");
+            enterBlock(deadBlock);
         }
     }
 
@@ -206,34 +194,28 @@ namespace ME
             // 如果当前块没有终止指令，插入跳转到条件块
             insert(createBranchInst(condBlock->blockId));
         }
-        enterBlock(condBlock);
-        if (node.cond)
-        {
-            // 生成条件表达式的 IR
-            apply(*this, *node.cond, m);
-            size_t   condReg  = getMaxReg();
-            DataType condType = convert(node.cond->attr.val.value.type);
+        enterBlock(condBlock);  // 进入条件块
 
-            auto insts = createTypeConvertInst(condType, DataType::I1, condReg);
-            // 插入转换指令
-            if (!insts.empty())
-            {
-                condReg = getMaxReg();
-                for (auto* inst : insts) { insert(inst); }
-            }
-            insert(createBranchInst(condReg, bodyBlock->blockId, endBlock->blockId));
-        }
-        else
+        // 生成条件表达式的 IR
+        apply(*this, *node.cond, m);
+        // 将条件值转换为布尔类型，并生成条件分支指令
+        size_t   condReg  = getMaxReg();
+        DataType condType = convert(node.cond->attr.val.value.type);
+        auto     insts    = createTypeConvertInst(condType, DataType::I1, condReg);
+        // 插入转换指令
+        if (!insts.empty())
         {
-            // 没有条件，直接跳转到循环体
-            insert(createBranchInst(bodyBlock->blockId));
+            condReg = getMaxReg();
+            for (auto* inst : insts) { insert(inst); }
         }
+        insert(createBranchInst(condReg, bodyBlock->blockId, endBlock->blockId));
+
         // 设置循环上下文标签，continue 指向条件块，break 指向结束块，每次循环都创建新的上下文
         pushLoopContext(condBlock->blockId, endBlock->blockId);
 
         enterBlock(bodyBlock);  // 进入循环体块
         // 生成循环体语句的 IR
-        if (node.body) apply(*this, *node.body, m);
+        if (node.body) { apply(*this, *node.body, m); }
 
         if (curBlock && (curBlock->insts.empty() || !curBlock->insts.back()->isTerminator()))
         {
@@ -243,7 +225,7 @@ namespace ME
         // 弹出循环上下文标签
         popLoopContext();
 
-        // 进入循环结束块
+        // 跳出循环，进入结束块
         enterBlock(endBlock);
     }
 
@@ -262,42 +244,35 @@ namespace ME
             elseBlock->setComment("if.else");
         }
 
-        if (node.cond)
+        // 生成条件表达式的 IR
+        apply(*this, *node.cond, m);
+        size_t   condReg  = getMaxReg();
+        DataType condType = convert(node.cond->attr.val.value.type);
+        auto     insts    = createTypeConvertInst(condType, DataType::I1, condReg);
+        // 插入转换指令
+        if (!insts.empty())
         {
-            // 生成条件表达式的 IR
-            apply(*this, *node.cond, m);
-            size_t   condReg  = getMaxReg();
-            DataType condType = convert(node.cond->attr.val.value.type);
-            auto     insts    = createTypeConvertInst(condType, DataType::I1, condReg);
-            // 插入转换指令
-            if (!insts.empty())
-            {
-                condReg = getMaxReg();
-                for (auto* inst : insts) { insert(inst); }
-            }
-            if (elseBlock)
-            {
-                // 有 else 分支，生成条件分支到 then 或 else 块
-                insert(createBranchInst(condReg, thenBlock->blockId, elseBlock->blockId));
-            }
-            else
-            {
-                // 没有 else 分支，生成条件分支到 then 或 end 块
-                insert(createBranchInst(condReg, thenBlock->blockId, endBlock->blockId));
-            }
+            condReg = getMaxReg();
+            for (auto* inst : insts) { insert(inst); }
+        }
+        if (elseBlock)
+        {
+            // 有 else 分支，生成条件分支到 then 或 else 块
+            insert(createBranchInst(condReg, thenBlock->blockId, elseBlock->blockId));
         }
         else
         {
-            // 没有条件，直接跳转到 then 块
-            insert(createBranchInst(thenBlock->blockId));
+            // 没有 else 分支，生成条件分支到 then 或 end 块
+            insert(createBranchInst(condReg, thenBlock->blockId, endBlock->blockId));
         }
 
         // 生成 then 块与可选的 else 块
         enterBlock(thenBlock);
         // 生成 then 块的 IR
-        if (node.thenStmt) apply(*this, *node.thenStmt, m);
+        if (node.thenStmt) { apply(*this, *node.thenStmt, m); }
         if (curBlock && (curBlock->insts.empty() || !curBlock->insts.back()->isTerminator()))
-        {  // then 块没有终止指令，跳转到 end 块
+        {
+            // then 块没有终止指令，跳转到 end 块
             insert(createBranchInst(endBlock->blockId));
         }
         // 生成 else 块（如果存在）

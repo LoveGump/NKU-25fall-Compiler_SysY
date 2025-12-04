@@ -220,17 +220,10 @@ namespace ME
         if (retType != DataType::VOID) ss << res << " = ";
         ss << "call " << retType << " @" << funcName << "(";
 
-        for (size_t idx = 0; idx < args.size(); ++idx)
+        for (auto it = args.begin(); it != args.end(); ++it)
         {
-            // 参数类型优先打印 argTypeStrs，ptr需要指明类型
-            if (!argTypeStrs.empty() && idx < argTypeStrs.size() && !argTypeStrs[idx].empty())
-                ss << argTypeStrs[idx];
-            else
-                ss << args[idx].first;
-            ss << " " << args[idx].second;
-
-            // 如果不是最后一个参数，添加逗号
-            if (idx + 1 < args.size()) ss << ", ";
+            ss << it->first << " " << it->second;
+            if (std::next(it) != args.end()) ss << ", ";
         }
         ss << ")" << getComment();
         return ss.str();
@@ -258,15 +251,10 @@ namespace ME
     {
         std::stringstream ss;
         ss << "declare " << retType << " @" << funcName << "(";
-        for (size_t idx = 0; idx < argTypes.size(); ++idx)
+        for (auto it = argTypes.begin(); it != argTypes.end(); ++it)
         {
-            // 优先 argTypeStrs
-            if (!argTypeStrs.empty() && idx < argTypeStrs.size() && !argTypeStrs[idx].empty())
-            {
-                ss << argTypeStrs[idx];
-            }
-            else { ss << argTypes[idx]; }
-            if (idx + 1 < argTypes.size()) ss << ", ";
+            ss << *it;
+            if (std::next(it) != argTypes.end()) ss << ", ";
         }
         if (isVarArg) ss << ", ...";
         ss << ")" << getComment();
@@ -283,48 +271,17 @@ namespace ME
         std::stringstream ss;
         ss << "define " << retType << " @" << funcName << "(";
 
-        for (size_t idx = 0; idx < argRegs.size(); ++idx)
+        for (auto it = argRegs.begin(); it != argRegs.end(); ++it)
         {
-            // 优先 argTypeStrs
-            if (!argTypeStrs.empty() && idx < argTypeStrs.size() && !argTypeStrs[idx].empty())
-                ss << argTypeStrs[idx];
-            else
-                ss << argRegs[idx].first;
-            ss << " " << argRegs[idx].second;
-            if (idx + 1 < argRegs.size()) ss << ", ";
+            ss << it->first << " " << it->second;
+            if (std::next(it) != argRegs.end()) ss << ", ";
         }
         ss << ")" << getComment();
         return ss.str();
     }
 
-    // 辅助函数 生成聚合类型字符串表示，主要是来表示数组类型
-    std::string aggregateTypeString(ME::DataType elemType, const std::vector<int>& dims)
-    {
-        std::stringstream ss;
-        if (dims.empty())
-        {
-            // 非数组类型
-            ss << elemType;
-        }
-        else
-        {
-            // 数组类型
-            for (int dim : dims) ss << "[" << dim << " x ";
-            ss << elemType << std::string(dims.size(), ']');
-        }
-        return ss.str();
-    }
     std::string GEPInst::toString() const
     {
-        // std::stringstream ss;
-        // ss << res << " = getelementptr ";
-        // std::string aggType = aggregateTypeString(dt, dims);
-        // ss << aggType;
-
-        // ss << ", " << aggType << "* " << basePtr;
-        // for (auto& idx : idxs) ss << ", " << idxType << " " << idx;
-        // ss << getComment();
-        // return ss.str();
         std::stringstream ss;
         ss << res << " = getelementptr ";
         if (dims.empty())

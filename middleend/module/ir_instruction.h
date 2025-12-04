@@ -73,8 +73,8 @@ namespace ME
     {
       public:
         DataType dt;
-        Operand* ptr;
-        Operand* val;
+        Operand* ptr; // 指向要存储数据的地址
+        Operand* val; // 要存储的值
 
       public:
         StoreInst(DataType t, Operand* v, Operand* p, const std::string& c = "")
@@ -261,7 +261,6 @@ namespace ME
         using argList = std::vector<argPair>;
         argList                  args;
         Operand*                 res;
-        std::vector<std::string> argTypeStrs;  // 类型字符串覆盖
 
       public:
         // 空参数列表的构造函数
@@ -274,7 +273,6 @@ namespace ME
         {}
         ~CallInst() override = default;
 
-        void setArgTypeStrs(const std::vector<std::string>& types) { argTypeStrs = types; }
 
       public:
         virtual std::string toString() const override;
@@ -313,7 +311,6 @@ namespace ME
         std::string              funcName;
         std::vector<DataType>    argTypes;     // 参数类型列表
         bool                     isVarArg;     // 是否为可变参数函数
-        std::vector<std::string> argTypeStrs;  // 指针可选：类型字符串覆盖
 
       public:
         FuncDeclInst(DataType rt, const std::string& fn, std::vector<DataType> at = {}, bool is_va = false,
@@ -322,7 +319,6 @@ namespace ME
         {}
         ~FuncDeclInst() override = default;
 
-        void setArgTypeStrs(const std::vector<std::string>& types) { argTypeStrs = types; }
 
       public:
         virtual std::string toString() const override;
@@ -344,15 +340,12 @@ namespace ME
         using argPair = std::pair<argType, argOp>;
         using argList = std::vector<argPair>;
         argList                  argRegs;      // 参数列表：类型-寄存器对
-        std::vector<std::string> argTypeStrs;  // 有指针可选：类型字符串覆盖 会使用具体的i32*而不是ptr
 
       public:
         FuncDefInst(DataType rt, const std::string& fn, argList ar = {}, const std::string& c = "")
             : Instruction(Operator::FUNCDEF, c), retType(rt), funcName(fn), argRegs(ar)
         {}
         ~FuncDefInst() override = default;
-
-        void setArgTypeStrs(const std::vector<std::string>& types) { argTypeStrs = types; }
 
       public:
         virtual std::string toString() const override;

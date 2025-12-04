@@ -309,10 +309,10 @@ namespace ME
         // 获取函数声明以便参数类型检查
         FE::AST::FuncDeclStmt* decl = funcDecls.at(node.func);  // if (node.func)
 
-        size_t                   argCount = node.args ? node.args->size() : 0;
-        CallInst::argList        args;
-        std::vector<std::string> argTypeStrs;
-        argTypeStrs.reserve(argCount);
+        size_t            argCount = node.args ? node.args->size() : 0;
+        CallInst::argList args;
+        // std::vector<std::string> argTypeStrs;
+        // argTypeStrs.reserve(argCount);
         for (size_t i = 0; i < argCount; ++i)
         {
             // 遍历每个参数表达式
@@ -324,8 +324,8 @@ namespace ME
             apply(*this, *argNode, m);
 
             // 解析期望的参数类型和维度信息
-            FE::AST::Type*   expectedType = nullptr;
-            bool             expectPtr    = false;
+            FE::AST::Type* expectedType = nullptr;
+            // bool             expectPtr    = false;
             std::vector<int> expectedDims;
             if (decl && decl->params && i < decl->params->size())
             {
@@ -334,7 +334,7 @@ namespace ME
                 if (paramDecl)
                 {
                     expectedType = paramDecl->type;
-                    expectPtr    = paramDecl->dims && !paramDecl->dims->empty();
+                    // expectPtr    = paramDecl->dims && !paramDecl->dims->empty();
                     if (paramDecl->dims)
                     {
                         // 收集期望的数组维度
@@ -400,9 +400,9 @@ namespace ME
                 args.emplace_back(expectDT, getRegOperand(argReg));
             }
 
-            FE::AST::Type*   typeForStr = expectedType ? expectedType : argType;
-            bool             forcePtr   = expectPtr || isPtrArg;
-            std::string      argTypeStr;
+            FE::AST::Type* typeForStr = expectedType ? expectedType : argType;
+            // bool             forcePtr   = expectPtr || isPtrArg;
+            // std::string      argTypeStr;
             size_t           consumedDims = std::min(actualDims, usedIdx + extraZeros);
             std::vector<int> remainingDims;
             if (consumedDims < attrDims.size()) remainingDims.assign(attrDims.begin() + consumedDims, attrDims.end());
@@ -414,16 +414,12 @@ namespace ME
                     typeDims = expectedDims;
                 else if (!remainingDims.empty())
                     typeDims = remainingDims;
-                argTypeStr = formatIRType(typeForStr, typeDims, forcePtr);
             }
             else
             {
                 std::stringstream ss;
                 ss << args.back().first;
-                argTypeStr = ss.str();
-                if (forcePtr) argTypeStr += "*";
             }
-            argTypeStrs.emplace_back(argTypeStr);
         }
 
         DataType retType = convert(node.attr.val.value.type);
@@ -432,14 +428,14 @@ namespace ME
         if (retType == DataType::VOID)
         {
             CallInst* call = createCallInst(retType, funcName, args);
-            call->setArgTypeStrs(argTypeStrs);
+            // call->setArgTypeStrs(argTypeStrs);
             insert(call);
         }
         else
         {
             size_t    resReg = getNewRegId();
             CallInst* call   = createCallInst(retType, funcName, args, resReg);
-            call->setArgTypeStrs(argTypeStrs);
+            // call->setArgTypeStrs(argTypeStrs);
             insert(call);
         }
     }
