@@ -19,7 +19,7 @@ namespace ME
     std::string StoreInst::toString() const
     {
         std::stringstream ss;
-         ss << "store " << dt << " " << val << ", ptr " << ptr << getComment();
+        ss << "store " << dt << " " << val << ", ptr " << ptr << getComment();
         return ss.str();
     }
 

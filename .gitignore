@@ -16,3 +16,6 @@ test.lexer
 main 
 main
 compile_commands.json
+.devcontainer/
+tmp-4c0eb0c8.o.tmp
+tmp-77deed2f.o.tmp

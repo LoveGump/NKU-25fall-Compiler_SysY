@@ -5,13 +5,12 @@
 namespace ME
 {
     /**
-     * 为左值表达式创建地址操作数：指向变量或数组元素的地址
+     * 为左值表达式创建地址操作数：指向变量或数组元素的地址 前导0
      * @param node 左值表达式节点
      * @param m    当前模块
-     * @param extraZeros 额外的零索引数量（用于处理多维数组）
      * @return 地址操作数
      */
-    Operand* ASTCodeGen::ensureLValueAddress(FE::AST::LeftValExpr& node, Module* m, size_t extraZeros)
+    Operand* ASTCodeGen::ensureLValueAddress(FE::AST::LeftValExpr& node, Module* m)
     {
         auto* entry = node.entry;  // 获取符号表项
 
@@ -32,12 +31,15 @@ namespace ME
             // 获取寄存器操作数作为地址
             basePtr = getRegOperand(reg);
         }
+        // 非数组变量直接返回地址
+        if (attr->arrayDims.empty()) { return basePtr; }
 
-        // 处理数组下标，生成 GEP 指令
+        // 对于数组变量，生成 GEP 指令计算具体元素地址
         std::vector<int> filteredDims;
         filteredDims.reserve(attr->arrayDims.size());
         for (int dim : attr->arrayDims)
         {
+            // 如果数组下标的维度小于等于0
             if (dim <= 0) continue;
             filteredDims.push_back(dim);
         }
@@ -54,7 +56,7 @@ namespace ME
 
         if (node.indices)
         {
-            // 处理数组下标表达式
+            // 处理数组下标表达式，对变量的处理
             for (auto* idxNode : *(node.indices))
             {
                 // 访问下标表达式，生成对应的 IR
@@ -71,13 +73,6 @@ namespace ME
                 // 添加下标操作数
                 idxOps.push_back(getRegOperand(idxReg));
             }
-        }
-
-        while (extraZeros > 0)
-        {
-            // 添加额外的零索引
-            idxOps.push_back(getImmeI32Operand(0));
-            --extraZeros;
         }
 
         // 如果没有下标，直接返回基址
@@ -107,7 +102,7 @@ namespace ME
 
         size_t   resReg   = getNewRegId();  // 结果寄存器
         DataType loadType = convert(type);  // 加载类型
-        // 发出 load 指令，将地址内容加载到寄存器
+        // 发出 load 指令，将地址内容加载到新申请的寄存器
         insert(createLoadInst(loadType, ptr, resReg));
     }
 
@@ -117,10 +112,9 @@ namespace ME
         (void)m;
 
         // 生成常量表达式的寄存器和指令
-        size_t reg = getNewRegId();
+        size_t reg = getNewRegId();  // 申请新的寄存器
         switch (node.literal.type->getBaseType())
-        {
-            // 根据不同的基础类型生成相应的指令
+        {  // 根据不同的基础类型生成相应的指令
             case FE::AST::Type_t::INT:
             case FE::AST::Type_t::LL:  // treat as I32
             {
@@ -136,7 +130,7 @@ namespace ME
                 insert(inst);
                 break;
             }
-            default: ERROR("Unsupported literal type");
+            default: ERROR("Unsupported literal type at line %d, col %d", node.line_num, node.col_num);
         }
     }
 
@@ -154,7 +148,6 @@ namespace ME
         Operand* ptr = ensureLValueAddress(lhs, m);  // 获取左值地址
         // 计算右值表达式，生成对应的 IR
         apply(*this, rhs, m);
-
         // 获取右值寄存器和类型
         size_t   rhsReg  = getMaxReg();
         DataType rhsType = convert(rhs.attr.val.value.type);
@@ -201,10 +194,9 @@ namespace ME
         // 进入右操作数块，计算右操作数表达式
         enterBlock(rhsEntryBlock);
         apply(*this, rhs, m);
-        size_t   rhsReg  = getMaxReg();
-        DataType rhsType = convert(rhs.attr.val.value.type);
-        // rhsReg           = (rhsReg, rhsType, DataType::I1);
-        auto rightinsts = createTypeConvertInst(rhsType, DataType::I1, rhsReg);
+        size_t   rhsReg     = getMaxReg();
+        DataType rhsType    = convert(rhs.attr.val.value.type);
+        auto     rightinsts = createTypeConvertInst(rhsType, DataType::I1, rhsReg);
         if (!rightinsts.empty())
         {
             rhsReg = getMaxReg();  // 使用新的寄存器来存放变量
@@ -261,7 +253,7 @@ namespace ME
         auto     rightinsts = createTypeConvertInst(rhsType, DataType::I1, rhsReg);
         if (!rightinsts.empty())
         {
-            rhsReg = getMaxReg();  // 使用新的寄存器来存放变量
+            rhsReg = getMaxReg();
             for (auto* inst : rightinsts) { insert(inst); }
         }
 
@@ -302,39 +294,36 @@ namespace ME
     void ASTCodeGen::visit(FE::AST::CallExpr& node, Module* m)
     {
         // TODO(Lab 3-2): 生成函数调用 IR（准备参数、可选返回寄存器、发出call）
-        (void)m;
         // 获取函数名称
-        std::string funcName = node.func ? node.func->getName() : "";
+        std::string funcName = node.func->getName();
 
         // 获取函数声明以便参数类型检查
-        FE::AST::FuncDeclStmt* decl = funcDecls.at(node.func);  // if (node.func)
+        FE::AST::FuncDeclStmt* decl = funcDecls.at(node.func);
 
+        // 函数调用语句的参数数量
         size_t            argCount = node.args ? node.args->size() : 0;
-        CallInst::argList args;
-        // std::vector<std::string> argTypeStrs;
-        // argTypeStrs.reserve(argCount);
+        CallInst::argList args;  // 函数参数列表<类型, 操作数>
+
         for (size_t i = 0; i < argCount; ++i)
         {
             // 遍历每个参数表达式
-            FE::AST::ExprNode* argNode = (*node.args)[i];
+            auto* argNode = (*node.args)[i];
             // 获取参数表达式节点
             if (!argNode) continue;
 
             // 生成参数表达式的 IR
             apply(*this, *argNode, m);
 
+            // 对于声明语句，解析函数类型和维度信息
             // 解析期望的参数类型和维度信息
-            FE::AST::Type* expectedType = nullptr;
-            // bool             expectPtr    = false;
+            FE::AST::Type*   expectedType = nullptr;
             std::vector<int> expectedDims;
-            if (decl && decl->params && i < decl->params->size())
-            {
-                // 根据函数声明获取期望的参数类型
-                auto* paramDecl = (*decl->params)[i];
+            if (decl && decl->params)
+            {                                          // 根据函数声明获取期望的参数类型
+                auto* paramDecl = (*decl->params)[i];  // 获取对应的函数声明节点
                 if (paramDecl)
                 {
-                    expectedType = paramDecl->type;
-                    // expectPtr    = paramDecl->dims && !paramDecl->dims->empty();
+                    expectedType = paramDecl->type;  // 期望的类型
                     if (paramDecl->dims)
                     {
                         // 收集期望的数组维度
@@ -346,52 +335,23 @@ namespace ME
                     }
                 }
             }
-            // 计算期望的参数维度数量
-            size_t expectedParamDims = 0;
-            for (int dim : expectedDims)
-                if (dim > 0) ++expectedParamDims;
 
             // 获取实际参数类型
-            FE::AST::Type* argType = argNode->attr.val.value.type;
-            DataType       argDT   = convert(argType);
+            FE::AST::Type* argType = argNode->attr.val.value.type;  // 参数类型
+            DataType       argDT   = convert(argType);              // 转换为 IR 数据类型
 
-            bool                    isPtrArg   = argType && argType->getTypeGroup() == FE::AST::TypeGroup::POINTER;
-            const FE::AST::VarAttr* argAttr    = nullptr;
-            size_t                  usedIdx    = 0;
-            size_t                  actualDims = 0;
-            size_t                  extraZeros = 0;
-            std::vector<int>        attrDims;
-            if (isPtrArg)
-            {
-                Operand* op = nullptr;
-                if (auto* lval = dynamic_cast<FE::AST::LeftValExpr*>(argNode))
-                {
-                    argAttr = getVarAttr(lval->entry);
-                    usedIdx = lval->indices ? lval->indices->size() : 0;
-                    if (argAttr)
-                    {
-                        for (int dim : argAttr->arrayDims)
-                        {
-                            if (dim <= 0) continue;
-                            attrDims.push_back(dim);
-                            ++actualDims;
-                        }
-                        if (actualDims > expectedParamDims + usedIdx)
-                            extraZeros = actualDims - expectedParamDims - usedIdx;
-                    }
-                    op = ensureLValueAddress(*lval, m, extraZeros);
-                }
-                else
-                {
-                    op = getRegOperand(getMaxReg());
-                }
-                args.emplace_back(DataType::PTR, op);
+            if (argType && argType->getTypeGroup() == FE::AST::TypeGroup::POINTER)
+            {  // 指针类型参数处理
+                // 获取指针指向类型的数组维度
+                auto* lval = dynamic_cast<FE::AST::LeftValExpr*>(argNode);
+                args.emplace_back(DataType::PTR, ensureLValueAddress(*lval, m));
             }
             else
             {
-                size_t   argReg   = getMaxReg();
-                DataType expectDT = expectedType ? convert(expectedType) : argDT;
-                auto     insts    = createTypeConvertInst(argDT, expectDT, argReg);
+                // 不是数组参数，进行类型转换
+                size_t   argReg   = getMaxReg();  // 获取参数
+                DataType expectDT = convert(expectedType);
+                auto     insts    = createTypeConvertInst(argDT, expectDT, argReg);  // 类型转换指令
                 if (!insts.empty())
                 {
                     argReg = getMaxReg();  // 使用新的寄存器来存放变量
@@ -399,43 +359,20 @@ namespace ME
                 }
                 args.emplace_back(expectDT, getRegOperand(argReg));
             }
-
-            FE::AST::Type* typeForStr = expectedType ? expectedType : argType;
-            // bool             forcePtr   = expectPtr || isPtrArg;
-            // std::string      argTypeStr;
-            size_t           consumedDims = std::min(actualDims, usedIdx + extraZeros);
-            std::vector<int> remainingDims;
-            if (consumedDims < attrDims.size()) remainingDims.assign(attrDims.begin() + consumedDims, attrDims.end());
-
-            if (typeForStr)
-            {
-                std::vector<int> typeDims;
-                if (!expectedDims.empty())
-                    typeDims = expectedDims;
-                else if (!remainingDims.empty())
-                    typeDims = remainingDims;
-            }
-            else
-            {
-                std::stringstream ss;
-                ss << args.back().first;
-            }
         }
 
-        DataType retType = convert(node.attr.val.value.type);
-        if (retType == DataType::UNK && decl) retType = convert(decl->retType);
-
+        // 处理返回值
+        DataType retType = convert(decl->retType);
         if (retType == DataType::VOID)
         {
             CallInst* call = createCallInst(retType, funcName, args);
-            // call->setArgTypeStrs(argTypeStrs);
             insert(call);
         }
         else
         {
+            // 处理有返回值的函数调用
             size_t    resReg = getNewRegId();
             CallInst* call   = createCallInst(retType, funcName, args, resReg);
-            // call->setArgTypeStrs(argTypeStrs);
             insert(call);
         }
     }

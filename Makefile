@@ -97,3 +97,6 @@ librv:
 	@$(RISCV_GCC) lib/sylib.c -c -o libtmp.o -Ilib -mcmodel=medany
 	@$(RISCV_AR) rcs lib/libsysy_riscv.a libtmp.o
 	@rm libtmp.o
+.PHONY: debug
+debug:
+	$(MAKE) CXXFLAGS="-O0 -g -MMD -MP $(CXX_STANDARD) $(INCLUDES) $(WERROR_FLAGS) $(WARN_IGNORE) $(CUSTOM_FLAGS)"

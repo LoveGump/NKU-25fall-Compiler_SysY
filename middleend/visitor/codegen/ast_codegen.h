@@ -167,20 +167,19 @@ namespace ME
         void visit(FE::AST::CommaExpr& node, Module* m) override;
 
         // ---new functions ---
-        Operand* ensureLValueAddress(FE::AST::LeftValExpr& node, Module* m, size_t extraZeros = 0);  // 确保左值地址
+        Operand*                ensureLValueAddress(FE::AST::LeftValExpr& node, Module* m);  // 确保左值地址
         const FE::AST::VarAttr* getVarAttr(FE::Sym::Entry* entry) const;
         // needtodo
         FE::AST::VarValue makeZeroValue(FE::AST::Type* type) const;
-        size_t  fillArrayChunk(FE::AST::InitDecl* init, const std::vector<int>& dims, size_t dimIdx,
-                 size_t baseOffset, size_t chunkSize,
-                 std::vector<std::pair<size_t, FE::AST::Initializer*>>& slots);
-        void gatherArrayInitializers(FE::AST::InitDecl* init, const std::vector<int>& dims,
-          std::vector<std::pair<size_t, FE::AST::Initializer*>>& slots);
+        size_t fillArrayChunk(FE::AST::InitDecl* init, const std::vector<int>& dims, size_t dimIdx, size_t baseOffset,
+            size_t chunkSize, std::vector<std::pair<size_t, FE::AST::Initializer*>>& slots);
+        void   gatherArrayInitializers(FE::AST::InitDecl* init, const std::vector<int>& dims,
+              std::vector<std::pair<size_t, FE::AST::Initializer*>>& slots);
 
         // 格式化类型字符串，考虑数组维度和指针
         void insertAllocaInst(Instruction* inst);
         // 填充全局数组初始化列表到数组
-        void emitArrayZeroInit(Operand* basePtr, DataType elemDataType, const std::vector<int>& dims);
+        void emitArrayZeroInit(Operand* basePtr, DataType elemDataType, const size_t& totalElems);
 
         // Statement nodes
         void visit(FE::AST::ExprStmt& node, Module* m) override;
