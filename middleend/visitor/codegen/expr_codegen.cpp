@@ -68,7 +68,9 @@ namespace ME
                 if (!insts.empty())
                 {
                     idxReg = getMaxReg();  // 使用新的寄存器来存放变量
-                    for (auto* inst : insts) { insert(inst); }
+                    for (auto* inst : insts) { 
+                        insert(inst); 
+                    }
                 }
                 // 添加下标操作数
                 idxOps.push_back(getRegOperand(idxReg));
