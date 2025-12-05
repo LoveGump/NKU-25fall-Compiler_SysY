@@ -73,8 +73,8 @@ namespace ME
     {
       public:
         DataType dt;
-        Operand* ptr; // 指向要存储数据的地址
-        Operand* val; // 要存储的值
+        Operand* ptr;  // 指向要存储数据的地址
+        Operand* val;  // 要存储的值
 
       public:
         StoreInst(DataType t, Operand* v, Operand* p, const std::string& c = "")
@@ -259,8 +259,8 @@ namespace ME
         using argOp   = Operand*;
         using argPair = std::pair<argType, argOp>;
         using argList = std::vector<argPair>;
-        argList                  args;
-        Operand*                 res;
+        argList  args;
+        Operand* res;
 
       public:
         // 空参数列表的构造函数
@@ -272,7 +272,6 @@ namespace ME
             : Instruction(Operator::CALL, c), retType(rt), funcName(fn), args(a), res(r)
         {}
         ~CallInst() override = default;
-
 
       public:
         virtual std::string toString() const override;
@@ -307,10 +306,10 @@ namespace ME
     class FuncDeclInst : public Instruction
     {
       public:
-        DataType                 retType;
-        std::string              funcName;
-        std::vector<DataType>    argTypes;     // 参数类型列表
-        bool                     isVarArg;     // 是否为可变参数函数
+        DataType              retType;
+        std::string           funcName;
+        std::vector<DataType> argTypes;  // 参数类型列表
+        bool                  isVarArg;  // 是否为可变参数函数
 
       public:
         FuncDeclInst(DataType rt, const std::string& fn, std::vector<DataType> at = {}, bool is_va = false,
@@ -318,7 +317,6 @@ namespace ME
             : Instruction(Operator::FUNCDECL, c), retType(rt), funcName(fn), argTypes(at), isVarArg(is_va)
         {}
         ~FuncDeclInst() override = default;
-
 
       public:
         virtual std::string toString() const override;
@@ -339,7 +337,7 @@ namespace ME
         using argOp   = Operand*;
         using argPair = std::pair<argType, argOp>;
         using argList = std::vector<argPair>;
-        argList                  argRegs;      // 参数列表：类型-寄存器对
+        argList argRegs;  // 参数列表：类型-寄存器对
 
       public:
         FuncDefInst(DataType rt, const std::string& fn, argList ar = {}, const std::string& c = "")

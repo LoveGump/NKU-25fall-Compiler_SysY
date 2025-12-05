@@ -126,20 +126,24 @@ namespace ME
                 arrayAttr.initList.assign(totalSize, makeZeroValue(arrayAttr.type));
                 if (vd->init)
                 {
+                    // 如果有初始化列表 则处理
                     std::vector<std::pair<size_t, FE::AST::Initializer*>> initSlots;
+                    // 收集数组初始化器中的所有初始化表达式及其对应的偏移量
                     gatherArrayInitializers(vd->init, arrayAttr.arrayDims, initSlots);
 
-                    FE::AST::Type_t baseType = arrayAttr.type ? arrayAttr.type->getBaseType() : FE::AST::Type_t::INT;
+                    FE::AST::Type_t baseType = arrayAttr.type->getBaseType();  // 获取数组元素的基础类型
+                    // 遍历所有初始化表达式，生成对应的初始值
                     for (const auto& slot : initSlots)
                     {
                         size_t idx      = slot.first;
                         auto*  initNode = slot.second;
-                        if (!initNode || !initNode->init_val || idx >= totalSize) continue;
-                        const auto& exprVal = initNode->init_val->attr.val;
-                        if (!exprVal.isConstexpr) continue;
+                        if (!initNode || !initNode->init_val) continue;
+                        const auto& exprVal = initNode->init_val->attr.val;  // 获取表达式值属性
+                        if (!exprVal.isConstexpr) { ERROR("Global array initializer must be constant expression"); }
 
                         switch (baseType)
                         {
+                            // 根据基础类型设置对应的初始值
                             case FE::AST::Type_t::FLOAT:
                                 arrayAttr.initList[idx] = FE::AST::VarValue(exprVal.getFloat());
                                 break;
@@ -153,6 +157,7 @@ namespace ME
                         }
                     }
                 }
+                // 添加全局数组变量声明指令到模块
                 m->globalVars.emplace_back(new GlbVarDeclInst(elemType, lval->entry->getName(), arrayAttr));
             }
         }
@@ -208,19 +213,8 @@ namespace ME
     }
 
     // 生成数组零初始化指令
-    void ASTCodeGen::emitArrayZeroInit(Operand* basePtr, DataType elemDataType, const std::vector<int>& dims)
+    void ASTCodeGen::emitArrayZeroInit(Operand* basePtr, DataType elemDataType, const size_t& totalElems)
     {
-        // 计算数组总大小
-        if (!basePtr || dims.empty()) return;
-
-        size_t totalElems = 1;
-        for (int dim : dims)
-        {
-            size_t len = static_cast<size_t>(std::max(dim, 0));
-            totalElems *= len;
-        }
-        if (totalElems == 0) totalElems = 1;
-
         size_t elemSize = 0;
         switch (elemDataType)
         {
@@ -230,19 +224,18 @@ namespace ME
             case DataType::F32: elemSize = 4; break;
             case DataType::I64:
             case DataType::DOUBLE:
-            case DataType::PTR: elemSize = 8; break;
+            case DataType::PTR: elemSize = 8; break;  // 64位系统指针8字节
             case DataType::VOID:
             case DataType::UNK:
-            default: elemSize = 0; break;
+            default: elemSize = 0; return;
         }
-        if (elemSize == 0) return;
-
+        // // 计算数组总字节数
         size_t totalBytes = totalElems * elemSize;
-        if (totalBytes == 0) return;
 
+        // 调用 llvm.memset.p0.i32 进行内存清零
         ASSERT(totalBytes <= static_cast<size_t>(std::numeric_limits<int>::max()) && "memset length exceeds i32 range");
 
-        CallInst::argList args;
+        CallInst::argList args;  // 参数列表
         args.emplace_back(DataType::PTR, basePtr);
         args.emplace_back(DataType::I8, getImmeI32Operand(0));
         args.emplace_back(DataType::I32, getImmeI32Operand(static_cast<int>(totalBytes)));

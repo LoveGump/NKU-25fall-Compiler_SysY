@@ -32,12 +32,15 @@ namespace ME
             // 获取寄存器操作数作为地址
             basePtr = getRegOperand(reg);
         }
+        // 非数组变量直接返回地址
+        if (attr->arrayDims.empty()) { return basePtr; }
 
-        // 处理数组下标，生成 GEP 指令
+        // 对于数组变量，生成 GEP 指令计算具体元素地址
         std::vector<int> filteredDims;
         filteredDims.reserve(attr->arrayDims.size());
         for (int dim : attr->arrayDims)
         {
+            // 如果数组下标的维度小于等于0
             if (dim <= 0) continue;
             filteredDims.push_back(dim);
         }
@@ -54,7 +57,7 @@ namespace ME
 
         if (node.indices)
         {
-            // 处理数组下标表达式
+            // 处理数组下标表达式，对变量的处理
             for (auto* idxNode : *(node.indices))
             {
                 // 访问下标表达式，生成对应的 IR
@@ -66,7 +69,9 @@ namespace ME
                 if (!insts.empty())
                 {
                     idxReg = getMaxReg();  // 使用新的寄存器来存放变量
-                    for (auto* inst : insts) { insert(inst); }
+                    for (auto* inst : insts) { 
+                        insert(inst); 
+                    }
                 }
                 // 添加下标操作数
                 idxOps.push_back(getRegOperand(idxReg));
@@ -381,10 +386,7 @@ namespace ME
                     }
                     op = ensureLValueAddress(*lval, m, extraZeros);
                 }
-                else
-                {
-                    op = getRegOperand(getMaxReg());
-                }
+                else { op = getRegOperand(getMaxReg()); }
                 args.emplace_back(DataType::PTR, op);
             }
             else

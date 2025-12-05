@@ -14,7 +14,7 @@ namespace ME
         // 设置函数返回类型与参数寄存器，创建基本块骨架，并生成函数体
         FuncDefInst* funcDef = new FuncDefInst(convert(node.retType), node.entry->getName());  // 创建函数定义指令
         Function*    func    = new Function(funcDef);                                          // 创建函数对象
-        m->functions.emplace_back(func);                                                       // 将函数添加到模块中
+        m->functions.emplace_back(func);  // 将函数添加到模块中
 
         enterFunc(func);        // 进入函数
         name2reg.enterScope();  // 进入新作用域
@@ -86,12 +86,9 @@ namespace ME
         if (curBlock && (curBlock->insts.empty() || !curBlock->insts.back()->isTerminator()))
         {
             // 如果当前基本块没有终止指令，插入默认返回指令
-            if (curFunc->funcDef->retType == DataType::VOID)
-                insert(createRetInst());
-            else if (curFunc->funcDef->retType == DataType::F32)
-                insert(createRetInst(0.0f));
-            else
-                insert(createRetInst(0));
+            if (curFunc->funcDef->retType == DataType::VOID) { insert(createRetInst()); }
+            else if (curFunc->funcDef->retType == DataType::F32) { insert(createRetInst(0.0f)); }
+            else { insert(createRetInst(0)); }
         }
 
         // 清理函数生成上下文
@@ -132,7 +129,6 @@ namespace ME
     {
         // TODO(Lab 3-2): 生成 return 语句 IR（可选返回值与类型转换）
         (void)m;
-        bool createdRet = false;
         if (node.retExpr)
         {
             // 先创建返回值表达式的 IR
@@ -142,7 +138,6 @@ namespace ME
             {
                 // 函数返回类型为 void，直接生成无返回值的 return 指令
                 insert(createRetInst());
-                createdRet = true;
             }
             else
             {
@@ -156,32 +151,25 @@ namespace ME
                     for (auto* inst : insts) { insert(inst); }
                 }
                 insert(createRetInst(curFunc->funcDef->retType, retReg));
-                createdRet = true;
             }
         }
         else
         {
             // 如果没有返回值表达式，生成默认返回指令
-            if (curFunc->funcDef->retType == DataType::VOID)
-                insert(createRetInst());
-            else if (curFunc->funcDef->retType == DataType::F32)
-                insert(createRetInst(0.0f));
-            else
-                insert(createRetInst(0));
-            createdRet = true;
+            if (curFunc->funcDef->retType == DataType::VOID) { insert(createRetInst()); }
+            else if (curFunc->funcDef->retType == DataType::F32) { insert(createRetInst(0.0f)); }
+            else { insert(createRetInst(0)); }
         }
 
-        if (createdRet)
-        {
-            Block* deadBlock = createBlock();
-            deadBlock->setComment("return.dead");
-            enterBlock(deadBlock);
-        }
+        // 创建死块，防止返回后继续执行
+        Block* deadBlock = createBlock();
+        deadBlock->setComment("return.dead");
+        enterBlock(deadBlock);
     }
 
     void ASTCodeGen::visit(FE::AST::WhileStmt& node, Module* m)
     {
-        // TODO(Lab 3-2): 生成 while 循环 IR（条件块、循环体与结束块、循环标签）
+        // TODO(Lab 3-2): 生成 while 循环 IR（条件块、循环体与结束块、循环签）
         Block* condBlock = createBlock();
         condBlock->setComment("while.cond");
         Block* bodyBlock = createBlock();
