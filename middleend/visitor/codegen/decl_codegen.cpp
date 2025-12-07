@@ -74,8 +74,9 @@ namespace ME
         // 计算当前维度的边界和子块大小，
         // 对于array[2][3]，dimIdx=0时，dimBound=2，subChunk=3;
         // dimIdx=1时，dimBound=3，subChunk=1;
-        size_t dimBound = dims[dimIdx];          // 维度边界
-        size_t subChunk = chunkSize / dimBound;  // 计算子块大小
+        size_t dimBound = dims[dimIdx] > 0 ? static_cast<size_t>(dims[dimIdx]) : 1;  // 维度边界
+        size_t subChunk = dimBound ? chunkSize / dimBound : chunkSize;               // 计算子块大小
+        if (subChunk == 0) subChunk = 1;
 
         // 处理非单个初始化表达式的情况
         auto* list = init->singleInit ? nullptr : dynamic_cast<FE::AST::InitializerList*>(init);
@@ -98,24 +99,33 @@ namespace ME
 
             if (!child->singleInit)
             {
-                // child 是一个子初始化列表 int a[2][3] = {{1,2,3},{4,5,6}}
-                size_t targetIdx = used / subChunk;  // 计算目标索引
-                if (targetIdx >= dimBound)
+                size_t chunkPos = subChunk ? (used % subChunk) : 0;
+                if (chunkPos == 0)
                 {
-                    // 如果超出维度边界，报错
-                    ERROR("Too many initializers for array at line %d", init->line_num);
-                    break;
+                    size_t avail     = chunkSize > used ? chunkSize - used : 0;
+                    size_t segSize   = std::min(subChunk, avail);
+                    size_t chunkBase = baseOffset + used;
+                    if (segSize == 0) break;
+                    fillArrayChunk(child, dims, dimIdx + 1, chunkBase, segSize, slots);
+                    used += segSize;
                 }
-                size_t chunkBase = baseOffset + targetIdx * subChunk;  // 计算当前块的基地址，第几个子块
-                // 递归处理子初始化列表
-                fillArrayChunk(child, dims, dimIdx + 1, chunkBase, subChunk, slots);
-                used = (targetIdx + 1) * subChunk;  // 更新已使用的元素数量
+                else
+                {
+                    size_t remain    = subChunk - chunkPos;
+                    size_t avail     = chunkSize > used ? chunkSize - used : 0;
+                    size_t segSize   = std::min(remain, avail);
+                    size_t chunkBase = baseOffset + used;
+                    if (segSize == 0) break;
+                    size_t consumed = fillArrayChunk(child, dims, dimIdx + 1, chunkBase, segSize, slots);
+                    used += consumed;
+                }
                 continue;
             }
             // 递归处理单个初始化表达式
             used += fillArrayChunk(child, dims, dimIdx + 1, baseOffset + used, chunkSize - used, slots);
         }
 
+        if (used > chunkSize) used = chunkSize;
         return used;
     }
 
@@ -159,7 +169,10 @@ namespace ME
             std::vector<int> dims      = vd->declDims;
             size_t           allocaReg = getNewRegId();  // 分配新的寄存器用于存储 alloca 结果
             if (dims.empty()) { insertAllocaInst(createAllocaInst(elemType, allocaReg)); }
-            else { insertAllocaInst(createAllocaInst(elemType, allocaReg, dims)); }
+            else
+            {
+                insertAllocaInst(createAllocaInst(elemType, allocaReg, dims));
+            }
             name2reg.addSymbol(lval->entry, allocaReg);  // 插入符号表
 
             // 储存变量信息
@@ -261,7 +274,10 @@ namespace ME
             {
                 // 单变量 无初始化 则零初始化
                 if (elemType == DataType::F32) { insert(createStoreInst(elemType, getImmeF32Operand(0.0f), ptr)); }
-                else { insert(createStoreInst(elemType, getImmeI32Operand(0), ptr)); }
+                else
+                {
+                    insert(createStoreInst(elemType, getImmeI32Operand(0), ptr));
+                }
             }
             // 没有初始化的数组变量，默认不处理，保持未初始化状态
         }
