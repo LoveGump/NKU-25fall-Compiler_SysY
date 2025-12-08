@@ -62,7 +62,7 @@ namespace ME
                 // 超出块大小直接报错
                 if (used >= chunkSize)
                 {
-                    ERROR("Too many initializers for array at line %d", init->line_num);
+                    ERROR("Exceeded chunk size during array initialization, at line %d", child->line_num);
                     break;
                 }
                 // 递归处理子初始化表达式
@@ -92,37 +92,60 @@ namespace ME
             // 遍历子初始化表达式
             if (!child) break;
             if (used >= chunkSize)
-            {
-                ERROR("Too many initializers for array at line %d", init->line_num);
+            {   // 超出块大小直接报错
+                ERROR("Exceeded chunk size during array initialization, at line %d", child->line_num);
                 break;
             }
 
             if (!child->singleInit)
             {
-                size_t chunkPos = subChunk ? (used % subChunk) : 0;
+                // 处理子块为初始化列表的情况
+                size_t chunkPos = subChunk ? (used % subChunk) : 0; // 当前子块位置
                 if (chunkPos == 0)
                 {
-                    size_t avail     = chunkSize > used ? chunkSize - used : 0;
-                    size_t segSize   = std::min(subChunk, avail);
-                    size_t chunkBase = baseOffset + used;
-                    if (segSize == 0) break;
+                    // 开始一个新的子块
+                    size_t avail     = chunkSize - used; // 可用大小
+                    size_t segSize   = std::min(subChunk, avail); // 本次处理的块大小
+                    size_t chunkBase = baseOffset + used; // 当前块起始偏移
+                    if (segSize == 0) break; // 防止死循环
                     fillArrayChunk(child, dims, dimIdx + 1, chunkBase, segSize, slots);
                     used += segSize;
                 }
                 else
                 {
-                    size_t remain    = subChunk - chunkPos;
-                    size_t avail     = chunkSize > used ? chunkSize - used : 0;
-                    size_t segSize   = std::min(remain, avail);
-                    size_t chunkBase = baseOffset + used;
-                    if (segSize == 0) break;
+                    // 当前子块中间位置遇到初始化列表
+                    // 计算当前子块剩余大小和实际可用大小
+                    size_t remain    = subChunk - chunkPos; // 当前子块剩余大小
+                    size_t avail     = chunkSize - used; // 可用大小
+                    size_t segSize   = std::min(remain, avail); // 本次处理的块大小
+                    
+                    // 检查这个嵌套初始化列表的大小
+                    // 如果它是一个完整的子块，但当前位置不在子块边界，则应该舍弃
+                    auto* childList = dynamic_cast<FE::AST::InitializerList*>(child);
+                    if (childList && childList->init_list && segSize < subChunk)
+                    {
+                        // 估算这个初始化列表需要的空间
+                        // 如果它看起来像是要填充一个完整的子块，则舍弃
+                        // 否则按顺序填充
+                        size_t childCount = childList->init_list->size();
+                        if (childCount > segSize)
+                        {
+                            // 超量部分直接舍弃整个初始化列表
+                            ERROR("Exceeded chunk size during array initialization, at line %d", child->line_num);
+                            break;
+                        }
+                    }
+                    
+                    size_t chunkBase = baseOffset + used; // 当前块起始偏移
+                    if (segSize == 0) break; // 防止死循环
                     size_t consumed = fillArrayChunk(child, dims, dimIdx + 1, chunkBase, segSize, slots);
                     used += consumed;
                 }
-                continue;
+            }else{
+                // 处理子块为单个初始化表达式的情况
+                used += fillArrayChunk(child, dims, dimIdx + 1, baseOffset + used, chunkSize - used, slots);
             }
             // 递归处理单个初始化表达式
-            used += fillArrayChunk(child, dims, dimIdx + 1, baseOffset + used, chunkSize - used, slots);
         }
 
         if (used > chunkSize) used = chunkSize;
