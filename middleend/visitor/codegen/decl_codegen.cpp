@@ -42,122 +42,157 @@ namespace ME
         if (!init || chunkSize == 0) return 0;
 
         if (dimIdx >= dims.size())
-        {  // 递归到正常情况下的最后一维 ，比如 int a[2][3] = {{1,2,3},{4,5,6}};中的1，2，3，4，5，6
+        {
+            // 已经处理完所有维度，当前是标量位置
             if (init->singleInit)
             {
-                // 处理单个初始化表达式
+                // 单个初始化表达式
                 auto* single = dynamic_cast<FE::AST::Initializer*>(init);
                 if (!single) return 0;
-                slots.emplace_back(baseOffset, single);  // 记录偏移量与初始化表达式的对应关系
+                slots.emplace_back(baseOffset, single);
                 return 1;
             }
-            // 数组初始化列表，也有可能是 int a[3] = { {1}, {2}, {3} };，继续递归处理
+            
+            // 在标量位置遇到初始化列表，只取第一个元素，其余舍弃
             auto* list = dynamic_cast<FE::AST::InitializerList*>(init);
-            if (!list || !list->init_list) return 0;
-
-            size_t used = 0;  // 已使用的元素数量
-            for (auto* child : *(list->init_list))
-            {
-                // 遍历子初始化表达式
-                // 超出块大小直接报错
-                if (used >= chunkSize)
-                {
-                    ERROR("Exceeded chunk size during array initialization, at line %d", child->line_num);
-                    break;
-                }
-                // 递归处理子初始化表达式
-                used += fillArrayChunk(child, dims, dimIdx, baseOffset + used, chunkSize - used, slots);
-            }
-            return used;
+            if (!list || !list->init_list || list->init_list->empty()) return 0;
+            
+            // 只处理第一个元素，其余舍弃
+            auto* firstChild = list->init_list->front();
+            if (!firstChild) return 0;
+            
+            return fillArrayChunk(firstChild, dims, dimIdx, baseOffset, chunkSize, slots);
         }
 
-        // 计算当前维度的边界和子块大小，
-        // 对于array[2][3]，dimIdx=0时，dimBound=2，subChunk=3;
-        // dimIdx=1时，dimBound=3，subChunk=1;
-        size_t dimBound = dims[dimIdx] > 0 ? static_cast<size_t>(dims[dimIdx]) : 1;  // 维度边界
-        size_t subChunk = dimBound ? chunkSize / dimBound : chunkSize;               // 计算子块大小
+        // 计算当前维度的边界和子块大小
+        size_t dimBound = dims[dimIdx] > 0 ? static_cast<size_t>(dims[dimIdx]) : 1;
+        size_t subChunk = dimBound ? chunkSize / dimBound : chunkSize;
         if (subChunk == 0) subChunk = 1;
 
-        // 处理非单个初始化表达式的情况
-        auto* list = init->singleInit ? nullptr : dynamic_cast<FE::AST::InitializerList*>(init);
-        if (!list || !list->init_list)
+        // 处理单个初始化表达式（非列表）
+        if (init->singleInit)
         {
-            // 处理缺失初始化列表的情况，逐个填充子块即为int a[2][3] = {1,2,3,4,5,6 };这种情况
+            // 单个初始化表达式，逐个填充
             return fillArrayChunk(init, dims, dimIdx + 1, baseOffset, chunkSize, slots);
         }
 
-        size_t used = 0;  // 已使用的元素数量
+        // 处理初始化列表
+        auto* list = dynamic_cast<FE::AST::InitializerList*>(init);
+        if (!list || !list->init_list)
+        {
+            return fillArrayChunk(init, dims, dimIdx + 1, baseOffset, chunkSize, slots);
+        }
+
+        size_t used = 0; // 已使用的元素数量
         for (auto* child : *(list->init_list))
         {
-            // 遍历子初始化表达式
             if (!child) break;
+            
+            // 超量舍弃：如果已经填满，直接舍弃剩余元素
             if (used >= chunkSize)
-            {   // 超出块大小直接报错
-                ERROR("Exceeded chunk size during array initialization, at line %d", child->line_num);
+            {
                 break;
             }
 
             if (!child->singleInit)
             {
-                // 处理子块为初始化列表的情况
-                size_t chunkPos = subChunk ? (used % subChunk) : 0; // 当前子块位置
-                if (chunkPos == 0)
+                // 子元素是初始化列表
+                // 判断当前位置是否在某个子数组的边界
+                
+                bool isAtBoundary = false;
+                size_t boundarySubChunk = 0;
+                
+                // 特殊情况：如果 subChunk == 1，说明已经到了标量层级
+                // 此时遇到初始化列表应该只取第一个元素
+                if (subChunk == 1)
                 {
-                    // 开始一个新的子块
-                    size_t avail     = chunkSize - used; // 可用大小
-                    size_t segSize   = std::min(subChunk, avail); // 本次处理的块大小
-                    size_t chunkBase = baseOffset + used; // 当前块起始偏移
-                    if (segSize == 0) break; // 防止死循环
-                    fillArrayChunk(child, dims, dimIdx + 1, chunkBase, segSize, slots);
-                    used += segSize;
+                    isAtBoundary = false;
                 }
                 else
                 {
-                    // 当前子块中间位置遇到初始化列表
-                    // 计算当前子块剩余大小和实际可用大小
-                    size_t remain    = subChunk - chunkPos; // 当前子块剩余大小
-                    size_t avail     = chunkSize - used; // 可用大小
-                    size_t segSize   = std::min(remain, avail); // 本次处理的块大小
+                    // 从当前维度之后开始，计算每个可能的子数组大小
+                    // 从大到小检查，优先匹配更大的子数组
+                    // 例如对于 arr[3][3][3]，在 dimIdx=0 时：
+                    // 先检查 dims[1]*dims[2] = 9 (arr[i] 的大小)
+                    // 再检查 dims[2] = 3 (arr[i][j] 的大小)
                     
-                    // 检查这个嵌套初始化列表的大小
-                    // 如果它是一个完整的子块，但当前位置不在子块边界，则应该舍弃
-                    auto* childList = dynamic_cast<FE::AST::InitializerList*>(child);
-                    if (childList && childList->init_list && segSize < subChunk)
+                    // 先计算所有维度的乘积
+                    std::vector<size_t> subChunkSizes;
+                    size_t accumSize = 1;
+                    for (size_t testDim = dims.size() - 1; testDim > dimIdx; --testDim)
                     {
-                        // 估算这个初始化列表需要的空间
-                        // 如果它看起来像是要填充一个完整的子块，则舍弃
-                        // 否则按顺序填充
-                        size_t childCount = childList->init_list->size();
-                        if (childCount > segSize)
+                        accumSize *= static_cast<size_t>(dims[testDim]);
+                        if (accumSize > 1)
                         {
-                            // 超量部分直接舍弃整个初始化列表
-                            ERROR("Exceeded chunk size during array initialization, at line %d", child->line_num);
+                            subChunkSizes.push_back(accumSize);
+                        }
+                    }
+                    
+                    // 从大到小检查
+                    for (auto it = subChunkSizes.rbegin(); it != subChunkSizes.rend(); ++it)
+                    {
+                        if (used % (*it) == 0)
+                        {
+                            isAtBoundary = true;
+                            boundarySubChunk = *it;
                             break;
                         }
                     }
                     
-                    size_t chunkBase = baseOffset + used; // 当前块起始偏移
-                    if (segSize == 0) break; // 防止死循环
-                    size_t consumed = fillArrayChunk(child, dims, dimIdx + 1, chunkBase, segSize, slots);
-                    used += consumed;
+                    // 如果在当前维度的子块边界
+                    if (!isAtBoundary && subChunk > 1 && used % subChunk == 0)
+                    {
+                        isAtBoundary = true;
+                        boundarySubChunk = subChunk;
+                    }
                 }
-            }else{
-                // 处理子块为单个初始化表达式的情况
-                used += fillArrayChunk(child, dims, dimIdx + 1, baseOffset + used, chunkSize - used, slots);
+                
+                if (isAtBoundary && boundarySubChunk > 0)
+                {
+                    // 在子数组边界遇到初始化列表
+                    // 将其用于初始化该子数组
+                    size_t avail = chunkSize - used;
+                    size_t segSize = std::min(boundarySubChunk, avail);
+                    size_t chunkBase = baseOffset + used;
+                    
+                    if (segSize == 0) break;
+                    
+                    // 递归处理，内部的超量元素会被舍弃
+                    fillArrayChunk(child, dims, dimIdx + 1, chunkBase, segSize, slots);
+                    // 即使实际填充少于 segSize，也要占据整个子数组
+                    used += segSize;
+                }
+                else
+                {
+                    // 在标量位置遇到初始化列表
+                    // 只取列表的第一个元素
+                    auto* childList = dynamic_cast<FE::AST::InitializerList*>(child);
+                    if (childList && childList->init_list && !childList->init_list->empty())
+                    {
+                        auto* firstElem = childList->init_list->front();
+                        if (firstElem)
+                        {
+                            size_t chunkBase = baseOffset + used;
+                            size_t avail = chunkSize - used;
+                            size_t consumed = fillArrayChunk(firstElem, dims, dimIdx + 1, chunkBase, avail, slots);
+                            used += consumed;
+                        }
+                    }
+                }
             }
-            // 递归处理单个初始化表达式
+            else
+            {
+                // 子元素是单个初始化表达式
+                size_t avail = chunkSize - used;
+                size_t consumed = fillArrayChunk(child, dims, dimIdx + 1, baseOffset + used, avail, slots);
+                used += consumed;
+            }
         }
 
-        if (used > chunkSize) used = chunkSize;
         return used;
     }
 
-    /**
-     * @brief 收集数组初始化器中的所有初始化表达式及其对应的偏移量
-     * @param init 初始化声明节点
-     * @param dims 数组维度列表
-     * @param slots 输出参数，存储偏移量与初始化表达式的对应关系
-     */
+
     void ASTCodeGen::gatherArrayInitializers(FE::AST::InitDecl* init, const std::vector<int>& dims,
         std::vector<std::pair<size_t, FE::AST::Initializer*>>& slots)
     {
