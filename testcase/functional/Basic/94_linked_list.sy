@@ -373,5 +373,4 @@ int main()
 
         op_count = op_count + 1;
     }
-    return 0;
 }

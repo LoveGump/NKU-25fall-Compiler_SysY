@@ -65,9 +65,8 @@ namespace ME
         }
 
         // 计算当前维度的边界和子块大小
-        size_t dimBound = dims[dimIdx] > 0 ? static_cast<size_t>(dims[dimIdx]) : 1;
-        size_t subChunk = dimBound ? chunkSize / dimBound : chunkSize;
-        if (subChunk == 0) subChunk = 1;
+        size_t dimBound = static_cast<size_t>(dims[dimIdx]);
+        size_t subChunk =  chunkSize / dimBound;
 
         // 处理单个初始化表达式（非列表）
         if (init->singleInit)
@@ -91,6 +90,7 @@ namespace ME
             // 超量舍弃：如果已经填满，直接舍弃剩余元素
             if (used >= chunkSize)
             {
+                // ERROR("Array initializer has more elements than array size, at line %d", child->line_num);
                 break;
             }
 
@@ -98,9 +98,10 @@ namespace ME
             {
                 // 子元素是初始化列表
                 // 判断当前位置是否在某个子数组的边界
+                // int z[3][3][3] = { 1, 2, 3, { 4, 5, 6, { 7, 8, 9 } }, 1};dimBound = 3 subChunk = 27/3 = 9    // 每个 z[i] 占 9 个元素
                 
                 bool isAtBoundary = false;
-                size_t boundarySubChunk = 0;
+                size_t boundarySubChunk = 0; // 记录匹配到的子块大小
                 
                 // 特殊情况：如果 subChunk == 1，说明已经到了标量层级
                 // 此时遇到初始化列表应该只取第一个元素
@@ -124,17 +125,20 @@ namespace ME
                         accumSize *= static_cast<size_t>(dims[testDim]);
                         if (accumSize > 1)
                         {
-                            subChunkSizes.push_back(accumSize);
+                            // 只记录大于1的子块大小
+                            subChunkSizes.push_back(accumSize);// 【3】【9】，used = 3
                         }
                     }
                     
                     // 从大到小检查
                     for (auto it = subChunkSizes.rbegin(); it != subChunkSizes.rend(); ++it)
                     {
+                        // 检查是否在该子块边界
                         if (used % (*it) == 0)
                         {
+                            // 如果在边界位置 ，boundary = 3
                             isAtBoundary = true;
-                            boundarySubChunk = *it;
+                            boundarySubChunk = *it; // 记录匹配到的子块大小
                             break;
                         }
                     }
@@ -142,6 +146,7 @@ namespace ME
                     // 如果在当前维度的子块边界
                     if (!isAtBoundary && subChunk > 1 && used % subChunk == 0)
                     {
+                        // 如果在边界位置
                         isAtBoundary = true;
                         boundarySubChunk = subChunk;
                     }
@@ -151,9 +156,9 @@ namespace ME
                 {
                     // 在子数组边界遇到初始化列表
                     // 将其用于初始化该子数组
-                    size_t avail = chunkSize - used;
-                    size_t segSize = std::min(boundarySubChunk, avail);
-                    size_t chunkBase = baseOffset + used;
+                    size_t avail = chunkSize - used; // 当前块中剩余可用元素数量  24
+                    size_t segSize = std::min(boundarySubChunk, avail); // 本次子数组初始化可用的元素数量  3
+                    size_t chunkBase = baseOffset + used; // 当前子数组的起始偏移  3
                     
                     if (segSize == 0) break;
                     

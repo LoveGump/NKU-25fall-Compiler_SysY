@@ -39,7 +39,7 @@ namespace FE::AST
 
         if (node.body) { success = apply(*this, *node.body) && success; }
 
-        if (success && this->curFuncRetType != voidType && !this->funcHasReturn)
+        if (success && node.entry->getName() != "main" &&this->curFuncRetType != voidType && !this->funcHasReturn)
         {
             // 非void函数缺少return语句
             this->errors.emplace_back("Function '" + node.entry->getName() + "' missing return statement at line " +

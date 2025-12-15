@@ -109,5 +109,4 @@ int main()
         putch(111);
         putch(10);
     }
-    return 0;
 }
