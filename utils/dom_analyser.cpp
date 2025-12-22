@@ -72,6 +72,11 @@ void DomAnalyzer::build(
     // TODO(Lab 4): 构建反向边表 backward_edges[v] = { 所有指向 v 的前驱 }
     // 提示：为了正确处理多入口点的情况，可以使用一个虚拟的“入口点”，让它指向所有实际入口点
     // 这主要是为了处理后支配树可能有多个入口的情况
+    // 构建反向边表 backward_edges[v] = { 所有指向 v 的前驱 }
+    for (int u = 0; u < node_count; ++u)
+    {
+        for (int v : working_graph[u]) { backward_edges[v].push_back(u); }
+    }
 
     dom_tree.clear();
     dom_tree.resize(node_count);
@@ -109,18 +114,22 @@ void DomAnalyzer::build(
     // TODO(Lab 4): 路径压缩并带最小祖先维护的 Find（Tarjan-Eval）
     // 依据半支配序比较，维护 min_ancestor，并做并查集压缩
     auto dsu_find = [&](int u, const auto& self) -> int {
-        (void)self;
-        TODO("Lab4-Analysis: Implement Tarjan Eval/Link find with min-ancestor maintenance");
-        return u;
+        // (void)self;
+        // TODO("Lab4-Analysis: Implement Tarjan Eval/Link find with min-ancestor maintenance");
+        // return u;
+        if (dsu_parent[u] == u) return u;
+        int root = self(dsu_parent[u], self);
+        // 路径压缩：更新最小祖先
+        if (semi_dom[min_ancestor[dsu_parent[u]]] < semi_dom[min_ancestor[u]])
+            min_ancestor[u] = min_ancestor[dsu_parent[u]];
+        dsu_parent[u] = root;
+        return root;
     };
 
     auto dsu_query = [&](int u) -> int {
         dsu_find(u, dsu_find);
         return min_ancestor[u];
     };
-    // 下两行占位：避免未使用警告，完成实现后可删
-    (void)dsu_find;
-    (void)dsu_query;
 
     // TODO(Lab 4): 逆 DFS 序回溯半支配与 idom 计算
     // 指引：
@@ -136,7 +145,49 @@ void DomAnalyzer::build(
     //      否则 imm_dom[child] = mn[child]
     //    然后清空该集合（以免重复处理）
     // 注意：eval/Link 的细节由上方 dsu_find/self 与 dsu_parent/min_ancestor 完成
-    TODO("Lab4-Analysis: Reverse DFS pass to compute semi-dominators and initial idoms");
+    // TODO("Lab4-Analysis: Reverse DFS pass to compute semi-dominators and initial idoms");
+    // 逆 DFS 序回溯半支配与 idom 计算
+    for (int dfs_id = dfs_count; dfs_id >= 1; --dfs_id)
+    {
+        int curr = dfs_to_block[dfs_id];
+
+        // 计算半支配者 semi_dom[curr]
+        for (int pred : backward_edges[curr])
+        {
+            if (!block_to_dfs[pred]) continue;  // 跳过未访问的节点
+            int pred_dfn = block_to_dfs[pred];
+            if (pred_dfn < block_to_dfs[curr])
+            {
+                // 情况 a: 前驱的 DFS 序小于当前节点
+                if (pred_dfn < semi_dom[curr]) semi_dom[curr] = pred_dfn;
+            }
+            else
+            {
+                // 情况 b: 前驱的 DFS 序大于当前节点，需要通过 eval 找到最小半支配者
+                int mn   = dsu_query(pred);
+                int sdom = semi_dom[mn];
+                if (sdom < semi_dom[curr]) semi_dom[curr] = sdom;
+            }
+        }
+
+        // Link 操作：将当前节点链接到其父节点
+        dsu_parent[curr] = parent[curr];
+
+        // 将当前节点加入其半支配者的孩子集合
+        semi_children[dfs_to_block[semi_dom[curr]]].push_back(curr);
+
+        // 处理父节点的半支配孩子集合
+        int par = parent[curr];
+        for (int child : semi_children[par])
+        {
+            int mn = dsu_query(child);
+            if (semi_dom[mn] == block_to_dfs[par])
+                imm_dom[child] = par;
+            else
+                imm_dom[child] = mn;
+        }
+        semi_children[par].clear();
+    }
 
     // 直接支配者 idom 链压缩
     for (int dfs_id = 1; dfs_id <= dfs_count; ++dfs_id)
@@ -153,19 +204,47 @@ void DomAnalyzer::build(
     dom_frontier.resize(virtual_source);
     imm_dom.resize(virtual_source);
 
+    // 移除虚拟源节点并调整入口节点的支配者
+    // 对于每个实际入口节点，其直接支配者应该设为自己（或 -1 表示无支配者）
+    for (int i = 0; i < virtual_source; ++i)
+    {
+        if (imm_dom[i] == virtual_source)
+        {
+            // 这是一个入口节点，它的直接支配者是虚拟源，我们将其设为自己
+            imm_dom[i] = i;
+        }
+    }
     // 在支配树构建完成后，你还需要从里面移除本来并不存在的虚拟源节点
     // 同时，需要注意设置移除了虚拟源节点后的入口节点的支配者
-    TODO("Lab4: Remove virtual source & adjust imm_dom");
+    // TODO("Lab4: Remove virtual source & adjust imm_dom");
 
     // TODO(Lab 4): 构建支配边界
-    for (int block = 0; block < node_count; ++block)
+
+    // 构建支配边界
+    for (int block = 0; block < virtual_source; ++block)
     {
+        if (!block_to_dfs[block]) continue;  // 跳过未访问的节点
+
         for (int succ : working_graph[block])
         {
-            (void)succ;
-            // 沿 idom 链向上，将 succ 放入 runner 的支配边界集合
-            // 提示：注意处理根与虚拟源节点，避免死循环
-            TODO("Lab4: Update dominance frontier along idom chain");
+            if (succ >= virtual_source) continue;  // 跳过虚拟源节点
+            if (!block_to_dfs[succ]) continue;     // 跳过未访问的节点
+
+            // 从 block 开始沿 idom 链向上，直到到达 succ 的直接支配者
+            int runner = block;
+            while (runner != imm_dom[succ])
+            {
+                // 沿 idom 链向上，将 succ 放入 runner 的支配边界集合
+                // 提示：注意处理根与虚拟源节点，避免死循环
+                // TODO("Lab4: Update dominance frontier along idom chain");
+
+                // succ 在 runner 的支配边界中
+                dom_frontier[runner].insert(succ);
+                
+                // 向上移动到父节点
+                if (runner == imm_dom[runner]) break;  // 到达根节点
+                runner = imm_dom[runner];
+            }
         }
     }
 }

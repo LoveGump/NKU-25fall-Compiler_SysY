@@ -16,6 +16,7 @@ namespace ME::Analysis
         }
     }
 
+    // 单例模式获取 Analysis Manager 实例
     Manager& Manager::getInstance()
     {
         static Manager instance;

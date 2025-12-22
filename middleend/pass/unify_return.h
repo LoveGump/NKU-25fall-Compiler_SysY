@@ -11,6 +11,7 @@
 
 namespace ME
 {
+   // 统一返回值传递 (Unify Return Pass)
     class UnifyReturnPass : public ModulePass
     {
       public:
