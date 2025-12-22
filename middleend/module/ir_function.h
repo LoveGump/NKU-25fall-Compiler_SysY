@@ -11,7 +11,7 @@ namespace ME
     {
       public:
         FuncDefInst*             funcDef;  // 函数定义指令
-        std::map<size_t, Block*> blocks;   // 函数基本块列表，key为基本块编号
+        std::map<size_t, Block*> blocks;   // 函数基本块列表，基本块编号->基本块指针 映射
 
       private:
         size_t maxLabel;  // 当前函数中最大的基本块编号

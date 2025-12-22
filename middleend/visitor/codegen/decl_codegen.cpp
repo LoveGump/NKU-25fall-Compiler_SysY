@@ -52,21 +52,21 @@ namespace ME
                 slots.emplace_back(baseOffset, single);
                 return 1;
             }
-            
+
             // 在标量位置遇到初始化列表，只取第一个元素，其余舍弃
             auto* list = dynamic_cast<FE::AST::InitializerList*>(init);
             if (!list || !list->init_list || list->init_list->empty()) return 0;
-            
+
             // 只处理第一个元素，其余舍弃
             auto* firstChild = list->init_list->front();
             if (!firstChild) return 0;
-            
+
             return fillArrayChunk(firstChild, dims, dimIdx, baseOffset, chunkSize, slots);
         }
 
         // 计算当前维度的边界和子块大小
         size_t dimBound = static_cast<size_t>(dims[dimIdx]);
-        size_t subChunk =  chunkSize / dimBound;
+        size_t subChunk = chunkSize / dimBound;
 
         // 处理单个初始化表达式（非列表）
         if (init->singleInit)
@@ -77,16 +77,13 @@ namespace ME
 
         // 处理初始化列表
         auto* list = dynamic_cast<FE::AST::InitializerList*>(init);
-        if (!list || !list->init_list)
-        {
-            return fillArrayChunk(init, dims, dimIdx + 1, baseOffset, chunkSize, slots);
-        }
+        if (!list || !list->init_list) { return fillArrayChunk(init, dims, dimIdx + 1, baseOffset, chunkSize, slots); }
 
-        size_t used = 0; // 已使用的元素数量
+        size_t used = 0;  // 已使用的元素数量
         for (auto* child : *(list->init_list))
         {
             if (!child) break;
-            
+
             // 超量舍弃：如果已经填满，直接舍弃剩余元素
             if (used >= chunkSize)
             {
@@ -98,17 +95,15 @@ namespace ME
             {
                 // 子元素是初始化列表
                 // 判断当前位置是否在某个子数组的边界
-                // int z[3][3][3] = { 1, 2, 3, { 4, 5, 6, { 7, 8, 9 } }, 1};dimBound = 3 subChunk = 27/3 = 9    // 每个 z[i] 占 9 个元素
-                
-                bool isAtBoundary = false;
-                size_t boundarySubChunk = 0; // 记录匹配到的子块大小
-                
+                // int z[3][3][3] = { 1, 2, 3, { 4, 5, 6, { 7, 8, 9 } }, 1};dimBound = 3 subChunk = 27/3 = 9    // 每个
+                // z[i] 占 9 个元素
+
+                bool   isAtBoundary     = false;
+                size_t boundarySubChunk = 0;  // 记录匹配到的子块大小
+
                 // 特殊情况：如果 subChunk == 1，说明已经到了标量层级
                 // 此时遇到初始化列表应该只取第一个元素
-                if (subChunk == 1)
-                {
-                    isAtBoundary = false;
-                }
+                if (subChunk == 1) { isAtBoundary = false; }
                 else
                 {
                     // 从当前维度之后开始，计算每个可能的子数组大小
@@ -116,20 +111,20 @@ namespace ME
                     // 例如对于 arr[3][3][3]，在 dimIdx=0 时：
                     // 先检查 dims[1]*dims[2] = 9 (arr[i] 的大小)
                     // 再检查 dims[2] = 3 (arr[i][j] 的大小)
-                    
+
                     // 先计算所有维度的乘积
                     std::vector<size_t> subChunkSizes;
-                    size_t accumSize = 1;
+                    size_t              accumSize = 1;
                     for (size_t testDim = dims.size() - 1; testDim > dimIdx; --testDim)
                     {
                         accumSize *= static_cast<size_t>(dims[testDim]);
                         if (accumSize > 1)
                         {
                             // 只记录大于1的子块大小
-                            subChunkSizes.push_back(accumSize);// 【3】【9】，used = 3
+                            subChunkSizes.push_back(accumSize);  // 【3】【9】，used = 3
                         }
                     }
-                    
+
                     // 从大到小检查
                     for (auto it = subChunkSizes.rbegin(); it != subChunkSizes.rend(); ++it)
                     {
@@ -137,31 +132,31 @@ namespace ME
                         if (used % (*it) == 0)
                         {
                             // 如果在边界位置 ，boundary = 3
-                            isAtBoundary = true;
-                            boundarySubChunk = *it; // 记录匹配到的子块大小
+                            isAtBoundary     = true;
+                            boundarySubChunk = *it;  // 记录匹配到的子块大小
                             break;
                         }
                     }
-                    
+
                     // 如果在当前维度的子块边界
                     if (!isAtBoundary && subChunk > 1 && used % subChunk == 0)
                     {
                         // 如果在边界位置
-                        isAtBoundary = true;
+                        isAtBoundary     = true;
                         boundarySubChunk = subChunk;
                     }
                 }
-                
+
                 if (isAtBoundary && boundarySubChunk > 0)
                 {
                     // 在子数组边界遇到初始化列表
                     // 将其用于初始化该子数组
-                    size_t avail = chunkSize - used; // 当前块中剩余可用元素数量  24
-                    size_t segSize = std::min(boundarySubChunk, avail); // 本次子数组初始化可用的元素数量  3
-                    size_t chunkBase = baseOffset + used; // 当前子数组的起始偏移  3
-                    
+                    size_t avail = chunkSize - used;                     // 当前块中剩余可用元素数量  24
+                    size_t segSize = std::min(boundarySubChunk, avail);  // 本次子数组初始化可用的元素数量  3
+                    size_t chunkBase = baseOffset + used;                // 当前子数组的起始偏移  3
+
                     if (segSize == 0) break;
-                    
+
                     // 递归处理，内部的超量元素会被舍弃
                     fillArrayChunk(child, dims, dimIdx + 1, chunkBase, segSize, slots);
                     // 即使实际填充少于 segSize，也要占据整个子数组
@@ -178,8 +173,8 @@ namespace ME
                         if (firstElem)
                         {
                             size_t chunkBase = baseOffset + used;
-                            size_t avail = chunkSize - used;
-                            size_t consumed = fillArrayChunk(firstElem, dims, dimIdx + 1, chunkBase, avail, slots);
+                            size_t avail     = chunkSize - used;
+                            size_t consumed  = fillArrayChunk(firstElem, dims, dimIdx + 1, chunkBase, avail, slots);
                             used += consumed;
                         }
                     }
@@ -188,7 +183,7 @@ namespace ME
             else
             {
                 // 子元素是单个初始化表达式
-                size_t avail = chunkSize - used;
+                size_t avail    = chunkSize - used;
                 size_t consumed = fillArrayChunk(child, dims, dimIdx + 1, baseOffset + used, avail, slots);
                 used += consumed;
             }
@@ -196,7 +191,6 @@ namespace ME
 
         return used;
     }
-
 
     void ASTCodeGen::gatherArrayInitializers(FE::AST::InitDecl* init, const std::vector<int>& dims,
         std::vector<std::pair<size_t, FE::AST::Initializer*>>& slots)
@@ -232,10 +226,7 @@ namespace ME
             std::vector<int> dims      = vd->declDims;
             size_t           allocaReg = getNewRegId();  // 分配新的寄存器用于存储 alloca 结果
             if (dims.empty()) { insertAllocaInst(createAllocaInst(elemType, allocaReg)); }
-            else
-            {
-                insertAllocaInst(createAllocaInst(elemType, allocaReg, dims));
-            }
+            else { insertAllocaInst(createAllocaInst(elemType, allocaReg, dims)); }
             name2reg.addSymbol(lval->entry, allocaReg);  // 插入符号表
 
             // 储存变量信息
@@ -337,10 +328,7 @@ namespace ME
             {
                 // 单变量 无初始化 则零初始化
                 if (elemType == DataType::F32) { insert(createStoreInst(elemType, getImmeF32Operand(0.0f), ptr)); }
-                else
-                {
-                    insert(createStoreInst(elemType, getImmeI32Operand(0), ptr));
-                }
+                else { insert(createStoreInst(elemType, getImmeI32Operand(0), ptr)); }
             }
             // 没有初始化的数组变量，默认不处理，保持未初始化状态
         }

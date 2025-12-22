@@ -31,11 +31,13 @@ namespace ME
         {
           private:
             // 此处使用 utils/type_utils.h 的 getTID 来为每个分析类生成一个唯一的 ID
-            // 类型为 uintptr_t(函数地址) -> size_t
+            // 类型为 TID -> 分析结果指针(cfg, dominfo 等)
             using AnalysisMap = std::unordered_map<size_t, void*>;
+            // 函数类指针 -> (分析 TID -> 分析结果 指针)
             std::unordered_map<Function*, AnalysisMap> analysisCache;
 
             using Deleter = void (*)(void*);
+            // 分析 ID -> 删除器函数 指针
             std::unordered_map<size_t, Deleter> deleterMap;
 
             Manager() = default;
@@ -44,12 +46,15 @@ namespace ME
           public:
             static Manager& getInstance();
 
+            // 获取某函数上的分析结果，若不存在则创建并缓存
             template <typename Target>
             Target* get(Function& func);
 
+            // 使某函数上的所有分析结果失效
             void invalidate(Function& func);
 
           private:
+            // 注册某分析类的删除器函数
             template <typename Target>
             void registerDeleter()
             {
@@ -60,19 +65,25 @@ namespace ME
                 }
             }
 
+            // 缓存某函数上的分析结果
             template <typename Target>
             void cache(Function& func, Target* analysis)
             {
                 analysisCache[&func][Target::TID] = analysis;
             }
 
+            // 获取某函数上已缓存的分析结果，若不存在则返回 nullptr
             template <typename Target>
             Target* getCached(Function& func)
             {
-                if (analysisCache.count(&func))
+                // 检查缓存中是否已有该函数的指定分析结果
+                if (analysisCache.count(&func)) // count 检查键是否存在
                 {
-                    auto& funcCache = analysisCache.at(&func);
-                    if (funcCache.count(Target::TID)) return static_cast<Target*>(funcCache.at(Target::TID));
+                    auto& funcCache = analysisCache.at(&func); // 获取该函数的分析结果映射
+                    if (funcCache.count(Target::TID)) {
+                        // 返回已缓存的分析结果
+                        return static_cast<Target*>(funcCache.at(Target::TID));
+                    }
                 }
                 return nullptr;
             }

@@ -114,4 +114,116 @@ namespace ME
         }
         inst.incomingVals = newIncomingVals;
     }
+
+    void renameOperand(Operand*& operand, OperandMap& renameMap)
+    {
+        if (!operand || operand->getType() != OperandType::REG) return;
+
+        RegOperand* regOp = static_cast<RegOperand*>(operand);
+        auto        it    = renameMap.find(regOp->regNum);
+        if (it == renameMap.end()) return;
+        operand = it->second;
+    }
+
+    void OperandRename::visit(LoadInst& inst, OperandMap& rm)
+    {
+        renameOperand(inst.ptr, rm);
+        renameOperand(inst.res, rm);
+    }
+
+    void OperandRename::visit(StoreInst& inst, OperandMap& rm)
+    {
+        renameOperand(inst.ptr, rm);
+        renameOperand(inst.val, rm);
+    }
+
+    void OperandRename::visit(ArithmeticInst& inst, OperandMap& rm)
+    {
+        renameOperand(inst.lhs, rm);
+        renameOperand(inst.rhs, rm);
+        renameOperand(inst.res, rm);
+    }
+
+    void OperandRename::visit(IcmpInst& inst, OperandMap& rm)
+    {
+        renameOperand(inst.lhs, rm);
+        renameOperand(inst.rhs, rm);
+        renameOperand(inst.res, rm);
+    }
+
+    void OperandRename::visit(FcmpInst& inst, OperandMap& rm)
+    {
+        renameOperand(inst.lhs, rm);
+        renameOperand(inst.rhs, rm);
+        renameOperand(inst.res, rm);
+    }
+
+    void OperandRename::visit(AllocaInst& inst, OperandMap& rm) { renameOperand(inst.res, rm); }
+
+    void OperandRename::visit(BrCondInst& inst, OperandMap& rm) { renameOperand(inst.cond, rm); }
+
+    void OperandRename::visit(BrUncondInst& inst, OperandMap& rm)
+    {
+        (void)inst;
+        (void)rm;
+    }
+
+    void OperandRename::visit(GlbVarDeclInst& inst, OperandMap& rm) { renameOperand(inst.init, rm); }
+
+    void OperandRename::visit(CallInst& inst, OperandMap& rm)
+    {
+        for (auto& arg : inst.args) renameOperand(arg.second, rm);
+        renameOperand(inst.res, rm);
+    }
+
+    void OperandRename::visit(FuncDeclInst& inst, OperandMap& rm)
+    {
+        (void)inst;
+        (void)rm;
+    }
+
+    void OperandRename::visit(FuncDefInst& inst, OperandMap& rm)
+    {
+        for (auto& arg : inst.argRegs) renameOperand(arg.second, rm);
+    }
+
+    void OperandRename::visit(RetInst& inst, OperandMap& rm) { renameOperand(inst.res, rm); }
+
+    void OperandRename::visit(GEPInst& inst, OperandMap& rm)
+    {
+        renameOperand(inst.basePtr, rm);
+        renameOperand(inst.res, rm);
+        for (auto& idx : inst.idxs) renameOperand(idx, rm);
+    }
+
+    void OperandRename::visit(FP2SIInst& inst, OperandMap& rm)
+    {
+        renameOperand(inst.src, rm);
+        renameOperand(inst.dest, rm);
+    }
+
+    void OperandRename::visit(SI2FPInst& inst, OperandMap& rm)
+    {
+        renameOperand(inst.src, rm);
+        renameOperand(inst.dest, rm);
+    }
+
+    void OperandRename::visit(ZextInst& inst, OperandMap& rm)
+    {
+        renameOperand(inst.src, rm);
+        renameOperand(inst.dest, rm);
+    }
+
+    void OperandRename::visit(PhiInst& inst, OperandMap& rm)
+    {
+        renameOperand(inst.res, rm);
+        std::map<Operand*, Operand*> newIncomingVals;
+        for (auto& [label, val] : inst.incomingVals)
+        {
+            Operand* newVal = val;
+            renameOperand(newVal, rm);
+            newIncomingVals[label] = newVal;
+        }
+        inst.incomingVals = newIncomingVals;
+    }
 }  // namespace ME

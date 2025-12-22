@@ -16,6 +16,7 @@ namespace ME::Analysis
         }
     }
 
+    // 单例模式获取 Analysis Manager 实例
     Manager& Manager::getInstance()
     {
         static Manager instance;
@@ -24,6 +25,7 @@ namespace ME::Analysis
 
     void Manager::invalidate(Function& func)
     {
+        // 删除该函数上的所有分析结果
         auto it = analysisCache.find(&func);
         if (it == analysisCache.end()) return;
         for (auto& analysisPair : it->second)

@@ -285,8 +285,8 @@ namespace ME
     class RetInst : public Instruction
     {
       public:
-        DataType rt;
-        Operand* res;
+        DataType rt; // 返回值类型
+        Operand* res; // 返回值操作数，若无返回值则为nullptr
 
       public:
         RetInst(DataType t, Operand* r = nullptr, const std::string& c = "")

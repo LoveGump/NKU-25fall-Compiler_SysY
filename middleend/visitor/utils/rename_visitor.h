@@ -83,6 +83,35 @@ namespace ME
         void visit(ZextInst&, RegMap&) override;
         void visit(PhiInst&, RegMap&) override;
     };
+
+    using OperandMap      = std::map<size_t, Operand*>;
+    using OperandRename_t = InsVisitor_t<void, OperandMap&>;
+
+    // 操作数重命名，将指令中的操作数根据映射表进行替换
+    class OperandRename : public OperandRename_t
+    {
+      public:
+        OperandRename() = default;
+
+        void visit(LoadInst&, OperandMap&) override;
+        void visit(StoreInst&, OperandMap&) override;
+        void visit(ArithmeticInst&, OperandMap&) override;
+        void visit(IcmpInst&, OperandMap&) override;
+        void visit(FcmpInst&, OperandMap&) override;
+        void visit(AllocaInst&, OperandMap&) override;
+        void visit(BrCondInst&, OperandMap&) override;
+        void visit(BrUncondInst&, OperandMap&) override;
+        void visit(GlbVarDeclInst&, OperandMap&) override;
+        void visit(CallInst&, OperandMap&) override;
+        void visit(FuncDeclInst&, OperandMap&) override;
+        void visit(FuncDefInst&, OperandMap&) override;
+        void visit(RetInst&, OperandMap&) override;
+        void visit(GEPInst&, OperandMap&) override;
+        void visit(FP2SIInst&, OperandMap&) override;
+        void visit(SI2FPInst&, OperandMap&) override;
+        void visit(ZextInst&, OperandMap&) override;
+        void visit(PhiInst&, OperandMap&) override;
+    };
 }  // namespace ME
 
 #endif  // __MIDDLEEND_VISITOR_UTILS_RENAME_VISITOR_H__

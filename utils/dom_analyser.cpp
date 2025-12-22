@@ -12,7 +12,8 @@
  * - 直接支配 idom(u)：在所有“严格支配”（不含 u 本身）的结点中，离 u 最近的那个。
  * - DFS 树 T：从 s 做一次 DFS，得到父亲 parent 与 DFS 进入次序 dfn（本文用 0..n-1 的“次序号”表示）。
  * - 半支配 sdom(u)：满足“从某个结点 v 可以走到 u，且路径上除端点外的所有结点 dfn 都大于 dfn(u)”的所有 v 中，dfn
- * 最小者。 直观理解：sdom(u) 是一类“绕过更小 dfn 的点”到达 u 的最早可能起点，它是计算 idom 的关键桥梁。
+ * 最小者。
+ * 直观理解：sdom(u) 是一类“绕过更小 dfn 的点”到达 u 的最早可能起点，它是计算 idom 的关键桥梁。
  *
  * LT 的两条核心公式（以 DFS 序回溯顺序计算）：
  * - sdom(u) = min{ v | v 是 u 的前驱且 dfn(v) < dfn(u) } 与 { sdom(eval(p)) | p 是 u 的前驱且 dfn(p) > dfn(u) }
@@ -40,8 +41,9 @@ DomAnalyzer::DomAnalyzer() {}
 
 void DomAnalyzer::solve(const vector<vector<int>>& graph, const vector<int>& entry_points, bool reverse)
 {
-    int node_count = graph.size();
+    int node_count = graph.size();  // 原图节点数
 
+    // 构建工作图：添加虚拟源节点，连接所有入口/出口
     int                 virtual_source = node_count;
     vector<vector<int>> working_graph;
 
@@ -72,6 +74,10 @@ void DomAnalyzer::build(
     // TODO(Lab 4): 构建反向边表 backward_edges[v] = { 所有指向 v 的前驱 }
     // 提示：为了正确处理多入口点的情况，可以使用一个虚拟的“入口点”，让它指向所有实际入口点
     // 这主要是为了处理后支配树可能有多个入口的情况
+    for (int u = 0; u < node_count; ++u)
+    {
+        for (int v : working_graph[u]) { backward_edges[v].push_back(u); }
+    }
 
     dom_tree.clear();
     dom_tree.resize(node_count);
@@ -109,9 +115,14 @@ void DomAnalyzer::build(
     // TODO(Lab 4): 路径压缩并带最小祖先维护的 Find（Tarjan-Eval）
     // 依据半支配序比较，维护 min_ancestor，并做并查集压缩
     auto dsu_find = [&](int u, const auto& self) -> int {
-        (void)self;
-        TODO("Lab4-Analysis: Implement Tarjan Eval/Link find with min-ancestor maintenance");
-        return u;
+        if (dsu_parent[u] == u) return u;
+        int root = self(dsu_parent[u], self);
+        if (semi_dom[min_ancestor[dsu_parent[u]]] < semi_dom[min_ancestor[u]])
+        {
+            min_ancestor[u] = min_ancestor[dsu_parent[u]];
+        }
+        dsu_parent[u] = root;
+        return root;
     };
 
     auto dsu_query = [&](int u) -> int {
@@ -136,7 +147,32 @@ void DomAnalyzer::build(
     //      否则 imm_dom[child] = mn[child]
     //    然后清空该集合（以免重复处理）
     // 注意：eval/Link 的细节由上方 dsu_find/self 与 dsu_parent/min_ancestor 完成
-    TODO("Lab4-Analysis: Reverse DFS pass to compute semi-dominators and initial idoms");
+    for (int dfs_id = dfs_count; dfs_id > 0; --dfs_id)
+    {
+        int curr = dfs_to_block[dfs_id];
+        for (int pred : backward_edges[curr])
+        {
+            if (block_to_dfs[pred] == 0 && pred != virtual_source) continue;
+            int eval_node = (block_to_dfs[pred] < block_to_dfs[curr]) ? pred : dsu_query(pred);
+            if (semi_dom[eval_node] < semi_dom[curr]) { semi_dom[curr] = semi_dom[eval_node]; }
+        }
+
+        int sdom_block = dfs_to_block[semi_dom[curr]];
+        semi_children[sdom_block].push_back(curr);
+        dsu_parent[curr] = parent[curr];
+
+        int p = parent[curr];
+        for (int child : semi_children[p])
+        {
+            int u = dsu_query(child);
+            if (semi_dom[u] == semi_dom[child]) { imm_dom[child] = p; }
+            else
+            {
+                imm_dom[child] = u;
+            }
+        }
+        semi_children[p].clear();
+    }
 
     // 直接支配者 idom 链压缩
     for (int dfs_id = 1; dfs_id <= dfs_count; ++dfs_id)
@@ -155,7 +191,10 @@ void DomAnalyzer::build(
 
     // 在支配树构建完成后，你还需要从里面移除本来并不存在的虚拟源节点
     // 同时，需要注意设置移除了虚拟源节点后的入口节点的支配者
-    TODO("Lab4: Remove virtual source & adjust imm_dom");
+    for (int i = 0; i < node_count; ++i)
+    {
+        if (imm_dom[i] == virtual_source) { imm_dom[i] = i; }
+    }
 
     // TODO(Lab 4): 构建支配边界
     for (int block = 0; block < node_count; ++block)
@@ -165,7 +204,14 @@ void DomAnalyzer::build(
             (void)succ;
             // 沿 idom 链向上，将 succ 放入 runner 的支配边界集合
             // 提示：注意处理根与虚拟源节点，避免死循环
-            TODO("Lab4: Update dominance frontier along idom chain");
+            if (block_to_dfs[block] == 0 || block_to_dfs[succ] == 0) continue;
+            int runner = block;
+            while (runner != imm_dom[succ])
+            {
+                dom_frontier[runner].insert(succ);
+                runner = imm_dom[runner];
+                if (runner == imm_dom[runner] && runner != imm_dom[succ]) break;
+            }
         }
     }
 }

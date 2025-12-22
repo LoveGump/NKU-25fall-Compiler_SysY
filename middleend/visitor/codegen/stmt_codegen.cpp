@@ -13,7 +13,7 @@ namespace ME
         // TODO(Lab 3-2): 生成函数定义 IR（形参、入口/结束基本块、返回补丁）
         // 设置函数返回类型与参数寄存器，创建基本块骨架，并生成函数体
         FuncDefInst* funcDef = new FuncDefInst(convert(node.retType), node.entry->getName());  // 创建函数定义指令
-        Function* func = new Function(funcDef);                                                // 创建函数对象
+        Function*    func    = new Function(funcDef);                                          // 创建函数对象
         m->functions.emplace_back(func);  // 将函数添加到模块中
 
         enterFunc(func);        // 进入函数
