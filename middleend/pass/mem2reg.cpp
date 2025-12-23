@@ -228,7 +228,7 @@ namespace ME
                 else
                 {
                     // 其他指令，替换操作数
-                    // 包括 PHI 指令（如果原 IR 中有 PHI，其操作数可能引用了被替换的 Load 结果）
+                    // 包括 PHI 指令
                     apply(renamer, *inst, renameMap);
                 }
             }
@@ -295,10 +295,6 @@ namespace ME
                 if (toRemove.find(inst) == toRemove.end()) { newInsts.push_back(inst); }
                 else
                 {
-                    // 注意：这里不 delete inst，因为 Operand 可能被重用，或者统一由 Module 管理
-                    // 通常 Instruction 需要 delete，但 Operand 由 Factory 管理。
-                    // 这里为了安全，先 delete。
-                    // delete inst;
                     // 暂时不 delete，避免 double free 或其他问题，DCE 会处理
                 }
             }

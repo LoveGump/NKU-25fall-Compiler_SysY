@@ -335,20 +335,21 @@ int main(int argc, char** argv)
             ME::UnifyReturnPass unifyReturnPass;
             unifyReturnPass.runOnModule(m);
 
+            ME::Mem2RegPass mem2RegPass;
+            mem2RegPass.runOnModule(m);
+
             ME::InlinePass inlinePass;
             inlinePass.runOnModule(m);
 
-            ME::Mem2RegPass mem2RegPass;
-            mem2RegPass.runOnModule(m);
+            ME::SCCPPass sccpPass;
+            sccpPass.runOnModule(m);
 
             ME::ADCEPass adcePass;
             adcePass.runOnModule(m);
 
-            ME::DCEPass dcePass;
-            dcePass.runOnModule(m);
+            // ME::DCEPass dcePass;
+            // dcePass.runOnModule(m);
 
-            // ME::SCCPPass sccpPass;
-            // sccpPass.runOnModule(m);
         }
 
         if (step == "-llvm")

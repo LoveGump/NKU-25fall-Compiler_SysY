@@ -30,3 +30,5 @@ a.out.txt
 .gitignore
 temp.sy
 tmp.o
+test.sh
+temp.txt
