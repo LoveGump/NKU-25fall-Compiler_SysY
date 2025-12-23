@@ -15,11 +15,11 @@ namespace ME
 
     bool DCEPass::eliminateDeadCode(Function& function)
     {
-        std::map<size_t, int> useCounts;    // 寄存器使用次数   寄存器编号->使用次数
-        bool                  changed = false; // 是否有改动
+        std::map<size_t, int> useCounts;        // 寄存器使用次数   寄存器编号->使用次数
+        bool                  changed = false;  // 是否有改动
 
         // 1. 收集使用次数
-        UseCollector useCollector(useCounts); 
+        UseCollector useCollector(useCounts);
         // 遍历所有指令，收集使用信息
         for (auto& [id, block] : function.blocks)
         {
@@ -27,7 +27,7 @@ namespace ME
         }
 
         // 2. 识别并移除死代码
-        DefCollector defCollector; // 用于获取指令定义的寄存器
+        DefCollector defCollector;  // 用于获取指令定义的寄存器
         // 遍历所有指令，识别死指令并移除
         for (auto& [id, block] : function.blocks)
         {
@@ -62,10 +62,10 @@ namespace ME
         // 具有副作用的指令不能被移除
         switch (inst->opcode)
         {
-            case Operator::STORE:   // 改变内存状态
-            case Operator::CALL:    // 可能改变内存或有其他副作用
-            case Operator::RET:     // 会改变控制流
-            case Operator::BR_COND: 
+            case Operator::STORE:  // 改变内存状态
+            case Operator::CALL:   // 可能改变内存或有其他副作用
+            case Operator::RET:    // 会改变控制流
+            case Operator::BR_COND:
             case Operator::BR_UNCOND:
             case Operator::FUNCDECL:    // 函数声明有副作用
             case Operator::FUNCDEF:     // 函数定义有副作用

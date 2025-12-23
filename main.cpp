@@ -9,6 +9,7 @@
 #include <middleend/module/ir_module.h>
 #include <middleend/pass/unify_return.h>
 #include <middleend/pass/dce.h>
+#include <middleend/pass/adce.h>
 #include <middleend/pass/mem2reg.h>
 
 #include <backend/mir/m_module.h>
@@ -335,8 +336,11 @@ int main(int argc, char** argv)
             ME::Mem2RegPass mem2RegPass;
             mem2RegPass.runOnModule(m);
 
-            ME::DCEPass dcePass;
-            dcePass.runOnModule(m);
+            ME::ADCEPass adcePass;
+            adcePass.runOnModule(m);
+
+            // ME::DCEPass dcePass;
+            // dcePass.runOnModule(m);
         }
 
         if (step == "-llvm")

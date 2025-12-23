@@ -8,7 +8,7 @@
 
 namespace ME
 {
-    // 基本块内的mem2reg优化
+    // 全局的mem2reg优化
     class Mem2RegPass : public FunctionPass
     {
       public:

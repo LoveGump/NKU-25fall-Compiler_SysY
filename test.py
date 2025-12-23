@@ -458,11 +458,11 @@ def main():
     
     parser = argparse.ArgumentParser(
         description="SysY Compiler Testing Script")
-    parser.add_argument("--group", default="Basic", choices=["Basic", "Advanced"],
+    parser.add_argument("--group", default="Advanced", choices=["Basic", "Advanced"],
                         help="Test case group to run.")
     parser.add_argument("--stage", default="llvm", choices=["llvm", "riscv", "arm"],
                         help="Testing stage.")
-    parser.add_argument("--opt", default=0, type=int, choices=[0, 1, 2],
+    parser.add_argument("--opt", default=1, type=int, choices=[0, 1, 2],
                         help="Optimization level.")
     args = parser.parse_args()
 
