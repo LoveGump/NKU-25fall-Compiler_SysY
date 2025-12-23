@@ -20,3 +20,5 @@ compile_commands.json
 tmp-4c0eb0c8.o.tmp
 tmp-77deed2f.o.tmp
 main.ll
+check_optimize.py
+optc
