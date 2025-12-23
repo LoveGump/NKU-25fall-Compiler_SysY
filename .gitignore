@@ -22,3 +22,11 @@ tmp-77deed2f.o.tmp
 main.ll
 check_optimize.py
 optc
+AGENTS.md
+example.out.ll
+75_rbtree.ll
+a.out
+a.out.txt
+.gitignore
+temp.sy
+tmp.o

@@ -11,6 +11,8 @@
 #include <middleend/pass/dce.h>
 #include <middleend/pass/adce.h>
 #include <middleend/pass/mem2reg.h>
+#include <middleend/pass/inline.h>
+#include <middleend/pass/sccp.h>
 
 #include <backend/mir/m_module.h>
 #include <backend/target/registry.h>
@@ -333,6 +335,9 @@ int main(int argc, char** argv)
             ME::UnifyReturnPass unifyReturnPass;
             unifyReturnPass.runOnModule(m);
 
+            ME::InlinePass inlinePass;
+            inlinePass.runOnModule(m);
+
             ME::Mem2RegPass mem2RegPass;
             mem2RegPass.runOnModule(m);
 
@@ -341,6 +346,9 @@ int main(int argc, char** argv)
 
             ME::DCEPass dcePass;
             dcePass.runOnModule(m);
+
+            // ME::SCCPPass sccpPass;
+            // sccpPass.runOnModule(m);
         }
 
         if (step == "-llvm")
