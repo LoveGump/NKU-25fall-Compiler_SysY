@@ -129,9 +129,6 @@ void DomAnalyzer::build(
         dsu_find(u, dsu_find);
         return min_ancestor[u];
     };
-    // 下两行占位：避免未使用警告，完成实现后可删
-    (void)dsu_find;
-    (void)dsu_query;
 
     // TODO(Lab 4): 逆 DFS 序回溯半支配与 idom 计算
     // 指引：
@@ -189,6 +186,16 @@ void DomAnalyzer::build(
     dom_frontier.resize(virtual_source);
     imm_dom.resize(virtual_source);
 
+    // 移除虚拟源节点并调整入口节点的支配者
+    // 对于每个实际入口节点，其直接支配者应该设为自己（或 -1 表示无支配者）
+    for (int i = 0; i < virtual_source; ++i)
+    {
+        if (imm_dom[i] == virtual_source)
+        {
+            // 这是一个入口节点，它的直接支配者是虚拟源，我们将其设为自己
+            imm_dom[i] = i;
+        }
+    }
     // 在支配树构建完成后，你还需要从里面移除本来并不存在的虚拟源节点
     // 同时，需要注意设置移除了虚拟源节点后的入口节点的支配者
     for (int i = 0; i < node_count; ++i)
@@ -197,8 +204,12 @@ void DomAnalyzer::build(
     }
 
     // TODO(Lab 4): 构建支配边界
-    for (int block = 0; block < node_count; ++block)
+
+    // 构建支配边界
+    for (int block = 0; block < virtual_source; ++block)
     {
+        if (!block_to_dfs[block]) continue;  // 跳过未访问的节点
+
         for (int succ : working_graph[block])
         {
             (void)succ;
