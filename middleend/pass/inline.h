@@ -3,6 +3,7 @@
 
 #include <interfaces/middleend/pass.h>
 #include <middleend/module/ir_module.h>
+#include <middleend/pass/inline_strategy.h>
 #include <deque>
 #include <map>
 #include <set>
@@ -40,6 +41,10 @@ namespace ME
         Block*      findEntryBlock(Function& func);
         // 内联单条 call 指令
         bool        inlineCall(Function& caller, Block* callBlock, size_t callIndex, CallInst* callInst, Function& callee);
+        // 结合策略执行内联
+        bool        inlineWithStrategy(Function& function, InlineStrategy& strategy);
+        // 在函数内定位 call 指令的位置
+        bool        findCallLocation(Function& function, CallInst* callInst, Block*& block, size_t& index);
 
         Module* module_ = nullptr;
     };

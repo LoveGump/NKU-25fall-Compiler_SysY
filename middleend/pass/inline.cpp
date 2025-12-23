@@ -446,11 +446,35 @@ namespace ME
     {
         // 记录模块指针并逐个函数执行内联
         module_ = &module;
-        for (auto* function : module.functions)
+        InlineStrategy strategy;
+        strategy.analyze(module);
+
+        bool changed   = true;
+        int  iterations = 0;
+        const int maxIterations = 5;
+
+        // 多轮迭代：每轮做一次策略评估，避免信息过期
+        while (changed && iterations < maxIterations)
         {
-            // 空指针保护，避免异常访问
-            if (!function) continue;
-            runOnFunction(*function);
+            changed = false;
+            iterations++;
+
+            auto order = strategy.getProcessingOrder();
+            if (order.empty())
+            {
+                for (auto* function : module.functions) order.push_back(function);
+            }
+
+            for (auto* function : order)
+            {
+                if (!function) continue;
+                if (inlineWithStrategy(*function, strategy))
+                {
+                    changed = true;
+                }
+            }
+
+            if (changed) strategy.analyze(module);
         }
         module_ = nullptr;
     }
@@ -460,47 +484,66 @@ namespace ME
         // 无模块上下文时直接返回
         if (!module_) return;
 
-        bool changed   = false;
-        bool inlined   = true;
-        int  iterations = 0;
+        InlineStrategy strategy;
+        strategy.analyze(*module_);
+        inlineWithStrategy(function, strategy);
+    }
 
-        // 循环内联直到没有变化，或达到最大迭代次数
-        while (inlined && iterations < 1000)
+    bool InlinePass::inlineWithStrategy(Function& function, InlineStrategy& strategy)
+    {
+        if (!module_) return false;
+        bool changed = false;
+        std::vector<CallInst*> callsToInline;
+
+        // 先收集待内联的 call，避免遍历过程中修改容器
+        for (auto& entry : function.blocks)
         {
-            inlined = false;
-            iterations++;
+            Block* block = entry.second;
+            if (!block) continue;
 
-            for (auto& entry : function.blocks)
+            for (auto* inst : block->insts)
             {
-                Block* block = entry.second;
-                if (!block) continue;
-
-                for (size_t idx = 0; idx < block->insts.size(); ++idx)
-                {
-                    // 只处理 call 指令，其它指令跳过
-                    auto* inst = block->insts[idx];
-                    if (inst->opcode != Operator::CALL) continue;
-
-                    auto* callInst = static_cast<CallInst*>(inst);
-                    Function* callee = findCallee(*module_, callInst->funcName);
-                    if (!callee) continue;
-                    if (callee == &function) continue;
-                    // 递归函数不内联，防止无限展开
-                    if (isRecursive(*callee, *module_)) continue;
-
-                    // 尝试内联成功就退出当前轮扫描
-                    if (inlineCall(function, block, idx, callInst, *callee))
-                    {
-                        inlined = true;
-                        changed = true;
-                        break;
-                    }
-                }
-                if (inlined) break;
+                if (!inst || inst->opcode != Operator::CALL) continue;
+                auto* callInst = static_cast<CallInst*>(inst);
+                Function* callee = findCallee(*module_, callInst->funcName);
+                if (!callee) continue;
+                if (!strategy.shouldInline(function, *callee, *callInst)) continue;
+                callsToInline.push_back(callInst);
             }
         }
 
-        // 如果发生内联，清理过期的分析结果
-        if (changed) { Analysis::AM.invalidate(function); }
+        for (auto* callInst : callsToInline)
+        {
+            Block* block = nullptr;
+            size_t index = 0;
+            if (!findCallLocation(function, callInst, block, index)) continue;
+            Function* callee = findCallee(*module_, callInst->funcName);
+            if (!callee) continue;
+
+            if (inlineCall(function, block, index, callInst, *callee)) changed = true;
+        }
+
+        if (changed) Analysis::AM.invalidate(function);
+        return changed;
+    }
+
+    bool InlinePass::findCallLocation(Function& function, CallInst* callInst, Block*& block, size_t& index)
+    {
+        if (!callInst) return false;
+        for (auto& entry : function.blocks)
+        {
+            Block* cur = entry.second;
+            if (!cur) continue;
+            for (size_t idx = 0; idx < cur->insts.size(); ++idx)
+            {
+                if (cur->insts[idx] == callInst)
+                {
+                    block = cur;
+                    index = idx;
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }  // namespace ME
