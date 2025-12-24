@@ -18,6 +18,7 @@ namespace ME
         void runOnFunction(Function& function) override;
 
       private:
+        // 将内存中的变量提升为寄存器变量
         bool promoteMemoryToRegister(Function& function);
     };
 }  // namespace ME

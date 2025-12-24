@@ -20,6 +20,7 @@ namespace ME
 
     bool Mem2RegPass::promoteMemoryToRegister(Function& function)
     {
+        // 获取支配信息
         auto* domInfo = Analysis::AM.get<Analysis::DomInfo>(function);
         if (!domInfo) return false;
 
