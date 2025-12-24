@@ -62,7 +62,7 @@ namespace ME
     void OperandReplaceVisitor::visit(GEPInst& inst)
     {
         replaceOperand(inst.basePtr);
-        for (auto* idx : inst.idxs) replaceOperand(idx);
+        for (auto*& idx : inst.idxs) replaceOperand(idx);
     }
 
     void OperandReplaceVisitor::visit(FP2SIInst& inst) { replaceOperand(inst.src); }

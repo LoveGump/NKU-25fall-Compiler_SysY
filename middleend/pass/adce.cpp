@@ -43,8 +43,10 @@ namespace ME
             size_t currId = q.front();
             q.pop();
 
-            Block* currBlock = function.blocks[currId];
-            if (currBlock->insts.empty()) continue;
+            auto itBlock = function.blocks.find(currId);
+            if (itBlock == function.blocks.end()) continue;
+            Block* currBlock = itBlock->second;
+            if (!currBlock || currBlock->insts.empty()) continue;
 
             Instruction*        term = currBlock->insts.back();
             std::vector<size_t> succs;
@@ -104,7 +106,10 @@ namespace ME
                 if (reachable.count(succId))
                 {
                     // 后继是可达的，需要更新其 Phi 节点
-                    Block* succBlock = function.blocks[succId];
+                    auto succIt = function.blocks.find(succId);
+                    if (succIt == function.blocks.end()) continue;
+                    Block* succBlock = succIt->second;
+                    if (!succBlock) continue;
                     for (auto* inst : succBlock->insts)
                     {
                         if (inst->opcode == Operator::PHI)
@@ -139,6 +144,7 @@ namespace ME
 
     Operand* ADCEPass::getConstantValue(Operand* op, std::map<size_t, Instruction*>& regDefInst, int depth)
     {
+        if (!op) return nullptr;
         if (depth > 3) return nullptr;
         if (op->getType() == OperandType::IMMEI32 || op->getType() == OperandType::IMMEF32) { return op; }
         if (op->getType() == OperandType::REG)
@@ -363,7 +369,10 @@ namespace ME
                     if (label)
                     {
                         size_t predId    = label->lnum;
-                        Block* predBlock = function.blocks[predId];
+                        auto predIt = function.blocks.find(predId);
+                        if (predIt == function.blocks.end()) continue;
+                        Block* predBlock = predIt->second;
+                        if (!predBlock) continue;
                         if (!predBlock->insts.empty())
                         {
                             Instruction* term = predBlock->insts.back();
@@ -385,7 +394,10 @@ namespace ME
                 {
                     if (cdBlockId >= (int)numBlocks) continue;
 
-                    Block* cdBlock = function.blocks[cdBlockId];
+                    auto cdIt = function.blocks.find(cdBlockId);
+                    if (cdIt == function.blocks.end()) continue;
+                    Block* cdBlock = cdIt->second;
+                    if (!cdBlock) continue;
                     if (!cdBlock->insts.empty())
                     {
                         Instruction* term = cdBlock->insts.back();
@@ -406,7 +418,10 @@ namespace ME
 
         auto isDeadBlock = [&](size_t blockId) {
             if (function.blocks.find(blockId) == function.blocks.end()) return false;
-            Block* b = function.blocks[blockId];
+            auto bIt = function.blocks.find(blockId);
+            if (bIt == function.blocks.end()) return false;
+            Block* b = bIt->second;
+            if (!b) return false;
             for (auto* inst : b->insts)
             {
                 if (liveInsts.count(inst)) return false;
@@ -459,7 +474,10 @@ namespace ME
                                 auto* targetLabel = OperandFactory::getInstance().getLabelOperand(ipdomId);
                                 auto* newBr       = new BrUncondInst(targetLabel);
 
-                                Block* ipdomBlock = function.blocks[ipdomId];
+                                auto ipdomIt = function.blocks.find(ipdomId);
+                                if (ipdomIt == function.blocks.end()) continue;
+                                Block* ipdomBlock = ipdomIt->second;
+                                if (!ipdomBlock) continue;
                                 for (auto* ipdomInst : ipdomBlock->insts)
                                 {
                                     if (ipdomInst->opcode == Operator::PHI)
