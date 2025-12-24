@@ -13,6 +13,9 @@
 #include <middleend/pass/mem2reg.h>
 #include <middleend/pass/inline.h>
 #include <middleend/pass/sccp.h>
+#include <middleend/pass/tco.h>
+#include <middleend/pass/licm.h>
+#include <middleend/pass/cse.h>
 
 #include <backend/mir/m_module.h>
 #include <backend/target/registry.h>
@@ -332,6 +335,9 @@ int main(int argc, char** argv)
              * - 难度不低于上述 pass 的其它优化
              */
             // 下面这个 pass 可以作为参考，主要是示范如何通过cache获取分析pass的结果
+            ME::TCOPass tcoPass;
+            tcoPass.runOnModule(m);
+
             ME::UnifyReturnPass unifyReturnPass;
             unifyReturnPass.runOnModule(m);
 
@@ -343,6 +349,14 @@ int main(int argc, char** argv)
 
             ME::SCCPPass sccpPass;
             sccpPass.runOnModule(m);
+
+            ME::LICMPass licmPass;
+            licmPass.runOnModule(m);
+
+            ME::CSEPass csePass;
+            csePass.runOnModule(m);
+
+
 
             ME::ADCEPass adcePass;
             adcePass.runOnModule(m);

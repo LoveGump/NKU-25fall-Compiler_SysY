@@ -15,7 +15,7 @@
 
 namespace ME
 {
-    // 循环不变量外提（仅标量运算）
+    // 循环不变量外提
     class LICMPass : public ModulePass
     {
       public:
