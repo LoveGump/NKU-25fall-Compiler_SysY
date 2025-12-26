@@ -23,21 +23,19 @@ namespace ME
         // 遍历所有指令，收集使用信息
         for (auto& [id, block] : function.blocks)
         {
-            for (auto inst : block->insts) { 
-                apply(useCollector, *inst); 
-            }
+            for (auto inst : block->insts) { apply(useCollector, *inst); }
         }
 
-        // 2. 识别并移除死代码
+        // 2. 识别死指令并构建新的指令列表，再线性时间复杂度内进行删除
         DefCollector defCollector;  // 用于获取指令定义的寄存器
-        // 遍历所有指令，识别死指令并移除
+
         for (auto& [id, block] : function.blocks)
         {
-            // 遍历基本块中的指令
-            auto it = block->insts.begin();
-            while (it != block->insts.end())
+            std::deque<Instruction*> newInsts;  // 新的指令列表
+
+            for (auto inst : block->insts)
             {
-                Instruction* inst = *it;
+                bool isDead = false;
                 if (!isSideEffect(inst))
                 {
                     // 对于没有副作用的指令，检查其定义的寄存器是否被使用
@@ -46,16 +44,22 @@ namespace ME
                     // 如果定义了寄存器且该寄存器未被使用，则为死指令
                     if (defReg != 0 && useCounts[defReg] == 0)
                     {
-                        // 发现死指令
-                        delete inst;
-                        it      = block->insts.erase(it);
+                        isDead  = true;
                         changed = true;
-                        continue;
+                        delete inst;  // 删除死指令
                     }
                 }
-                ++it;
+
+                if (!isDead)
+                {
+                    newInsts.push_back(inst);  // 保留非死指令
+                }
             }
+
+            // 一次性替换整个指令列表（O(1) swap）
+            block->insts = newInsts;
         }
+
         return changed;
     }
 
