@@ -29,7 +29,7 @@ namespace ME
 
         // 收集所有返回指令的返回值及其所在基本块标签pair<返回值,标签>
         std::vector<std::pair<Operand*, Operand*>> returnValues;
-        DataType                                   returnType = DataType::VOID; // 函数的返回类型
+        DataType                                   returnType = DataType::VOID;  // 函数的返回类型
 
         for (auto* retInst : retInstructions)
         {
@@ -50,10 +50,10 @@ namespace ME
             auto it = std::find(containingBlock->insts.begin(), containingBlock->insts.end(), retInst);
             if (it != containingBlock->insts.end())
             {
-                Operand* exitLabel  = getLabelOperand(exitBlock->blockId); // 获取退出块的标签操作数
-                auto*    branchInst = new BrUncondInst(exitLabel);  // 创建无条件跳转指令
-                *it                 = branchInst;                   // 替换原有的返回指令
-                delete retInst;  // 删除原有的返回指令   
+                Operand* exitLabel  = getLabelOperand(exitBlock->blockId);  // 获取退出块的标签操作数
+                auto*    branchInst = new BrUncondInst(exitLabel);          // 创建无条件跳转指令
+                *it                 = branchInst;                           // 替换原有的返回指令
+                delete retInst;                                             // 删除原有的返回指令
             }
         }
 

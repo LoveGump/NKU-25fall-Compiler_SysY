@@ -12,6 +12,8 @@ namespace ME::Analysis
     void DomInfo::build(CFG& cfg)
     {
         domAnalyzer->clear();
+
+        // 遍历所有基本块以确定出口点
         std::vector<int> exitPoints;
         for (auto& [blockId, block] : cfg.id2block)
         {
@@ -25,14 +27,15 @@ namespace ME::Analysis
             }
         }
 
+        // 将 CFG size_t -> int
         std::vector<std::vector<int>> graph_int;
         graph_int.resize(cfg.G_id.size());
         for (size_t i = 0; i < cfg.G_id.size(); ++i)
         {
-            for (size_t successor : cfg.G_id[i]) graph_int[i].push_back((int)successor);
+            for (size_t successor : cfg.G_id[i]) { graph_int[i].push_back((int)successor); }
         }
 
-        std::vector<int> entryPoints = {0};
+        std::vector<int> entryPoints = {0};  // 入口点为基本块 0
         domAnalyzer->solve(graph_int, entryPoints, false);
     }
 

@@ -84,8 +84,12 @@ namespace ME
         void visit(PhiInst&, RegMap&) override;
     };
 
-    using OperandMap      = std::map<size_t, Operand*>;
+    using OperandMap = std::map<size_t, Operand*>;  // 寄存器号 -> 重命名后操作数
+
     using OperandRename_t = InsVisitor_t<void, OperandMap&>;
+
+    // 对单个操作数进行重命名
+    void renameOperand(Operand*& operand, OperandMap& renameMap);
 
     // 操作数重命名，将指令中的操作数根据映射表进行替换
     class OperandRename : public OperandRename_t

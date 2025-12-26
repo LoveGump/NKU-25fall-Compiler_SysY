@@ -8,10 +8,12 @@ namespace ME::Analysis
     {
         for (auto& funcCachePair : analysisCache)
         {
+            // 删除该函数上的所有分析结果
             for (auto& analysisPair : funcCachePair.second)
             {
+                // 使用注册的删除器函数删除分析结果
                 auto deleterIt = deleterMap.find(analysisPair.first);
-                if (deleterIt != deleterMap.end()) deleterIt->second(analysisPair.second);
+                if (deleterIt != deleterMap.end()) { deleterIt->second(analysisPair.second); }
             }
         }
     }

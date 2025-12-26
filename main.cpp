@@ -356,14 +356,11 @@ int main(int argc, char** argv)
             ME::CSEPass csePass;
             csePass.runOnModule(m);
 
-
-
             ME::ADCEPass adcePass;
             adcePass.runOnModule(m);
 
             // ME::DCEPass dcePass;
             // dcePass.runOnModule(m);
-
         }
 
         if (step == "-llvm")

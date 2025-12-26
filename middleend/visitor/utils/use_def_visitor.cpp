@@ -142,14 +142,20 @@ namespace ME
         addUse(inst.lhs);
         addUse(inst.rhs);
     }
-    void UserCollector::visit(AllocaInst& inst) { /* no uses */ }
+    void UserCollector::visit(AllocaInst& inst)
+    { /* no uses */
+    }
     void UserCollector::visit(BrCondInst& inst)
     {
         currentInst = &inst;
         addUse(inst.cond);
     }
-    void UserCollector::visit(BrUncondInst& inst) { /* no uses */ }
-    void UserCollector::visit(GlbVarDeclInst& inst) { /* no uses */ }
+    void UserCollector::visit(BrUncondInst& inst)
+    { /* no uses */
+    }
+    void UserCollector::visit(GlbVarDeclInst& inst)
+    { /* no uses */
+    }
     void UserCollector::visit(CallInst& inst)
     {
         currentInst = &inst;

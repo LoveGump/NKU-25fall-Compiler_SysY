@@ -115,14 +115,16 @@ namespace ME
         inst.incomingVals = newIncomingVals;
     }
 
+    // Operand 重命名辅助函数，将操作数根据重命名映射进行替换
     void renameOperand(Operand*& operand, OperandMap& renameMap)
     {
         if (!operand || operand->getType() != OperandType::REG) return;
 
+        // 获取寄存器操作数
         RegOperand* regOp = static_cast<RegOperand*>(operand);
-        auto        it    = renameMap.find(regOp->regNum);
+        auto        it    = renameMap.find(regOp->regNum);  // 如果在映射中找到对应的重命名操作数
         if (it == renameMap.end()) return;
-        operand = it->second;
+        operand = it->second;  // 替换为重命名后的操作数
     }
 
     void OperandRename::visit(LoadInst& inst, OperandMap& rm)

@@ -14,7 +14,7 @@ namespace ME::Analysis
     void CFG::build(ME::Function& function)
     {
         func = &function;
-        id2block.clear();   // 清空当前cfg的block映射
+        id2block.clear();  // 清空当前cfg的block映射
 
         // 从函数中将blocks映射复制到id2block
         for (auto& [blockId, block] : function.blocks) id2block[blockId] = block;
@@ -37,11 +37,11 @@ namespace ME::Analysis
         invG_id.resize(maxBlockId + 1);
 
         std::map<size_t, bool> visited;  // 记录某 blockId 是否已访问
-        buildFromBlock(0, visited);
+        buildFromBlock(0, visited);      // 构建cfg
 
         // 清理未访问的基本块及其边
         auto blocks_temp = func->blocks;
-        func->blocks.clear(); // 清空函数的所有基本块映射
+        func->blocks.clear();  // 清空函数的所有基本块映射
 
         for (auto& [blockId, block] : blocks_temp)
         {
@@ -86,7 +86,7 @@ namespace ME::Analysis
         if (visited[blockId] || id2block.find(blockId) == id2block.end()) return;
 
         visited[blockId]        = true;
-        ME::Block* currentBlock = id2block[blockId]; // 获取当前基本块指针
+        ME::Block* currentBlock = id2block[blockId];  // 获取当前基本块指针
 
         // 查找终止指令
         Instruction* terminator = nullptr;
@@ -100,13 +100,13 @@ namespace ME::Analysis
                 while (next_it != currentBlock->insts.end())
                 {
                     delete *next_it;
-                    next_it = currentBlock->insts.erase(next_it); // erase 返回下一个迭代器
+                    next_it = currentBlock->insts.erase(next_it);  // erase 返回下一个迭代器
                 }
                 break;
             }
         }
 
-        if (!terminator) return; // 无终止指令则返回
+        if (!terminator) return;  // 无终止指令则返回
 
         if (terminator->opcode == Operator::BR_COND)
         {

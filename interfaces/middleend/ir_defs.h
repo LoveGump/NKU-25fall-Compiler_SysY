@@ -125,8 +125,8 @@ namespace ME
 #undef X
     };
 
-    using RegMap   = std::map<size_t, size_t>; // 寄存器号 -> 重命名后寄存器号
-    using LabelMap = std::map<size_t, size_t>; // 标签号 -> 重命名后标签号
+    using RegMap   = std::map<size_t, size_t>;  // 寄存器号 -> 重命名后寄存器号
+    using LabelMap = std::map<size_t, size_t>;  // 标签号 -> 重命名后标签号
 }  // namespace ME
 
 std::ostream& operator<<(std::ostream& os, ME::DataType dt);

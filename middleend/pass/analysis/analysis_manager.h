@@ -77,10 +77,11 @@ namespace ME
             Target* getCached(Function& func)
             {
                 // 检查缓存中是否已有该函数的指定分析结果
-                if (analysisCache.count(&func)) // count 检查键是否存在
+                if (analysisCache.count(&func))  // count 检查键是否存在
                 {
-                    auto& funcCache = analysisCache.at(&func); // 获取该函数的分析结果映射
-                    if (funcCache.count(Target::TID)) {
+                    auto& funcCache = analysisCache.at(&func);  // 获取该函数的分析结果映射
+                    if (funcCache.count(Target::TID))
+                    {
                         // 返回已缓存的分析结果
                         return static_cast<Target*>(funcCache.at(Target::TID));
                     }

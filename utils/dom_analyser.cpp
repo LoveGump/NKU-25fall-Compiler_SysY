@@ -39,46 +39,68 @@ using namespace std;
 
 DomAnalyzer::DomAnalyzer() {}
 
+// graph: 输入图的邻接表表示
+// entry_points: 入口点列表（正向支配时为入口，后向支配时为出口）
+// reverse: 是否计算后支配（默认为 false，即计算正向支配）
 void DomAnalyzer::solve(const vector<vector<int>>& graph, const vector<int>& entry_points, bool reverse)
 {
     int node_count = graph.size();  // 原图节点数
 
     // 构建工作图：添加虚拟源节点，连接所有入口/出口
-    int                 virtual_source = node_count;
+    int                 virtual_source = node_count;  // 增加的虚拟节点
     vector<vector<int>> working_graph;
 
     if (!reverse)
     {
+        // 正向支配：直接使用原图
         working_graph = graph;
         working_graph.push_back(vector<int>());
-        for (int entry : entry_points) working_graph[virtual_source].push_back(entry);
+        for (int entry : entry_points)
+        {
+            // 连接虚拟源到所有入口
+            working_graph[virtual_source].push_back(entry);
+        }
     }
     else
     {
+        // 后支配：构建反图
         working_graph.resize(node_count + 1);
         for (int u = 0; u < node_count; ++u)
-            for (int v : graph[u]) working_graph[v].push_back(u);
-
+        {
+            // 遍历所有节点
+            for (int v : graph[u])
+            {
+                // 将边反向
+                working_graph[v].push_back(u);
+            }
+        }
+        // 连接虚拟源到所有出口
         working_graph.push_back(vector<int>());
-        for (int exit : entry_points) working_graph[virtual_source].push_back(exit);
+        for (int exit : entry_points)
+        {
+            // 将虚拟源连接到所有出口节点
+            working_graph[virtual_source].push_back(exit);
+        }
     }
-
+    // 调用核心构建函数
     build(working_graph, node_count + 1, virtual_source, entry_points);
 }
 
 void DomAnalyzer::build(
     const vector<vector<int>>& working_graph, int node_count, int virtual_source, const std::vector<int>& entry_points)
 {
-    (void)entry_points;
-    vector<vector<int>> backward_edges(node_count);
+    (void)entry_points;                              // 避免未使用参数的编译警告
+    vector<vector<int>> backward_edges(node_count);  // 前驱表，其实也就是反向图，可以查找某节点的所有前驱
     // TODO(Lab 4): 构建反向边表 backward_edges[v] = { 所有指向 v 的前驱 }
     // 提示：为了正确处理多入口点的情况，可以使用一个虚拟的“入口点”，让它指向所有实际入口点
     // 这主要是为了处理后支配树可能有多个入口的情况
+    // 这里我们已经在 working_graph 中添加了虚拟源节点，并连接到了所有入口点/出口点
     for (int u = 0; u < node_count; ++u)
     {
         for (int v : working_graph[u]) { backward_edges[v].push_back(u); }
     }
 
+    // 初始化结果容器
     dom_tree.clear();
     dom_tree.resize(node_count);
     dom_frontier.clear();
@@ -86,45 +108,62 @@ void DomAnalyzer::build(
     imm_dom.clear();
     imm_dom.resize(node_count);
 
-    int                 dfs_count = -1;
-    vector<int>         block_to_dfs(node_count, 0), dfs_to_block(node_count), parent(node_count, 0);
-    vector<int>         semi_dom(node_count);
+    // 支配数的序号从 1 开始，0 留给虚拟源节点
+    int dfs_count = -1;
+    // 统计 DFS 序号              根据 DFS 序号映射回原节点编号  DFS 父亲节点数组
+    vector<int> block_to_dfs(node_count, 0), dfs_to_block(node_count), parent(node_count, 0);
+    // 半支配者数组，记录每个节点v 的半支配者 semi_dom[v]
+    vector<int> semi_dom(node_count);
+    // 并查集结构：父亲节点与最小祖先节点
     vector<int>         dsu_parent(node_count), min_ancestor(node_count);
     vector<vector<int>> semi_children(node_count);
 
+    // 初始化并查集与半支配者
     for (int i = 0; i < node_count; ++i)
     {
-        dsu_parent[i]   = i;
-        min_ancestor[i] = i;
-        semi_dom[i]     = i;
+        dsu_parent[i]   = i;  // 初始的时候并查集的每个节点的父亲是自己
+        min_ancestor[i] = i;  // 最小祖先是自己
+        semi_dom[i]     = i;  // 半支配者也是自己
     }
 
+    // 深度优先搜索 DFS 编号与父亲关系构建
     function<void(int)> dfs = [&](int block) {
         block_to_dfs[block]     = ++dfs_count;
         dfs_to_block[dfs_count] = block;
-        semi_dom[block]         = block_to_dfs[block];
+        semi_dom[block]         = block_to_dfs[block];  // 初始时半支配者为自己
         for (int next : working_graph[block])
+        {
+            // 遍历当前节点的所有后继节点
             if (!block_to_dfs[next])
             {
+                // 如果后继节点尚未访问，则递归访问
                 dfs(next);
+                // 设置DFS树中的父节点
                 parent[next] = block;
             }
+        }
     };
     dfs(virtual_source);
 
     // TODO(Lab 4): 路径压缩并带最小祖先维护的 Find（Tarjan-Eval）
     // 依据半支配序比较，维护 min_ancestor，并做并查集压缩
+    // u 是要查询的节点 ，返回值是 u 在并查集中的代表元节点
     auto dsu_find = [&](int u, const auto& self) -> int {
-        if (dsu_parent[u] == u) return u;
+        if (dsu_parent[u] == u) return u;  // 如果 u 是根节点，直接返回
+        // 递归查找父节点的根
         int root = self(dsu_parent[u], self);
+        // 如果父节点的半支配者更小，更新最小祖先
         if (semi_dom[min_ancestor[dsu_parent[u]]] < semi_dom[min_ancestor[u]])
         {
             min_ancestor[u] = min_ancestor[dsu_parent[u]];
         }
+        // 路径压缩
         dsu_parent[u] = root;
         return root;
     };
 
+    // u 是 要查询的点
+    // 返回值是 u 的最小祖先节点
     auto dsu_query = [&](int u) -> int {
         dsu_find(u, dsu_find);
         return min_ancestor[u];
@@ -145,13 +184,20 @@ void DomAnalyzer::build(
     //    然后清空该集合（以免重复处理）
     // 注意：eval/Link 的细节由上方 dsu_find/self 与 dsu_parent/min_ancestor 完成
     for (int dfs_id = dfs_count; dfs_id > 0; --dfs_id)
-    {
-        int curr = dfs_to_block[dfs_id];
+    {                                     // 逆序遍历 DFS 序号
+        int curr = dfs_to_block[dfs_id];  // 当前节点
         for (int pred : backward_edges[curr])
         {
-            if (block_to_dfs[pred] == 0 && pred != virtual_source) continue;
+            // 遍历 curr 的所有前驱节点
+            if (block_to_dfs[pred] == 0 && pred != virtual_source) continue;  // 跳过未访问的节点
+
+            // 根据 LT 公式合并两类候选：如果 dfn(pred) < dfn(curr) 则就是 pred，否则通过 dsu_query(pred) 找到最小祖先
             int eval_node = (block_to_dfs[pred] < block_to_dfs[curr]) ? pred : dsu_query(pred);
-            if (semi_dom[eval_node] < semi_dom[curr]) { semi_dom[curr] = semi_dom[eval_node]; }
+            if (semi_dom[eval_node] < semi_dom[curr])
+            {
+                // 如果半支配者更小，更新半支配者
+                semi_dom[curr] = semi_dom[eval_node];
+            }
         }
 
         int sdom_block = dfs_to_block[semi_dom[curr]];
@@ -163,10 +209,7 @@ void DomAnalyzer::build(
         {
             int u = dsu_query(child);
             if (semi_dom[u] == semi_dom[child]) { imm_dom[child] = p; }
-            else
-            {
-                imm_dom[child] = u;
-            }
+            else { imm_dom[child] = u; }
         }
         semi_children[p].clear();
     }

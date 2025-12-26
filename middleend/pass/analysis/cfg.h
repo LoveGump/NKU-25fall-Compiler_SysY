@@ -39,8 +39,8 @@ namespace ME::Analysis
       public:
         CFG();
         ~CFG() = default;
-        // 构建函数内部的控制流图 CFG
-        void build(ME::Function& function);
+
+        void build(ME::Function& function);                                    // 构建函数内部的控制流图 CFG
         void buildFromBlock(size_t blockId, std::map<size_t, bool>& visited);  // 从指定基本块递归构建 CFG
     };
 
