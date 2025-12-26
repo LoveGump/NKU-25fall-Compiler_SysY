@@ -9,8 +9,8 @@ class DomAnalyzer
 {
   public:
     std::vector<std::vector<int>> dom_tree;      // 支配树
-    std::vector<std::set<int>>    dom_frontier;  // 支配边界
-    std::vector<int>              imm_dom;       // 直接支配者
+    std::vector<std::set<int>>    dom_frontier;  // 节点i的支配边界
+    std::vector<int>              imm_dom;       // 节点i的直接支配者是 imm_dom[i]
 
   public:
     DomAnalyzer();

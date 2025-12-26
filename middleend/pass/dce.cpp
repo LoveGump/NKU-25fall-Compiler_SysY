@@ -73,9 +73,6 @@ namespace ME
             case Operator::RET:    // 会改变控制流
             case Operator::BR_COND:
             case Operator::BR_UNCOND:
-            case Operator::FUNCDECL:    // 函数声明有副作用
-            case Operator::FUNCDEF:     // 函数定义有副作用
-            case Operator::GLOBAL_VAR:  // 全局变量声明有副作用
                 return true;
             default: return false;
         }
