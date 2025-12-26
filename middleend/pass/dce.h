@@ -9,7 +9,7 @@
 
 namespace ME
 {
-    // 死代码消除
+    // 死代码消除（删除没有use的def）
     class DCEPass : public FunctionPass
     {
       public:
@@ -21,10 +21,10 @@ namespace ME
 
       private:
         // 执行死代码消除，返回是否有改动
-        bool   eliminateDeadCode(Function& function);
+        bool eliminateDeadCode(Function& function);
 
         // 判断指令是否有副作用
-        bool   isSideEffect(Instruction* inst);
+        bool isSideEffect(Instruction* inst);
     };
 }  // namespace ME
 

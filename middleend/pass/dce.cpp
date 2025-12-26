@@ -23,7 +23,9 @@ namespace ME
         // 遍历所有指令，收集使用信息
         for (auto& [id, block] : function.blocks)
         {
-            for (auto inst : block->insts) { apply(useCollector, *inst); }
+            for (auto inst : block->insts) { 
+                apply(useCollector, *inst); 
+            }
         }
 
         // 2. 识别并移除死代码
