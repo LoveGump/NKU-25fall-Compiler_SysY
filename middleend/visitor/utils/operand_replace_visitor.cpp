@@ -2,16 +2,16 @@
 
 namespace ME
 {
-    OperandReplaceVisitor::OperandReplaceVisitor(const std::unordered_map<size_t, Operand*>& regs)
-        : replaceRegs(regs)
+    OperandReplaceVisitor::OperandReplaceVisitor(const std::unordered_map<size_t, Operand*>& regs) : replaceRegs(regs)
     {}
 
     void OperandReplaceVisitor::replaceOperand(Operand*& op)
     {
         if (!op || op->getType() != OperandType::REG) return;
-        size_t regNum = static_cast<RegOperand*>(op)->regNum;
-        auto   it     = replaceRegs.find(regNum);
-        if (it != replaceRegs.end()) op = it->second;
+        auto   it     = replaceRegs.find(op->getRegNum());
+        if (it != replaceRegs.end()) {
+            op = it->second;
+        }
     }
 
     void OperandReplaceVisitor::visit(LoadInst& inst) { replaceOperand(inst.ptr); }

@@ -7,8 +7,7 @@ namespace ME
     {
         if (!operand || operand->getType() != OperandType::REG) return;
 
-        RegOperand* regOp = static_cast<RegOperand*>(operand);
-        auto        it    = renameMap.find(regOp->regNum);
+        auto        it    = renameMap.find(operand->getRegNum());
         if (it == renameMap.end()) return;
         operand = getRegOperand(it->second);
     }
@@ -121,8 +120,7 @@ namespace ME
         if (!operand || operand->getType() != OperandType::REG) return;
 
         // 获取寄存器操作数
-        RegOperand* regOp = static_cast<RegOperand*>(operand);
-        auto        it    = renameMap.find(regOp->regNum);  // 如果在映射中找到对应的重命名操作数
+        auto it = renameMap.find(operand->getRegNum());  // 如果在映射中找到对应的重命名操作数
         if (it == renameMap.end()) return;
         operand = it->second;  // 替换为重命名后的操作数
     }

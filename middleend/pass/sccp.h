@@ -48,16 +48,17 @@ namespace ME
       private:
         Function* currFunc = nullptr;  // 当前函数上下文
 
-        std::map<size_t, LatticeVal>                     valueMap;       // 寄存器 -> 格值
-        std::map<size_t, std::vector<Instruction*>>      userMap;        // 寄存器 -> 使用者指令
-        std::map<Instruction*, Block*>                   instBlockMap;   // 指令 -> 基本块
-        std::set<size_t>                                 reachableBlocks; // 可达基本块集合
-        std::set<std::pair<size_t, size_t>>              reachableEdges;  // 可达边集合
-        std::deque<Block*>                               blockWorklist;   // 基本块工作队列
-        std::deque<Instruction*>                         instWorklist;    // 指令工作队列
+        std::map<size_t, LatticeVal>                valueMap;         // 寄存器 -> 格值
+        std::map<size_t, std::vector<Instruction*>> userMap;          // 寄存器 -> 使用者指令
+        std::map<Instruction*, Block*>              instBlockMap;     // 指令 -> 基本块
+        std::set<size_t>                            reachableBlocks;  // 可达基本块集合
+        std::set<std::pair<size_t, size_t>>         reachableEdges;   // 可达边集合
+        std::deque<Block*>                          blockWorklist;    // 基本块工作队列
+        std::deque<Instruction*>                    instWorklist;     // 指令工作队列
 
       private:
-        void   initialize(Function& function);
+        // 初始化 SCCP 分析状态
+        void initialize(Function& function);
 
         void removePhiIncoming(Block* block, Operand* label);
     };

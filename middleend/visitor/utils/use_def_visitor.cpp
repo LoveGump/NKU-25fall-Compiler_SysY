@@ -8,7 +8,7 @@ namespace ME
     void UseCollector::addUse(Operand* op)
     {
         // 如果是寄存器操作数，则增加其使用次数
-        if (op && op->getType() == OperandType::REG) { useCounts[static_cast<RegOperand*>(op)->regNum]++; }
+        if (op && op->getType() == OperandType::REG) { useCounts[op->getRegNum()]++; }
     }
 
     void UseCollector::visit(LoadInst& inst)
@@ -81,7 +81,7 @@ namespace ME
         if (op && op->getType() == OperandType::REG)
         {
             // 返回寄存器编号
-            return static_cast<RegOperand*>(op)->regNum;
+            return op->getRegNum();
         }
         return 0;
     }
@@ -109,7 +109,7 @@ namespace ME
     {
         if (op && op->getType() == OperandType::REG)
         {
-            userMap[static_cast<RegOperand*>(op)->regNum].push_back(currentInst);
+            userMap[op->getRegNum()].push_back(currentInst);
         }
     }
 

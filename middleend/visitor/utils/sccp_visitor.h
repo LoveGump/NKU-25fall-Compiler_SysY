@@ -30,22 +30,14 @@ namespace ME
         void visit(PhiInst& inst, SCCPPass& pass, Block* block) override;
 
       private:
-        void updateValue(SCCPPass& pass, Operand* dest, const SCCPPass::LatticeVal& val);
-        void markEdgeReachable(SCCPPass& pass, size_t from, size_t to);
+        void                 updateValue(SCCPPass& pass, Operand* dest, const SCCPPass::LatticeVal& val);
+        void                 markEdgeReachable(SCCPPass& pass, size_t from, size_t to);
         SCCPPass::LatticeVal makeUndef() const;
         SCCPPass::LatticeVal makeOverdefined() const;
         SCCPPass::LatticeVal makeConstInt(int value) const;
         SCCPPass::LatticeVal makeConstFloat(float value) const;
         SCCPPass::LatticeVal getValue(SCCPPass& pass, Operand* op) const;
-        SCCPPass::LatticeVal mergeValue(const SCCPPass::LatticeVal& lhs,
-                                        const SCCPPass::LatticeVal& rhs) const;
-        SCCPPass::LatticeVal evalArithmetic(SCCPPass& pass, ArithmeticInst& inst) const;
-        SCCPPass::LatticeVal evalIcmp(SCCPPass& pass, IcmpInst& inst) const;
-        SCCPPass::LatticeVal evalFcmp(SCCPPass& pass, FcmpInst& inst) const;
-        SCCPPass::LatticeVal evalFP2SI(SCCPPass& pass, FP2SIInst& inst) const;
-        SCCPPass::LatticeVal evalSI2FP(SCCPPass& pass, SI2FPInst& inst) const;
-        SCCPPass::LatticeVal evalZext(SCCPPass& pass, ZextInst& inst) const;
-        SCCPPass::LatticeVal evalPhi(SCCPPass& pass, PhiInst& inst, Block* block) const;
+        SCCPPass::LatticeVal mergeValue(const SCCPPass::LatticeVal& lhs, const SCCPPass::LatticeVal& rhs) const;
     };
 
     // SCCP 常量替换：将可确定寄存器替换为立即数

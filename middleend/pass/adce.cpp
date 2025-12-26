@@ -19,16 +19,13 @@ namespace ME
         if (term->opcode == Operator::BR_UNCOND)
         {
             auto* br    = dynamic_cast<BrUncondInst*>(term);
-            auto* label = dynamic_cast<LabelOperand*>(br->target);
-            if (label) succs.push_back(label->lnum);
+            if (br->target) succs.push_back(br->target->getLabelNum());
         }
         else if (term->opcode == Operator::BR_COND)
         {
             auto* br = dynamic_cast<BrCondInst*>(term);
-            auto* l1 = dynamic_cast<LabelOperand*>(br->trueTar);
-            auto* l2 = dynamic_cast<LabelOperand*>(br->falseTar);
-            if (l1) succs.push_back(l1->lnum);
-            if (l2) succs.push_back(l2->lnum);
+            if (br->trueTar) succs.push_back(br->trueTar->getLabelNum());
+            if (br->falseTar) succs.push_back(br->falseTar->getLabelNum());
         }
         return succs;
     }
@@ -207,11 +204,10 @@ namespace ME
                 for (auto& [labelOp, val] : phi->incomingVals)
                 {
                     // 遍历所有前驱
-                    auto* label = dynamic_cast<LabelOperand*>(labelOp);
-                    if (label)
+                    if (labelOp)
                     {
                         // 获取前驱块ID
-                        size_t predId = label->lnum;
+                        size_t predId = labelOp->getLabelNum();
                         auto   predIt = function.blocks.find(predId);
                         // 前驱不在函数中则跳过
                         if (predIt == function.blocks.end()) continue;
@@ -318,14 +314,13 @@ namespace ME
                     if (inst->opcode == Operator::BR_UNCOND)
                     {
                         auto* br = dynamic_cast<BrUncondInst*>(inst);
-                        if (auto* label = dynamic_cast<LabelOperand*>(br->target))
+                        
+                        if ((int)br->target->getLabelNum() == targetId)
                         {
-                            if ((int)label->lnum == targetId)
-                            {
-                                newInsts.push_back(inst);  // 已经跳转到正确目标
-                                continue;
-                            }
+                            newInsts.push_back(inst);  // 已经跳转到正确目标
+                            continue;
                         }
+                        
                     }
 
                     // 否则就，创建新的无条件跳转

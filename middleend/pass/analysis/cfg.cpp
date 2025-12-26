@@ -116,12 +116,9 @@ namespace ME::Analysis
             if (brInst->trueTar->getType() == OperandType::LABEL && brInst->falseTar->getType() == OperandType::LABEL)
             {
                 // 获取目标标签
-                LabelOperand* trueLabel  = static_cast<LabelOperand*>(brInst->trueTar);
-                LabelOperand* falseLabel = static_cast<LabelOperand*>(brInst->falseTar);
-
-                size_t trueLabelId  = trueLabel->lnum;
-                size_t falseLabelId = falseLabel->lnum;
-
+                size_t trueLabelId  = brInst->trueTar->getLabelNum();
+                size_t falseLabelId = brInst->falseTar->getLabelNum();
+                
                 // 连接true分支
                 if (id2block.find(trueLabelId) != id2block.end())
                 {
@@ -152,8 +149,7 @@ namespace ME::Analysis
 
             if (brInst->target->getType() == OperandType::LABEL)
             {
-                LabelOperand* targetLabel   = static_cast<LabelOperand*>(brInst->target);
-                size_t        targetLabelId = targetLabel->lnum;
+                size_t        targetLabelId = brInst->target->getLabelNum();
 
                 // 连接目标分支
                 if (id2block.find(targetLabelId) != id2block.end())

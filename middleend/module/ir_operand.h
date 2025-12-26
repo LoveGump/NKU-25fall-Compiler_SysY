@@ -26,6 +26,7 @@ namespace ME
         OperandType         getType() const { return type; }
         virtual std::string toString() const  = 0;
         virtual size_t      getRegNum() const = 0;
+        virtual size_t      getLabelNum() const = 0;
     };
 
     // 寄存器操作数
@@ -43,6 +44,7 @@ namespace ME
       public:
         virtual std::string toString() const override { return "%reg_" + std::to_string(regNum); }
         virtual size_t      getRegNum() const override { return regNum; }
+        virtual size_t      getLabelNum() const override { ERROR("RegOperand does not have a label number"); }
     };
 
     // 立即数操作数 - 整型
@@ -60,6 +62,7 @@ namespace ME
       public:
         virtual std::string toString() const override { return std::to_string(value); }
         virtual size_t      getRegNum() const override { ERROR("ImmeI32Operand does not have a register"); }
+        virtual size_t      getLabelNum() const override { ERROR("ImmeI32Operand does not have a label number"); }
     };
 
     // 立即数操作数 - 浮点型
@@ -82,6 +85,7 @@ namespace ME
             return ss.str();
         }
         virtual size_t getRegNum() const override { ERROR("ImmeF32Operand does not have a register"); }
+        virtual size_t getLabelNum() const override { ERROR("ImmeF32Operand does not have a label number"); }
     };
 
     // 全局变量操作数
@@ -99,6 +103,7 @@ namespace ME
       public:
         virtual std::string toString() const override { return "@" + name; }
         virtual size_t      getRegNum() const override { ERROR("GlobalOperand does not have a register"); }
+        virtual size_t      getLabelNum() const override { ERROR("GlobalOperand does not have a label number"); }
     };
 
     // 标签操作数
@@ -116,6 +121,7 @@ namespace ME
       public:
         virtual std::string toString() const override { return "%Block" + std::to_string(lnum); }
         virtual size_t      getRegNum() const override { ERROR("LabelOperand does not have a register"); }
+        virtual size_t      getLabelNum() const override { return lnum; }
     };
 
     class OperandFactory
