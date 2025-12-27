@@ -78,8 +78,26 @@ namespace ME
                         if (it != knownConditions.end())
                         {
                             // 条件值已知，替换为常量并转为无条件跳转
-                            Operand* target = it->second ? brCond->trueTar : brCond->falseTar;
-                            auto*    newBr  = new BrUncondInst(target);
+                            Operand* target  = it->second ? brCond->trueTar : brCond->falseTar;
+                            Operand* skipped = it->second ? brCond->falseTar : brCond->trueTar;
+                            auto*    newBr   = new BrUncondInst(target);
+
+                            // 从被跳过的目标块的PHI节点中移除当前块的引用
+                            if (skipped && skipped->getType() == OperandType::LABEL)
+                            {
+                                Block* skippedBlock = function.getBlock(skipped->getLabelNum());
+                                if (skippedBlock)
+                                {
+                                    Operand* curLabel = getLabelOperand(block->blockId);
+                                    for (auto* phiInst : skippedBlock->insts)
+                                    {
+                                        if (phiInst->opcode != Operator::PHI) break;
+                                        auto* phi = static_cast<PhiInst*>(phiInst);
+                                        phi->incomingVals.erase(curLabel);
+                                    }
+                                }
+                            }
+
                             // 用新指令替换旧指令
                             eraseSet.insert(inst);
                             block->insts.push_back(newBr);

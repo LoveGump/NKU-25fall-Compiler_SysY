@@ -13,40 +13,49 @@ namespace ME
     void InlineStrategy::analyze(Module& module)
     {
         // 清空旧统计，重新分析当前模块
+        // 该过程会构建：
+        // - 函数名映射（便于通过 call 的 funcName 找到 callee）
+        // - 函数静态信息（指令数/块数/是否有指针参数等）
+        // - 调用点列表与调用图（用于递归检测与处理顺序）
+        // - 循环深度（用于估计调用执行频率，识别“循环内调用”）
         module_ = &module;
         name_map.clear();
         function_info.clear();
         call_sites.clear();
-        call_counts.clear();
         call_graph.clear();
         topo_order.clear();
 
+        // 构建函数映射与收集基本信息
         buildFunctionMap(module);
+
+        // 收集函数级统计信息
         collectFunctionInfo();
 
         // 收集循环信息与调用点信息
         for (auto* func : module.functions)
         {
             if (!func || !func->funcDef) continue;
-            // 循环深度用于判断“循环内调用”
+            // 循环深度用于判断 循环内调用
             collectLoopInfo(*func, function_info[func]);
-            // 记录每个 call 的基本信息与上下文
+
+            // 记录每个 call 的基本信息
             collectCallSites(*func);
         }
 
-        // 调用统计/递归检测/处理顺序/复杂度评分
-        updateCallCounts();
+        // 调用统计/递归检测/处理顺序
         detectRecursion();
         computeTopologicalOrder();
-        computeComplexityScores();
     }
 
     void InlineStrategy::buildFunctionMap(Module& module)
     {
-        // 函数名到函数对象的映射
+        // 函数名到函数对象的映射：只对有 funcDef 的定义函数建表
         for (auto* func : module.functions)
         {
-            if (func && func->funcDef) name_map[func->funcDef->funcName] = func;
+            if (func && func->funcDef) {
+                // 函数名 -> 函数对象 映射
+                name_map[func->funcDef->funcName] = func;
+            }
         }
     }
 
@@ -55,20 +64,22 @@ namespace ME
         if (!module_) return;
         for (auto* func : module_->functions)
         {
+            // 遍历所有函数
             if (!func) continue;
             FunctionInfo info;
-            info.block_count = static_cast<int>(func->blocks.size());
 
+            // 统计是否有指针类型参数
             if (func->funcDef)
             {
-                // 记录指针参数，便于内联策略使用
                 for (auto& arg : func->funcDef->argRegs)
                 {
-                    if (arg.first == DataType::PTR) info.has_pointer_params = true;
+                    if (arg.first == DataType::PTR) {
+                        info.has_pointer_params = true;
+                    }
                 }
             }
 
-            // 统计指令数与基本块数
+            // 统计指令数
             int inst_count = 0;
             for (auto& [id, block] : func->blocks)
             {
@@ -87,16 +98,20 @@ namespace ME
         auto* dom = Analysis::AM.get<Analysis::DomInfo>(func);
         if (!cfg || !dom) return;
 
-        const auto& imm_dom = dom->getImmDom();
+        const auto& imm_dom = dom->getImmDom(); // 即时支配关系
         const auto& G_id    = cfg->G_id;
         const auto& invG_id = cfg->invG_id;
 
-        std::map<size_t, int> loop_depth;
+        std::map<size_t, int> loop_depth; // blockId -> loop depth
         bool                  has_loop = false;
 
-        // 通过回边识别循环，并估计循环深度
+        // 通过回边识别循环，并估计循环深度：
+        // - 若 v 支配 u，则 u -> v 是一条回边（back edge）
+        // - 从回边源 u 沿反向 CFG 追溯可达节点，得到循环体节点集合
+        // - 同一个节点若属于多个回边形成的循环体，深度累加
         for (size_t u = 0; u < G_id.size(); ++u)
         {
+            // 遍历所有边
             if (G_id[u].empty()) continue;
             for (size_t v : G_id[u])
             {
@@ -104,14 +119,14 @@ namespace ME
                 if (!dominates(static_cast<int>(v), static_cast<int>(u), imm_dom)) continue;
 
                 has_loop = true;
-                std::set<size_t>   loop_nodes;
-                std::deque<size_t> worklist;
+                std::set<size_t>   loop_nodes; // 循环体节点集合
+                std::deque<size_t> worklist;    // 反向遍历工作队列
 
                 loop_nodes.insert(v);
                 loop_nodes.insert(u);
                 worklist.push_back(u);
 
-                // 反向遍历 CFG，把能回到回边源的节点加入循环集合
+                // 反向遍历 CFG，把能回到回边源（u）的节点加入循环集合
                 while (!worklist.empty())
                 {
                     size_t node = worklist.front();
@@ -120,7 +135,11 @@ namespace ME
                     if (node >= invG_id.size()) continue;
                     for (size_t pred : invG_id[node])
                     {
-                        if (loop_nodes.insert(pred).second) worklist.push_back(pred);
+                        // 遍历前驱节点，统计过的跳过
+                        if (loop_nodes.insert(pred).second) {
+                            // 将所有能到达回边源的节点加入循环体
+                            worklist.push_back(pred);
+                        }
                     }
                 }
 
@@ -130,17 +149,19 @@ namespace ME
         }
 
         info.has_loops  = has_loop;
-        info.loop_depth = std::move(loop_depth);
+        // 初步估计的循环深度
+        info.loop_depth =loop_depth;
     }
 
     void InlineStrategy::collectCallSites(Function& func)
     {
-        // 遍历指令，收集调用点信息
         for (auto& [id, block] : func.blocks)
         {
+            // 遍历所有基本块
             if (!block) continue;
             for (auto* inst : block->insts)
             {
+                // 遍历所有的调用指令，统计所有的调用点信息
                 if (!inst) continue;
                 // 只关心 call 指令
                 if (inst->opcode != Operator::CALL) continue;
@@ -149,91 +170,85 @@ namespace ME
         }
     }
 
+    // 统计函数调用点信息
     void InlineStrategy::recordCallSite(Function& func, Block& block, CallInst& call_inst)
     {
-        auto info_it = function_info.find(&func);
+        auto info_it = function_info.find(&func); // 调用者信息
         if (info_it == function_info.end()) return;
 
+        // 通过函数名找到被调用函数
         Function* callee = findFunction(call_inst.funcName);
         if (!callee) return;
 
-        // 记录调用点的基本信息
+        // 统计调用点信息
         CallSiteInfo cs;
         cs.caller    = &func;
         cs.callee    = callee;
         cs.call_inst = &call_inst;
-        cs.block_id  = block.blockId;
 
-        // 使用循环深度估计执行频率
+        // 判断是否在循环内
         auto depth_it = info_it->second.loop_depth.find(block.blockId);
-        if (depth_it != info_it->second.loop_depth.end())
-        {
-            cs.nesting_level = depth_it->second;
-            cs.in_loop       = depth_it->second > 0;
-            // 简单地以 2^depth 估计执行频率上限
-            cs.estimated_frequency = 1 << std::min(4, depth_it->second);
+        if (depth_it != info_it->second.loop_depth.end()){
+            // 如果深度大于0，则在循环内
+            cs.in_loop = depth_it->second > 0;
         }
 
-        // 参数类型中包含指针时可提高内联收益
-        for (auto& arg : call_inst.args)
-        {
-            if (arg.first == DataType::PTR) cs.has_pointer_args = true;
-        }
-
+        // 保存调用点信息
         call_sites.push_back(cs);
-        function_info[&func].call_count++;
-        function_info[callee].called_count++;
         // 构建调用图边
         call_graph[&func].insert(callee);
     }
 
-    void InlineStrategy::updateCallCounts()
-    {
-        // 统计 caller->callee 的调用次数
-        call_counts.clear();
-        for (auto& cs : call_sites)
-        {
-            if (!cs.caller || !cs.callee) continue;
-            call_counts[{cs.caller, cs.callee}]++;
-        }
-    }
-
     void InlineStrategy::detectRecursion()
     {
-        // 在调用图中标记递归函数
-        std::set<Function*>    visited;
-        std::vector<Function*> stack;
+        // 在调用图中标记递归函数：
+        // DFS 过程中维护当前递归栈，若访问到栈内节点则形成环
+        // 将该环上的函数标记为递归，后续策略会直接拒绝内联递归函数
+        std::set<Function*>    visited; // 已访问节点
+        std::vector<Function*> stack;  // 当前递归调用栈
 
         std::function<void(Function*)> dfs = [&](Function* func) {
             if (!func) return;
             visited.insert(func);
-            stack.push_back(func);
 
+            stack.push_back(func);
             for (auto* callee : call_graph[func])
             {
+                // 遍历被调用函数
                 if (!callee) continue;
                 // 如果回到栈内节点，则该强连通分量为递归
                 auto it = std::find(stack.begin(), stack.end(), callee);
                 if (it != stack.end())
                 {
-                    for (; it != stack.end(); ++it) function_info[*it].is_recursive = true;
+                    for (; it != stack.end(); ++it) {
+                        // 将栈上的函数标记为递归
+                        function_info[*it].is_recursive = true;
+                    }
                     continue;
                 }
-                if (!visited.count(callee)) dfs(callee);
+                if (!visited.count(callee)) {
+                    // 如果没有访问过，则继续 DFS
+                    dfs(callee);
+                }
             }
-
+            // 弹出
             stack.pop_back();
         };
 
         for (auto& [func, info] : function_info)
         {
-            if (!visited.count(func)) dfs(func);
+            // 遍历所有函数
+            if (!visited.count(func)) {
+                dfs(func);
+            }
         }
     }
 
     void InlineStrategy::computeTopologicalOrder()
     {
-        // 基于调用图生成处理顺序，便于逐层内联
+        // 基于调用图生成处理顺序：
+        // 采用 DFS 的后序，将 callee 先于 caller 放入 topo_order
+        // 这样做更利于“先内联更底层/更小的函数”，减少重复工作
         topo_order.clear();
         std::set<Function*> visited;
 
@@ -241,101 +256,63 @@ namespace ME
             if (!func || visited.count(func)) return;
             visited.insert(func);
             // 先处理被调函数，再处理调用者
-            for (auto* callee : call_graph[func]) dfs(callee);
+            for (auto* callee : call_graph[func]) {
+                // 递归 函数调用图 DFS
+                dfs(callee);
+            }
             topo_order.push_back(func);
         };
 
-        for (auto& [func, info] : function_info) dfs(func);
-    }
-
-    void InlineStrategy::computeComplexityScores()
-    {
-        // 计算简单的复杂度评分
-        for (auto& [func, info] : function_info)
-        {
-            int complexity = 0;
-            complexity += info.instruction_count;
-            complexity += info.block_count * 2;
-            complexity += info.call_count * 3;
-            if (info.has_loops) complexity += 10;
-            info.complexity_score = complexity;
+        for (auto& [func, info] : function_info) {
+            // 遍历所有函数
+            dfs(func);
         }
     }
 
     bool InlineStrategy::shouldInline(
-        Function& caller, Function& callee, CallInst& call_inst, std::string* reason) const
+        Function& caller, Function& callee, CallInst& call_inst) const
     {
-        // 采用参考项目的规则判断是否内联
         auto caller_it = function_info.find(&caller);
         auto callee_it = function_info.find(&callee);
+
+        // 找不到信息则拒绝内联
         if (caller_it == function_info.end() || callee_it == function_info.end()) return false;
 
         const auto& caller_info = caller_it->second;
         const auto& callee_info = callee_it->second;
 
-        if (&caller == &callee) return false;
-        if (callee_info.is_recursive) return false;
+        // 拒绝递归内联
+        if (&caller == &callee || callee_info.is_recursive) return false;
 
-        // 小函数/非常小函数直接内联
-        bool flag1 = callee_info.instruction_count <= 30;
-        bool flag5 = callee_info.instruction_count <= 15;
-        // 合并规模阈值，限制内联后体量
-        bool flag2 = (caller_info.instruction_count + callee_info.instruction_count) <= 200;
-        // 指针参数函数倾向内联
-        bool flag3 = callee_info.has_pointer_params && (&caller != &callee);
+        // 策略要点：
+        // - 拒绝递归内联（避免无限展开）
+        // - 小函数倾向内联（降低 call 开销）
+        // - 合并规模可控则允许（控制代码膨胀）
+        // - 指针参数可能增加优化机会（如常量传播/别名信息更集中），倾向内联
+        // - 循环内调用更偏向内联（按更高频率估计收益）
 
-        bool                flag4 = false;
-        const CallSiteInfo* cs    = findCallSite(caller, call_inst);
-        // 循环中的调用更可能收益，允许稍大体量
-        if (cs) flag4 = cs->in_loop && callee_info.instruction_count <= 50;
-
-        bool result = flag1 || flag2 || flag3 || flag4 || flag5;
-
-        if (reason)
+        // 被调用函数规模较小
+        bool smallFunc = callee_info.instruction_count <= 30;
+        // 合并规模可接受
+        bool sizeOk = (caller_info.instruction_count + callee_info.instruction_count) <= 200;
+        // 有指针参数
+        bool hasPtr = callee_info.has_pointer_params;
+        // 循环内调用更偏向内联
+        bool inLoop = false;
+        for (const auto& cs : call_sites)
         {
-            if (flag5)
-                *reason =
-                    "Very small function (" + std::to_string(callee_info.instruction_count) + " instructions <= 15)";
-            else if (flag1)
-                *reason = "Small function (" + std::to_string(callee_info.instruction_count) + " instructions <= 30)";
-            else if (flag2)
-                *reason = "Combined size acceptable (" + std::to_string(caller_info.instruction_count) + " + " +
-                          std::to_string(callee_info.instruction_count) + " = " +
-                          std::to_string(caller_info.instruction_count + callee_info.instruction_count) + " <= 200)";
-            else if (flag3)
-                *reason = "Function has pointer parameters (good for optimization)";
-            else if (flag4)
-                *reason = "Call in loop with acceptable size (" + std::to_string(callee_info.instruction_count) +
-                          " instructions <= 50)";
-            else
-                *reason = "Does not meet aggressive inlining criteria";
+            if (cs.caller == &caller && cs.call_inst == &call_inst)
+            {
+                inLoop = cs.in_loop && callee_info.instruction_count <= 50;
+                break;
+            }
         }
 
-        return result;
-    }
-
-    const InlineStrategy::FunctionInfo* InlineStrategy::getFunctionInfo(Function& func) const
-    {
-        auto it = function_info.find(&func);
-        if (it == function_info.end()) return nullptr;
-        return &it->second;
-    }
-
-    bool InlineStrategy::isRecursive(Function& func) const
-    {
-        auto it = function_info.find(&func);
-        if (it == function_info.end()) return false;
-        return it->second.is_recursive;
-    }
-
-    int InlineStrategy::getCallCount(Function& caller, Function& callee) const
-    {
-        auto it = call_counts.find({&caller, &callee});
-        if (it == call_counts.end()) return 0;
-        return it->second;
+        return smallFunc || sizeOk || hasPtr || inLoop; // 
     }
 
     std::vector<Function*> InlineStrategy::getProcessingOrder() const { return topo_order; }
+
 
     Function* InlineStrategy::findFunction(const std::string& name) const
     {
@@ -344,37 +321,10 @@ namespace ME
         return it->second;
     }
 
-    const InlineStrategy::CallSiteInfo* InlineStrategy::findCallSite(Function& caller, CallInst& call_inst) const
-    {
-        for (const auto& cs : call_sites)
-        {
-            if (cs.caller == &caller && cs.call_inst == &call_inst) return &cs;
-        }
-        return nullptr;
-    }
-
-    bool InlineStrategy::wouldCauseTooMuchGrowth(Function& caller, Function& callee) const
-    {
-        // 估算内联造成的代码膨胀
-        const int MAX_FUNCTION_SIZE = 500;
-        const int MAX_TOTAL_GROWTH  = 200;
-
-        auto caller_it = function_info.find(&caller);
-        auto callee_it = function_info.find(&callee);
-        if (caller_it == function_info.end() || callee_it == function_info.end()) return false;
-
-        int caller_size = caller_it->second.instruction_count;
-        int callee_size = callee_it->second.instruction_count;
-        int call_count  = getCallCount(caller, callee);
-
-        // 用“被调大小 * 调用次数”估计膨胀
-        int estimated_growth = callee_size * call_count;
-        return (caller_size + estimated_growth > MAX_FUNCTION_SIZE) || (estimated_growth > MAX_TOTAL_GROWTH);
-    }
-
     bool InlineStrategy::dominates(int dom, int node, const std::vector<int>& imm_dom) const
     {
-        // 通过 imm_dom 链向上判断支配关系
+        // 通过 imm_dom 链向上判断支配关系：从 node 沿 idom 向上追溯
+        // 若能追溯到 dom，则 dom 支配 node
         if (dom == node) return true;
         if (node < 0 || static_cast<size_t>(node) >= imm_dom.size()) return false;
 

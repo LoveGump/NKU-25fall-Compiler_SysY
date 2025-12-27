@@ -348,12 +348,11 @@ int main(int argc, char** argv)
             // ME::DCEPass dcePass;
             // dcePass.runOnModule(m);
 
-            // ME::InlinePass inlinePass;
-            // inlinePass.runOnModule(m);
+            ME::InlinePass inlinePass;
+            inlinePass.runOnModule(m);
 
             // ME::SCCPPass sccpPass;
             // sccpPass.runOnModule(m);
-            
             
 
             // ME::LICMPass licmPass;
