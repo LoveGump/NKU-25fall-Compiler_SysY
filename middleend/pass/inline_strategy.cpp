@@ -104,7 +104,7 @@ namespace ME
                 if (!dominates(static_cast<int>(v), static_cast<int>(u), imm_dom)) continue;
 
                 has_loop = true;
-                std::set<size_t> loop_nodes;
+                std::set<size_t>   loop_nodes;
                 std::deque<size_t> worklist;
 
                 loop_nodes.insert(v);
@@ -168,8 +168,8 @@ namespace ME
         auto depth_it = info_it->second.loop_depth.find(block.blockId);
         if (depth_it != info_it->second.loop_depth.end())
         {
-            cs.nesting_level       = depth_it->second;
-            cs.in_loop             = depth_it->second > 0;
+            cs.nesting_level = depth_it->second;
+            cs.in_loop       = depth_it->second > 0;
             // 简单地以 2^depth 估计执行频率上限
             cs.estimated_frequency = 1 << std::min(4, depth_it->second);
         }
@@ -201,7 +201,7 @@ namespace ME
     void InlineStrategy::detectRecursion()
     {
         // 在调用图中标记递归函数
-        std::set<Function*> visited;
+        std::set<Function*>    visited;
         std::vector<Function*> stack;
 
         std::function<void(Function*)> dfs = [&](Function* func) {
@@ -284,8 +284,8 @@ namespace ME
         // 指针参数函数倾向内联
         bool flag3 = callee_info.has_pointer_params && (&caller != &callee);
 
-        bool flag4 = false;
-        const CallSiteInfo* cs = findCallSite(caller, call_inst);
+        bool                flag4 = false;
+        const CallSiteInfo* cs    = findCallSite(caller, call_inst);
         // 循环中的调用更可能收益，允许稍大体量
         if (cs) flag4 = cs->in_loop && callee_info.instruction_count <= 50;
 
@@ -294,11 +294,10 @@ namespace ME
         if (reason)
         {
             if (flag5)
-                *reason = "Very small function (" + std::to_string(callee_info.instruction_count) +
-                          " instructions <= 15)";
+                *reason =
+                    "Very small function (" + std::to_string(callee_info.instruction_count) + " instructions <= 15)";
             else if (flag1)
-                *reason = "Small function (" + std::to_string(callee_info.instruction_count) +
-                          " instructions <= 30)";
+                *reason = "Small function (" + std::to_string(callee_info.instruction_count) + " instructions <= 30)";
             else if (flag2)
                 *reason = "Combined size acceptable (" + std::to_string(caller_info.instruction_count) + " + " +
                           std::to_string(callee_info.instruction_count) + " = " +
@@ -306,8 +305,8 @@ namespace ME
             else if (flag3)
                 *reason = "Function has pointer parameters (good for optimization)";
             else if (flag4)
-                *reason = "Call in loop with acceptable size (" +
-                          std::to_string(callee_info.instruction_count) + " instructions <= 50)";
+                *reason = "Call in loop with acceptable size (" + std::to_string(callee_info.instruction_count) +
+                          " instructions <= 50)";
             else
                 *reason = "Does not meet aggressive inlining criteria";
         }

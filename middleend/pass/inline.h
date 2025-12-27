@@ -24,27 +24,27 @@ namespace ME
 
       private:
         // 构建调用图判断递归
-        bool         isRecursive(Function& target, Module& module);
-        // 查找被调用函数
-        Function*    findCallee(Module& module, const std::string& name);
-        // 将被内联函数的寄存器映射到调用者寄存器
-        Operand*     mapOperand(Operand* op, const std::map<size_t, Operand*>& operandMap);
-        // 深拷贝 IR 指令
+        bool isRecursive(Function& target, Module& module);
+        // 查找被调用函数 2
+        Function* findCallee(Module& module, const std::string& name);
+        // 将被内联函数的寄存器映射到调用者寄存器 1
+        Operand* mapOperand(Operand* op, const std::map<size_t, Operand*>& operandMap);
+        // 深拷贝 IR 指令 1
         Instruction* cloneInstruction(const Instruction* inst);
-        // 重映射跳转标签
-        void         remapLabels(Instruction* inst, const std::map<size_t, size_t>& labelMap);
+        // 重映射跳转标签  1
+        void remapLabels(Instruction* inst, const std::map<size_t, size_t>& labelMap);
         // 更新 phi 的前驱标签
-        void         replacePhiIncoming(Block* block, size_t oldLabel, size_t newLabel);
-        // 构造寄存器映射表
+        void replacePhiIncoming(Block* block, size_t oldLabel, size_t newLabel);
+        // 构造寄存器映射表  1
         std::map<size_t, Operand*> buildOperandMap(Function& caller, Function& callee, CallInst* callInst);
-        // 定位函数入口块
-        Block*      findEntryBlock(Function& func);
-        // 内联单条 call 指令
-        bool        inlineCall(Function& caller, Block* callBlock, size_t callIndex, CallInst* callInst, Function& callee);
+        // 定位函数入口块  1 
+        Block* findEntryBlock(Function& func);
+        // 内联单条 call 指令  1 
+        bool inlineCall(Function& caller, Block* callBlock, size_t callIndex, CallInst* callInst, Function& callee);
         // 结合策略执行内联
-        bool        inlineWithStrategy(Function& function, InlineStrategy& strategy);
-        // 在函数内定位 call 指令的位置
-        bool        findCallLocation(Function& function, CallInst* callInst, Block*& block, size_t& index);
+        bool inlineWithStrategy(Function& function, InlineStrategy& strategy);
+        // 在函数内定位 call 指令的位置 1 
+        bool findCallLocation(Function& function, CallInst* callInst, Block*& block, size_t& index);
 
         Module* module_ = nullptr;
     };

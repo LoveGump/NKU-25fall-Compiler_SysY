@@ -365,8 +365,8 @@ int main(int argc, char** argv)
             ME::CSEPass csePass;
             csePass.runOnModule(m);
 
-            // ME::SimplifyCFGPass simplifyCFGPass;
-            // simplifyCFGPass.runOnModule(m);
+            ME::SimplifyCFGPass simplifyCFGPass;
+            simplifyCFGPass.runOnModule(m);
 
         }
 
