@@ -4,9 +4,6 @@
 #include <middleend/visitor/utils/alloca_derived_visitor.h>
 #include <middleend/visitor/utils/operand_replace_visitor.h>
 #include <middleend/visitor/utils/use_def_visitor.h>
-#include <unordered_map>
-#include <unordered_set>
-#include <functional>
 #include <iterator>
 
 namespace ME
@@ -18,84 +15,50 @@ namespace ME
 
     void TCOPass::runOnFunction(Function& function) { eliminateTailRecursion(function); }
 
+    // void 型返回值的分支链判断
     bool TCOPass::isVoidReturnChain(Function& function, Block* start) const
     {
         if (!start) return false;
 
-        std::unordered_set<size_t> visited;
-        Block* cur = start;
+        // 判断从 start 开始的分支链是否最终返回 void
+        std::unordered_set<size_t> visited; //  记录访问过的基本块，防止环路
+        Block*                     cur = start;
         while (cur)
         {
             if (!visited.insert(cur->blockId).second) return false;
-            if (cur->insts.size() != 1) return false;
-            Instruction* inst = cur->insts.back();
+            if (cur->insts.size() != 1) return false;   // 必须只有一条指令
+            Instruction* inst = cur->insts.back();      // 获取唯一指令
             if (inst->opcode == Operator::RET)
             {
+                // 返回指令，检查是否返回 void
                 auto* ret = static_cast<RetInst*>(inst);
                 return ret->res == nullptr;
             }
+            // 如果不是返回指令，则必须为无条件分支指令
             if (inst->opcode != Operator::BR_UNCOND) return false;
             auto* br = static_cast<BrUncondInst*>(inst);
             if (!br->target || br->target->getType() != OperandType::LABEL) return false;
-            auto* label = static_cast<LabelOperand*>(br->target);
-            cur = function.getBlock(label->lnum);
+            cur = function.getBlock(br->target->getLabelNum());
         }
         return false;
     }
 
+    // 检查参数是否与对应的参数寄存器相同
+    // 检查给定的参数（arg）是否与函数的指定参数（通过索引 idx 访问）相同
     bool TCOPass::isSameParamArg(const Function& function, size_t idx, Operand* arg) const
     {
-        // 判断调用参数是否等同于原始形参，避免不必要的写回
+        // 获取函数定义中的参数寄存器
         Operand* paramOp = function.funcDef->argRegs[idx].second;
         if (!paramOp || !arg) return false;
         if (paramOp->getType() != arg->getType()) return false;
         if (paramOp->getType() == OperandType::REG)
         {
-            return static_cast<RegOperand*>(paramOp)->regNum == static_cast<RegOperand*>(arg)->regNum;
+            return paramOp->getRegNum() == arg->getRegNum();
         }
         return paramOp == arg;
     }
 
-    bool TCOPass::isAllocaDerivedReg(size_t regNum, const std::unordered_map<size_t, Instruction*>& regDefs,
-        std::unordered_map<size_t, bool>& memo, std::unordered_set<size_t>& visiting) const
-    {
-        // 递归判断寄存器是否源自 alloca 指针，防止错误的尾递归展开
-        auto memoIt = memo.find(regNum);
-        if (memoIt != memo.end()) return memoIt->second;
-        if (!visiting.insert(regNum).second) return false;
-
-        bool derived = false;
-        auto defIt   = regDefs.find(regNum);
-        if (defIt != regDefs.end())
-        {
-            // 通过访问者递归判断该寄存器是否由 alloca 派生
-            AllocaDerivedVisitor::RegChecker checker =
-                std::bind(&TCOPass::isAllocaDerivedReg, this, std::placeholders::_1, std::cref(regDefs),
-                    std::ref(memo), std::ref(visiting));
-            AllocaDerivedVisitor visitor(checker);
-            derived = apply(visitor, *defIt->second);
-        }
-
-        visiting.erase(regNum);
-        memo[regNum] = derived;
-        return derived;
-    }
-
-    bool TCOPass::hasAllocaDerivedArg(CallInst* call, const std::unordered_map<size_t, Instruction*>& regDefs,
-        std::unordered_map<size_t, bool>& memo, std::unordered_set<size_t>& visiting) const
-    {
-        // 调用参数中出现栈上地址派生指针时禁止做 TCO
-        if (!call) return false;
-        for (auto& arg : call->args)
-        {
-            Operand* op = arg.second;
-            if (!op || op->getType() != OperandType::REG) continue;
-            size_t regNum = static_cast<RegOperand*>(op)->regNum;
-            if (isAllocaDerivedReg(regNum, regDefs, memo, visiting)) return true;
-        }
-        return false;
-    }
-
+    // 尾递归消除实现
     void TCOPass::eliminateTailRecursion(Function& function)
     {
         if (!function.funcDef) return;
@@ -103,8 +66,8 @@ namespace ME
 
         const std::string& funcName = function.funcDef->funcName;
 
+        // 收集函数内 寄存器num -> 定义inst
         std::unordered_map<size_t, Instruction*> regDefs;
-        regDefs.reserve(function.blocks.size() * 8);
         for (auto& [id, block] : function.blocks)
         {
             for (auto* inst : block->insts)
@@ -116,89 +79,42 @@ namespace ME
             }
         }
 
-        std::unordered_map<size_t, bool> allocaDerivedMemo;
-        std::unordered_set<size_t>       allocaDerivedVisiting;
-
-        // 先扫描是否存在自调用尾递归
-        bool hasTailCall = false;
-        for (auto& [id, block] : function.blocks)
-        {
-            if (block->insts.size() < 2) continue;
-            Instruction* termInst = block->insts.back();
-            Instruction* callInst = *(std::next(block->insts.rbegin(), 1));
-            if (callInst->opcode != Operator::CALL) continue;
-
-            auto* call = static_cast<CallInst*>(callInst);
-            if (call->funcName != funcName) continue;
-            if (hasAllocaDerivedArg(call, regDefs, allocaDerivedMemo, allocaDerivedVisiting)) continue;
-
-            if (termInst->opcode == Operator::RET)
-            {
-                auto* ret = static_cast<RetInst*>(termInst);
-                if (function.funcDef->retType == DataType::VOID)
-                {
-                    if (ret->res != nullptr) continue;
-                }
-                else
-                {
-                    if (!ret->res || !call->res) continue;
-                    if (ret->res->getType() != OperandType::REG || call->res->getType() != OperandType::REG) continue;
-                    size_t retReg  = static_cast<RegOperand*>(ret->res)->regNum;
-                    size_t callReg = static_cast<RegOperand*>(call->res)->regNum;
-                    if (retReg != callReg) continue;
-                }
-            }
-            else if (termInst->opcode == Operator::BR_UNCOND)
-            {
-                // 允许 “call + br -> ret void” 形式的尾递归
-                if (function.funcDef->retType != DataType::VOID) continue;
-                auto* br = static_cast<BrUncondInst*>(termInst);
-                if (!br->target || br->target->getType() != OperandType::LABEL) continue;
-                auto* label = static_cast<LabelOperand*>(br->target);
-                Block* retBlock = function.getBlock(label->lnum);
-                if (!isVoidReturnChain(function, retBlock)) continue;
-            }
-            else
-            {
-                continue;
-            }
-
-            hasTailCall = true;
-            break;
-        }
-
-        if (!hasTailCall) return;
+        // 创建 alloca 派生 检查器
+        AllocaDerivedChecker allocaChecker(regDefs);
 
         Block* entry = function.blocks.begin()->second;
 
-        // 建立参数寄存器到栈槽的映射（仅处理能找到参数存储的函数）
-        // 只有“发生变化的参数”才需要栈槽支持
-        std::vector<Operand*> paramSlots(function.funcDef->argRegs.size(), nullptr);
-        std::vector<size_t>   paramStorePos(function.funcDef->argRegs.size(), 0);
-        std::vector<size_t>   paramRegNums(function.funcDef->argRegs.size(), 0);
-        std::unordered_map<size_t, size_t> regToIndex;
+        // 建立参数寄存器到栈槽的映射
+        std::vector<Operand*>              paramSlots(function.funcDef->argRegs.size(), nullptr);   // 参数栈槽列表
+        std::vector<size_t>                paramStorePos(function.funcDef->argRegs.size(), 0);  // 参数初始化 store 指令位置
+        std::vector<size_t>                paramRegNums(function.funcDef->argRegs.size(), 0);   // 参数寄存器号列表
+        std::unordered_map<size_t, size_t> regToIndex;  // 参数寄存器号 -> 参数索引
         for (size_t i = 0; i < function.funcDef->argRegs.size(); ++i)
         {
+            // 遍历参数列表，记录寄存器号
             Operand* argOp = function.funcDef->argRegs[i].second;
             if (!argOp || argOp->getType() != OperandType::REG) return;
-            size_t regNum = static_cast<RegOperand*>(argOp)->regNum;
+            // 记录对应的寄存器编号
+            size_t regNum      = argOp->getRegNum();
             regToIndex[regNum] = i;
             paramRegNums[i]    = regNum;
         }
 
+        // 扫描入口块，找到参数初始化的 store 指令位置
         size_t instIndex = 0;
         for (auto* inst : entry->insts)
         {
+            // 遍历所有 store 指令，找到参数初始化的位置
             if (inst->opcode == Operator::STORE)
             {
                 auto* store = static_cast<StoreInst*>(inst);
                 if (store->val && store->val->getType() == OperandType::REG)
                 {
-                    size_t reg = static_cast<RegOperand*>(store->val)->regNum;
-                    auto   it  = regToIndex.find(reg);
+                    auto   it  = regToIndex.find(store->val->getRegNum());
                     if (it != regToIndex.end())
                     {
-                        paramSlots[it->second] = store->ptr;
+                        // 如果store的位置是 参数寄存器，记录数据 和 指令位置
+                        paramSlots[it->second]    = store->ptr;
                         paramStorePos[it->second] = instIndex;
                     }
                 }
@@ -206,10 +122,15 @@ namespace ME
             ++instIndex;
         }
 
-        bool   hasEligibleTailCall = false;
-        bool   needsSlotUpdate     = false;
-        std::vector<bool> paramNeedsSlot(function.funcDef->argRegs.size(), false);
-        size_t lastParamStoreIdx   = 0;
+        // 分析所有尾递归调用点，确定需要创建栈槽的参数
+        bool              hasEligibleTailCall = false; // 是否存在符合条件的尾递归调用
+        bool              needsSlotUpdate     = false;  // 是否需要更新栈槽
+        std::vector<bool> paramNeedsSlot(function.funcDef->argRegs.size(), false); // 参数是否需要栈槽
+
+        // 遍历所有块，分析所有尾递归调用点
+        // 尾递归的形式包括：
+        // 1. call + ret:  %r = call f(...); ret %r
+        // 2. call + br -> ret void:  call f(...); br %L; L: ret void
         for (auto& [id, block] : function.blocks)
         {
             if (block->insts.size() < 2) continue;
@@ -220,79 +141,84 @@ namespace ME
             auto* call = static_cast<CallInst*>(callInst);
             if (call->funcName != funcName) continue;
             if (call->args.size() != paramSlots.size()) continue;
-            if (hasAllocaDerivedArg(call, regDefs, allocaDerivedMemo, allocaDerivedVisiting)) continue;
+            if (allocaChecker.hasAllocaDerivedArg(call)) continue;
 
-            bool callConvertible = true;
-            bool callUpdatesSlot = false;
-            for (size_t i = 0; i < call->args.size(); ++i)
-            {
-                if (isSameParamArg(function, i, call->args[i].second)) continue;
-                if (paramSlots[i] == nullptr) { paramNeedsSlot[i] = true; }
-                callUpdatesSlot = true;
-                if (paramStorePos[i] > lastParamStoreIdx) lastParamStoreIdx = paramStorePos[i];
-            }
-            if (!callConvertible) continue;
-
+            bool isTailCall = false;
             if (termInst->opcode == Operator::RET)
             {
+                // 直接跟ret，保证返回类型和值相同
                 auto* ret = static_cast<RetInst*>(termInst);
                 if (function.funcDef->retType == DataType::VOID)
                 {
-                    if (ret->res != nullptr) continue;
+                    isTailCall = (ret->res == nullptr);
                 }
                 else
                 {
-                    if (!ret->res || !call->res) continue;
-                    if (ret->res->getType() != OperandType::REG || call->res->getType() != OperandType::REG) continue;
-                    size_t retReg  = static_cast<RegOperand*>(ret->res)->regNum;
-                    size_t callReg = static_cast<RegOperand*>(call->res)->regNum;
-                    if (retReg != callReg) continue;
+                    if (ret->res && call->res &&
+                        ret->res->getType() == OperandType::REG && call->res->getType() == OperandType::REG)
+                    {
+                        isTailCall = (ret->res->getRegNum() == call->res->getRegNum());
+                    }
                 }
             }
             else if (termInst->opcode == Operator::BR_UNCOND)
             {
-                if (function.funcDef->retType != DataType::VOID) continue;
-                auto* br = static_cast<BrUncondInst*>(termInst);
-                if (!br->target || br->target->getType() != OperandType::LABEL) continue;
-                auto* label = static_cast<LabelOperand*>(br->target);
-                Block* retBlock = function.getBlock(label->lnum);
-                if (!isVoidReturnChain(function, retBlock)) continue;
-            }
-            else
-            {
-                continue;
+                // 如果是无条件分支，则检查分支链是否最终返回 void
+                // 不处理非 void 函数的分支链尾递归
+                if (function.funcDef->retType == DataType::VOID)
+                {
+                    auto* br = static_cast<BrUncondInst*>(termInst);
+                    if (br->target && br->target->getType() == OperandType::LABEL)
+                    {
+                        Block* retBlock = function.getBlock(br->target->getLabelNum());
+                        isTailCall = isVoidReturnChain(function, retBlock);
+                    }
+                }
             }
 
+            if (!isTailCall) continue;
+
+            for (size_t i = 0; i < call->args.size(); ++i)
+            {
+                // 检查每个参数是否与对应的参数寄存器相同
+                // 如果相同，说明参数未发生变化，无需为该参数创建栈槽
+                if (isSameParamArg(function, i, call->args[i].second)) continue;
+                if (paramSlots[i] == nullptr) paramNeedsSlot[i] = true;
+                needsSlotUpdate = true;
+            }
             hasEligibleTailCall = true;
-            if (callUpdatesSlot) needsSlotUpdate = true;
-            break;
         }
 
         if (!hasEligibleTailCall) return;
 
-        // 为需要的参数创建栈槽，便于后续通过 store 更新
+        // 为需要的参数创建栈槽
         std::vector<StoreInst*> newParamStores;
         for (size_t i = 0; i < paramNeedsSlot.size(); ++i)
         {
+            // 如果不需要栈槽，跳过
             if (!paramNeedsSlot[i]) continue;
+
+            // 创建栈槽，并在入口块前部插入 alloca 指令
             DataType argType = function.funcDef->argRegs[i].first;
             size_t   slotReg = function.getNewRegId();
             auto*    slotOp  = getRegOperand(slotReg);
             entry->insertFront(new AllocaInst(argType, slotOp));
+            // 在入口块适当位置插入参数初始化的 store 指令
             newParamStores.push_back(new StoreInst(argType, function.funcDef->argRegs[i].second, slotOp));
-            paramSlots[i] = slotOp;
-            needsSlotUpdate = true;
+            paramSlots[i] = slotOp; // 更新参数栈槽
         }
         if (!newParamStores.empty())
         {
+            // 将新建的参数初始化 store 指令插入到入口块的合适位置，也就是原有参数初始化 store 之后
             auto insertPos = entry->insts.begin();
             while (insertPos != entry->insts.end() && (*insertPos)->opcode == Operator::ALLOCA) ++insertPos;
+            // 没有原有 store，则插入到入口块的最后
             entry->insts.insert(insertPos, newParamStores.begin(), newParamStores.end());
         }
 
-        // 重新计算最后一个参数初始化 store 的位置
-        lastParamStoreIdx = 0;
-        size_t initStoreIndex = 0;
+        // 计算最后一个参数初始化 store 的位置
+        size_t lastParamStoreIdx = 0;   
+        size_t initStoreIndex    = 0;   // 遍历入口块指令索引
         for (auto* inst : entry->insts)
         {
             if (inst->opcode == Operator::STORE)
@@ -310,8 +236,7 @@ namespace ME
             ++initStoreIndex;
         }
 
-        // 将入口块分为“参数初始化”与“循环头”
-        // 递归跳转应避开参数初始化，避免覆盖新参数
+        // 将入口块分为"参数初始化"与"循环头"
         Block* loopHeader = entry;
         if (!paramSlots.empty() && needsSlotUpdate)
         {
@@ -357,7 +282,6 @@ namespace ME
 
         if (loopHeader != entry)
         {
-            // 入口块不再直接连接原后继，需把 Phi 的入口标签替换为循环头
             Operand* oldLabel = getLabelOperand(entry->blockId);
             Operand* newLabel = loopLabel;
             for (auto& [id, block] : function.blocks)
@@ -377,7 +301,6 @@ namespace ME
         }
 
         // 将自调用尾递归改写为参数写回 + 跳转到循环头
-        // 只处理“call + ret”紧邻的尾递归形式
         for (auto& [id, block] : function.blocks)
         {
             if (block->insts.size() < 2) continue;
@@ -388,10 +311,9 @@ namespace ME
             auto* call = static_cast<CallInst*>(callInst);
             if (call->funcName != funcName) continue;
             if (call->args.size() != paramSlots.size()) continue;
-            if (hasAllocaDerivedArg(call, regDefs, allocaDerivedMemo, allocaDerivedVisiting)) continue;
+            if (allocaChecker.hasAllocaDerivedArg(call)) continue;
 
             Block* retBlock = nullptr;
-            bool   deleteRet = false;
             if (termInst->opcode == Operator::RET)
             {
                 auto* ret = static_cast<RetInst*>(termInst);
@@ -403,11 +325,8 @@ namespace ME
                 {
                     if (!ret->res || !call->res) continue;
                     if (ret->res->getType() != OperandType::REG || call->res->getType() != OperandType::REG) continue;
-                    size_t retReg  = static_cast<RegOperand*>(ret->res)->regNum;
-                    size_t callReg = static_cast<RegOperand*>(call->res)->regNum;
-                    if (retReg != callReg) continue;
+                    if (ret->res->getRegNum() != call->res->getRegNum()) continue;
                 }
-                deleteRet = true;
             }
             else if (termInst->opcode == Operator::BR_UNCOND)
             {
@@ -415,22 +334,15 @@ namespace ME
                 auto* br = static_cast<BrUncondInst*>(termInst);
                 if (!br->target || br->target->getType() != OperandType::LABEL) continue;
                 auto* label = static_cast<LabelOperand*>(br->target);
-                retBlock = function.getBlock(label->lnum);
+                retBlock    = function.getBlock(label->lnum);
                 if (!isVoidReturnChain(function, retBlock)) continue;
             }
-            else
-            {
-                continue;
-            }
+            else { continue; }
 
-            // 移除 call + terminator，并插入参数写回
             block->insts.pop_back();
             block->insts.pop_back();
             auto callArgs = call->args;
-            if (deleteRet)
-            {
-                delete static_cast<RetInst*>(termInst);
-            }
+            delete termInst;
             delete call;
 
             for (size_t i = 0; i < paramSlots.size(); ++i)
@@ -441,7 +353,6 @@ namespace ME
                 block->insts.push_back(new StoreInst(callArg.first, callArg.second, paramSlots[i]));
             }
 
-            // 跳回循环头继续执行
             block->insts.push_back(new BrUncondInst(loopLabel));
 
             if (retBlock)
