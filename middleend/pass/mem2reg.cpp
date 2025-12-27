@@ -70,7 +70,7 @@ namespace ME
                             StoreInst* store = static_cast<StoreInst*>(user);
                             // Store 必须将 alloca 作为指针，而不是作为值
                             if (store->ptr->getType() != OperandType::REG ||
-                                static_cast<RegOperand*>(store->ptr)->regNum != regNum)
+                                store->ptr->getRegNum() != regNum)
                             {
                                 promotable = false;
                                 break;
@@ -98,7 +98,7 @@ namespace ME
                     StoreInst* store = static_cast<StoreInst*>(inst);
                     if (store->ptr->getType() == OperandType::REG)
                     {
-                        size_t reg = static_cast<RegOperand*>(store->ptr)->regNum;
+                        size_t reg = store->ptr->getRegNum();
                         auto   it  = regToAllocaIdx.find(reg);
                         if (it != regToAllocaIdx.end())
                         {
@@ -275,7 +275,7 @@ namespace ME
                     if (load->ptr->getType() == OperandType::REG)
                     {
                         // 如果是从寄存器加载数据
-                        size_t reg = static_cast<RegOperand*>(load->ptr)->regNum;
+                        size_t reg = load->ptr->getRegNum();
                         auto   it  = regToAllocaIdx.find(reg);
                         if (it != regToAllocaIdx.end() && !usesFastPath[it->second])
                         {
@@ -312,7 +312,7 @@ namespace ME
                     if (store->ptr->getType() == OperandType::REG)
                     {
                         // 如果是存储到寄存器
-                        size_t reg = static_cast<RegOperand*>(store->ptr)->regNum;
+                        size_t reg = store->ptr->getRegNum();
                         auto   it  = regToAllocaIdx.find(reg);
                         if (it != regToAllocaIdx.end() && !usesFastPath[it->second])
                         {
@@ -353,14 +353,14 @@ namespace ME
             {
                 // 如果终止指令是条件分支，将其真分支和假分支加入后继块列表
                 BrCondInst* br = static_cast<BrCondInst*>(term);
-                succs.push_back(function.getBlock(static_cast<LabelOperand*>(br->trueTar)->lnum));
-                succs.push_back(function.getBlock(static_cast<LabelOperand*>(br->falseTar)->lnum));
+                succs.push_back(function.getBlock(br->trueTar->getLabelNum()));
+                succs.push_back(function.getBlock(br->falseTar->getLabelNum()));
             }
             else if (term->opcode == Operator::BR_UNCOND)
             {
                 // 如果终止指令是无条件分支，将其目标块加入后继块列表
                 BrUncondInst* br = static_cast<BrUncondInst*>(term);
-                succs.push_back(function.getBlock(static_cast<LabelOperand*>(br->target)->lnum));
+                succs.push_back(function.getBlock(br->target->getLabelNum()));
             }
 
             for (Block* succ : succs)
