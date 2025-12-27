@@ -47,7 +47,7 @@ namespace ME
         size_t defReg = 0;  // 定义的寄存器编号，若无定义则为0
 
         DefCollector() = default;
-        size_t getResult() const { return defReg; }  // 获取定义的寄存器编号
+        size_t getResult() const { return defReg; }  // 获取该指令定义的寄存器编号
 
         void visit(LoadInst& inst) override;
         void visit(StoreInst& inst) override;
