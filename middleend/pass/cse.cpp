@@ -44,6 +44,9 @@ namespace ME
         std::unordered_set<size_t>                visited;
         ExprKeyVisitor                            keyVisitor;
 
+        // 隐式CSE：记录已知条件值 (寄存器号 -> true/false)
+        std::unordered_map<size_t, bool>          knownConditions;
+
         std::function<void(size_t)> dfs = [&](size_t blockId) {
             // 深度优先搜索遍历所有基本块
             if (visited.count(blockId)) return;
@@ -54,11 +57,36 @@ namespace ME
 
             // 记录本块内新增的表达式映射，以便在离开块时撤销
             std::vector<std::tuple<std::string, bool, Operand*>> localStack;
+            // 记录本块内新增的已知条件，以便在离开块时撤销
+            std::vector<size_t> localConditions;
 
             for (auto* inst : block->insts)
             {
+                // 先进行寄存器替换
                 if (!replaceRegs.empty()) {
                     apply(replacer, *inst);
+                }
+
+                // 隐式CSE：检查条件分支是否使用已知条件
+                // 如果当前指令是条件分支指令，且条件寄存器的值已知，则替换为无条件跳转
+                if (auto* brCond = dynamic_cast<BrCondInst*>(inst))
+                {
+                    if (brCond->cond && brCond->cond->getType() == OperandType::REG)
+                    {
+                        size_t condReg = brCond->cond->getRegNum();
+                        auto   it      = knownConditions.find(condReg);
+                        if (it != knownConditions.end())
+                        {
+                            // 条件值已知，替换为常量并转为无条件跳转
+                            Operand* target = it->second ? brCond->trueTar : brCond->falseTar;
+                            auto*    newBr  = new BrUncondInst(target);
+                            // 用新指令替换旧指令
+                            eraseSet.insert(inst);
+                            block->insts.push_back(newBr);
+                            changed = true;
+                            continue;
+                        }
+                    }
                 }
 
                 // 获取指令对应的key值
@@ -90,11 +118,65 @@ namespace ME
 
             if (blockId < domTree.size())
             {
+                // 获取当前块的终结指令，检查是否为条件分支
+                BrCondInst* brCond = nullptr;
+                size_t      condReg = 0;
+                if (!block->insts.empty())
+                {
+                    brCond = dynamic_cast<BrCondInst*>(block->insts.back());
+                    if (brCond && brCond->cond && brCond->cond->getType() == OperandType::REG){
+                        // 如果是条件分支，记录条件寄存器编号
+                        condReg = brCond->cond->getRegNum();
+                    }
+                    else{
+                        brCond = nullptr;
+                    }
+                }
+
                 for (int child : domTree[blockId])
                 {
-                    // 对支配子节点进行DFS
                     if (child == static_cast<int>(blockId)) continue;
+
+                    // 隐式CSE：根据分支方向设置已知条件值
+                    // 条件：1) 子块是直接分支目标 2) 子块只有一个前驱（当前块）
+                    size_t prevSize = localConditions.size();
+                    if (brCond && condReg != 0)
+                    {
+                        // 如果是条件分支，记录条件寄存器编号
+                        size_t trueBlock  = brCond->trueTar->getLabelNum();
+                        size_t falseBlock = brCond->falseTar->getLabelNum();
+                        size_t childId    = static_cast<size_t>(child);
+
+                        // 检查子块是否只有一个前驱，如果只有一个前驱，则可以确定条件值（这里先只考虑这种情况）
+                        bool singlePred = childId < cfg->invG_id.size() &&
+                                          cfg->invG_id[childId].size() == 1;
+
+                        if (singlePred && trueBlock != falseBlock)
+                        {
+                            // 将条件寄存器的值设置为true，压栈
+                            if (childId == trueBlock)
+                            {
+                                knownConditions[condReg] = true;
+                                localConditions.push_back(condReg);
+                            }
+                            else if (childId == falseBlock)
+                            {
+                                knownConditions[condReg] = false;
+                                localConditions.push_back(condReg);
+                            }
+                        }
+                    }
+
+                    // dfs子节点
                     dfs(static_cast<size_t>(child));
+
+                    // 撤销本次添加的条件
+                    while (localConditions.size() > prevSize)
+                    {
+                        // 如果本次添加了已知条件，弹栈
+                        knownConditions.erase(localConditions.back());
+                        localConditions.pop_back();
+                    }
                 }
             }
 
