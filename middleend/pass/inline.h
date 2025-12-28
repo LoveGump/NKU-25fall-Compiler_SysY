@@ -32,12 +32,10 @@ namespace ME
         void remapLabels(Instruction* inst);
         // 辅助函数：重映射单个 label 操作数
         void remapLabel(Operand*& target);
-        // 辅助函数：映射操作数（寄存器重命名）
-        Operand* mapOperand(Operand* op);
 
         Module* module_ = nullptr;
         std::map<size_t, size_t> labelMap_;    // 内联时的 label 映射
-        std::map<size_t, Operand*> operandMap_;  // 内联时的操作数映射
+        std::map<size_t, Operand*> operandMap_;  // callee id -> caller operand
     };
 }  // namespace ME
 

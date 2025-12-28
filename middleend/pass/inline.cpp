@@ -11,41 +11,52 @@
 
 namespace ME
 {
-    // 构建调用点处的操作数映射表 （形参寄存器 -> 实参操作数）
+    // 构建调用点处的操作数映射表 （寄存器号 -> 实参操作数）
     std::map<size_t, Operand*> InlinePass::buildOperandMap(Function& caller, Function& callee, CallInst* callInst)
     {
-        std::map<size_t, Operand*> operandMap;  // 形参寄存器号 -> 实参操作数
+        std::map<size_t, Operand*> operandMap;  // 寄存器号 -> 实参操作数
 
         // 形参 -> 实参映射：
         // 将被调函数形参寄存器号映射到调用点提供的实参操作数
         auto& calleeArgs = callee.funcDef->argRegs;
-        for (size_t i = 0; i < std::min(calleeArgs.size(), callInst->args.size()); ++i)
+        for (size_t i = 0; i < calleeArgs.size(); ++i)
         {
-            if (auto* argReg = calleeArgs[i].second; argReg && argReg->getType() == OperandType::REG)
+            auto* argReg = calleeArgs[i].second;
+            if (argReg && argReg->getType() == OperandType::REG)
+            {
                 operandMap[argReg->getRegNum()] = callInst->args[i].second;
+            }
         }
 
         // 收集被调函数内出现的所有寄存器（use/def），并为未映射寄存器分配 caller 侧新编号
         std::set<size_t> regs;
+        std::map<size_t, int> useCounts;
+        UseCollector useCollector(useCounts);
+        DefCollector defCollector;
         for (auto& [id, block] : callee.blocks)
         {
             for (auto* inst : block->insts)
             {
-                std::map<size_t, int> useCounts;
-                UseCollector useCollector(useCounts);
+                // 收集所有指令的 use/def 寄存器
                 apply(useCollector, *inst);
-                for (auto& [reg, _] : useCounts) regs.insert(reg);
-
-                DefCollector defCollector;
                 apply(defCollector, *inst);
-                if (size_t def = defCollector.getResult(); def != 0) regs.insert(def);
+                size_t def = defCollector.getResult();
+                if (def != 0)
+                {
+                   regs.insert(def);
+                }
             }
         }
+        for (auto& [reg, _] : useCounts)
+            regs.insert(reg);
 
-        for (auto reg : regs)
-            if (operandMap.find(reg) == operandMap.end())
+        for (auto reg : regs){
+            // 遍历所有寄存器，若未映射则分配新寄存器
+            if (operandMap.find(reg) == operandMap.end()){
+                // 为该寄存器分配 caller 侧新寄存器，并建立新的映射
                 operandMap[reg] = getRegOperand(caller.getNewRegId());
-
+            }
+        }
         return operandMap;
     }
 
@@ -78,8 +89,10 @@ namespace ME
     // - phi 指令：重映射 incoming 的 label
     void InlinePass::remapLabels(Instruction* inst)
     {
-        if (auto* br = dynamic_cast<BrUncondInst*>(inst))
+        if (auto* br = dynamic_cast<BrUncondInst*>(inst)){  
+            // 替换目标标签 
             remapLabel(br->target);
+        }
         else if (auto* br = dynamic_cast<BrCondInst*>(inst))
         {
             remapLabel(br->trueTar);
@@ -90,11 +103,13 @@ namespace ME
             std::map<Operand*, Operand*> newIncoming;
             for (auto& [label, val] : phi->incomingVals)
             {
+                // 遍历所有 incoming，重映射 label
                 if (label && label->getType() == OperandType::LABEL)
                 {
                     auto it = labelMap_.find(label->getLabelNum());
                     if (it != labelMap_.end())
                     {
+                        // 获取映射后的操作数
                         newIncoming[getLabelOperand(it->second)] = val;
                         continue;
                     }
@@ -106,19 +121,16 @@ namespace ME
     }
 
     // 重映射单个 label 操作数
+    // target 为指针的引用，指向需要重映射的操作数
     void InlinePass::remapLabel(Operand*& target)
     {
         if (!target || target->getType() != OperandType::LABEL) return;
+        // 找到映射关系
         auto it = labelMap_.find(target->getLabelNum());
-        if (it != labelMap_.end()) target = getLabelOperand(it->second);
-    }
-
-    // 将 callee 内寄存器操作数映射到 caller 侧操作数（形参->实参、其余->新寄存器）
-    Operand* InlinePass::mapOperand(Operand* op)
-    {
-        if (!op || op->getType() != OperandType::REG) return op;
-        auto it = operandMap_.find(op->getRegNum());
-        return it != operandMap_.end() ? it->second : op;
+        if (it != labelMap_.end()) {
+            // 重映射到新的标签操作数
+            target = getLabelOperand(it->second);
+        }
     }
 
     bool InlinePass::inlineCall(
@@ -204,7 +216,8 @@ namespace ME
         size_t entryId = callee.blocks.count(0) ? 0 : callee.blocks.begin()->first;
         callBlock->insertBack(new BrUncondInst(getLabelOperand(blockMap[entryId]->blockId)));
 
-        operandMap_ = buildOperandMap(caller, callee, callInst);
+        // callee id -> caller operand
+        operandMap_ = buildOperandMap(caller, callee, callInst); // 
         OperandRename renamer;
         InstCloner    cloner;
 
@@ -217,16 +230,18 @@ namespace ME
             afterCall->insts.push_front(retPhi);
         }
 
+        // 获取 afterCall 的标签操作数，用于 ret 指令跳转
         Operand* afterLabel = getLabelOperand(afterCall->blockId);
 
         // alloca 提升：将内联体中的 alloca 统一挪到 caller 的入口块
-        // 避免 alloca 散落在中间块影响后续优化/约定
+        // 避免 alloca 散落在中间块影响后续优化
         Block* entryBlockForAllocas = nullptr;
         if (!caller.blocks.empty())
         {
             auto it = caller.blocks.find(0);
             entryBlockForAllocas = it != caller.blocks.end() ? it->second : caller.blocks.begin()->second;
         }
+        // 收集待提升的 alloca 指令
         std::vector<Instruction*> hoistedAllocas;
 
         // 克隆每个 callee 块内的指令到对应的新块：
@@ -234,38 +249,60 @@ namespace ME
         // - 其它指令：克隆后做寄存器重命名与 label 重映射
         for (auto& [id, block] : callee.blocks)
         {
-            Block* newBlock = blockMap[id];
+            Block* newBlock = blockMap[id]; // 获取对应的新块
             for (auto* inst : block->insts)
             {
                 if (inst->opcode == Operator::RET)
                 {
+                    // 将 ret 指令 返回的值 添加到 retPhi
                     auto* ret = static_cast<RetInst*>(inst);
                     if (retPhi && ret->res)
-                        retPhi->addIncoming(mapOperand(ret->res), getLabelOperand(newBlock->blockId));
+                    {
+                        Operand* mappedRes = ret->res;
+                        if (mappedRes && mappedRes->getType() == OperandType::REG)
+                        {
+                            // 有返回值
+                            auto it = operandMap_.find(mappedRes->getRegNum());
+                            if (it != operandMap_.end()){
+                                // 获取映射后的操作数
+                                mappedRes = it->second;
+                            }
+                        }
+                        // 插入新的 incoming 映射
+                        retPhi->addIncoming(mappedRes, getLabelOperand(newBlock->blockId));
+                    }
+                    // 插入无条件跳转到 afterCall
                     newBlock->insertBack(new BrUncondInst(afterLabel));
                     continue;
                 }
 
+                // 克隆其余指令，并进行寄存器重命名与 label 重映射
                 Instruction* cloned = apply(cloner, *inst);
                 if (!cloned) continue;
+                // 根据 operandMap_ 重命名寄存器，根据 labelMap_ 重映射标签
                 apply(renamer, *cloned, operandMap_);
                 remapLabels(cloned);
 
+                // 如果是 alloca 指令，暂时先不插入块，后续统一提升到入口块
                 if (cloned->opcode == Operator::ALLOCA && entryBlockForAllocas)
-                    hoistedAllocas.push_back(cloned);
-                else
+                {    hoistedAllocas.push_back(cloned);
+                }
+                else{
                     newBlock->insertBack(cloned);
+                }
             }
         }
 
-        // 将收集到的 alloca 插入到入口块的 phi/alloca 之后，保持入口块布局稳定
+        // 将收集到的 alloca 插入到入口块最后一个 alloca 之后
         if (entryBlockForAllocas && !hoistedAllocas.empty())
         {
-            auto it = entryBlockForAllocas->insts.begin();
-            while (it != entryBlockForAllocas->insts.end() &&
-                   ((*it)->opcode == Operator::PHI || (*it)->opcode == Operator::ALLOCA))
-                ++it;
-            entryBlockForAllocas->insts.insert(it, hoistedAllocas.begin(), hoistedAllocas.end());
+            auto lastAlloca = entryBlockForAllocas->insts.begin();
+            for (auto it = entryBlockForAllocas->insts.begin(); it != entryBlockForAllocas->insts.end(); ++it)
+            {
+                if ((*it)->opcode == Operator::ALLOCA)
+                    lastAlloca = std::next(it);
+            }
+            entryBlockForAllocas->insts.insert(lastAlloca, hoistedAllocas.begin(), hoistedAllocas.end());
         }
 
         return true;
