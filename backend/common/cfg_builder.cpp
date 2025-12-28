@@ -32,13 +32,34 @@ namespace BE::MIR
     {
         std::vector<uint32_t> targets;
         if (block->insts.empty()) return targets;
-        for (auto* inst : block->insts)
+        for (auto it = block->insts.begin(); it != block->insts.end(); ++it)
         {
+            auto* inst = *it;
             if (adapter_->isReturn(inst)) return targets;
-            if (adapter_->isUncondBranch(inst) || adapter_->isCondBranch(inst))
+
+            if (adapter_->isCondBranch(inst))
             {
                 int t = adapter_->extractBranchTarget(inst);
                 if (t >= 0) targets.push_back(static_cast<uint32_t>(t));
+                // 尝试读取紧随其后的无条件跳转作为 false 分支
+                auto nextIt = std::next(it);
+                if (nextIt != block->insts.end())
+                {
+                    auto* nextInst = *nextIt;
+                    if (adapter_->isUncondBranch(nextInst))
+                    {
+                        int ft = adapter_->extractBranchTarget(nextInst);
+                        if (ft >= 0) targets.push_back(static_cast<uint32_t>(ft));
+                    }
+                }
+                // 已确定分支，返回
+                return targets;
+            }
+            if (adapter_->isUncondBranch(inst))
+            {
+                int t = adapter_->extractBranchTarget(inst);
+                if (t >= 0) targets.push_back(static_cast<uint32_t>(t));
+                return targets;
             }
         }
         return targets;
@@ -57,7 +78,7 @@ namespace BE::MIR
                     need_fallthrough = false;
                     break;
                 }
-                if (adapter_->isUncondBranch(inst))
+                if (adapter_->isUncondBranch(inst) || adapter_->isCondBranch(inst))
                 {
                     need_fallthrough = false;
                     break;

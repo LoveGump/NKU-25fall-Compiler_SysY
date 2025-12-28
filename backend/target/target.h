@@ -39,10 +39,10 @@ namespace BE::Targeting
 
         void buildDAG(ME::Module* ir)
         {
-            DAG::DAGBuilder builder;
             for (auto* f : ir->functions)
             {
                 if (!f) continue;
+                DAG::DAGBuilder builder;
 
                 for (auto& [bid, ir_block] : f->blocks)
                 {

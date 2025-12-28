@@ -36,7 +36,7 @@ namespace ME
         bool dominates(int dom, int node, const std::vector<int>& imm_dom) const;
         bool dominatesAllLatches(size_t blockId, const Analysis::Loop& loop, const std::vector<int>& imm_dom) const;
 
-        Block* getOrCreatePreheader(Function& function, Analysis::CFG* cfg, Analysis::Loop& loop);
+        Block* getOrCreatePreheader(Function& function, Analysis::CFG* cfg, Analysis::Loop& loop, bool& cfgChanged);
         void   redirectPredsToPreheader(
               Function& function, const std::set<size_t>& preds, size_t headerId, size_t preheaderId);
         void updateHeaderPhis(

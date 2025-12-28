@@ -82,8 +82,10 @@ namespace ME
                 invariantRegs);
             if (invariantInsts.empty()) continue;
 
-            Block* preheader = getOrCreatePreheader(function, cfg, loop);
+            bool   cfgChanged = false;
+            Block* preheader = getOrCreatePreheader(function, cfg, loop, cfgChanged);
             if (!preheader) continue;
+            if (cfgChanged) changed = true;
 
             std::vector<Instruction*> hoistOrder;
             buildHoistOrder(function, loop, invariantInsts, hoistOrder);
@@ -105,6 +107,12 @@ namespace ME
             if (glb) immutableGlobals.insert(glb->name);
         }
 
+        std::unordered_set<std::string> definedFuncs;
+        for (auto* function : module.functions)
+        {
+            if (function && function->funcDef) definedFuncs.insert(function->funcDef->funcName);
+        }
+
         LICMGlobalStoreVisitor storeVisitor;
         for (auto* function : module.functions)
         {
@@ -119,6 +127,24 @@ namespace ME
                     if (globalOp->getType() != OperandType::GLOBAL) continue;
                     auto* g = static_cast<GlobalOperand*>(globalOp);
                     immutableGlobals.erase(g->name);
+                    continue;
+                }
+            }
+        }
+
+        // 若存在调用未知外部函数，保守地认为所有全局变量可被修改
+        for (auto* function : module.functions)
+        {
+            if (!function) continue;
+            for (auto& [id, block] : function->blocks)
+            {
+                for (auto* inst : block->insts)
+                {
+                    auto* call = dynamic_cast<CallInst*>(inst);
+                    if (!call) continue;
+                    if (definedFuncs.find(call->funcName) != definedFuncs.end()) continue;
+                    immutableGlobals.clear();
+                    return;
                 }
             }
         }
@@ -151,7 +177,7 @@ namespace ME
         return true;
     }
 
-    Block* LICMPass::getOrCreatePreheader(Function& function, Analysis::CFG* cfg, Analysis::Loop& loop)
+    Block* LICMPass::getOrCreatePreheader(Function& function, Analysis::CFG* cfg, Analysis::Loop& loop, bool& cfgChanged)
     {
         size_t headerId = loop.header;
         if (headerId >= cfg->invG_id.size()) return nullptr;
@@ -181,6 +207,7 @@ namespace ME
         // 修改外部前驱的跳转目标
         redirectPredsToPreheader(function, predsOutside, headerId, preheader->blockId);
         updateHeaderPhis(function, function.getBlock(headerId), predsOutside, preheader->blockId);
+        cfgChanged = true;
 
         return preheader;
     }
@@ -310,7 +337,7 @@ namespace ME
         {
             auto blockIt = instBlock.find(userInst);
             if (blockIt == instBlock.end()) continue;
-            if (!loop.contains(blockIt->second)) return false;
+            // 使用出现在循环外也是允许的，预头块定义能支配后续出口
         }
         return true;
     }

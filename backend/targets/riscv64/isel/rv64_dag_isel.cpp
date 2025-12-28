@@ -14,26 +14,51 @@
 
 namespace BE::RV64
 {
-    [[maybe_unused]] static inline bool imm12(int imm) { return imm >= -2048 && imm <= 2047; }
+    [[maybe_unused]]static inline bool imm12(int imm) { return imm >= -2048 && imm <= 2047; }
+
+    static Operator getLoadOpForType(BE::DataType* dt)
+    {
+        if (dt && dt->dt == BE::DataType::Type::FLOAT)
+            return (dt->dl == BE::DataType::Length::B32) ? Operator::FLW : Operator::FLD;
+        return (dt && dt->dl == BE::DataType::Length::B32) ? Operator::LW : Operator::LD;
+    }
+
+    static Operator getStoreOpForType(BE::DataType* dt)
+    {
+        if (dt && dt->dt == BE::DataType::Type::FLOAT)
+            return (dt->dl == BE::DataType::Length::B32) ? Operator::FSW : Operator::FSD;
+        return (dt && dt->dl == BE::DataType::Length::B32) ? Operator::SW : Operator::SD;
+    }
 
     std::vector<const DAG::SDNode*> DAGIsel::scheduleDAG(const DAG::SelectionDAG& dag)
     {
-        // ============================================================================
-        // TODO: 实现 DAG 调度
-        // ============================================================================
-        //
-        // 作用：
-        // 将 DAG 的所有节点排序为线性指令序列，保证依赖关系正确。
-        //
-        // 为什么需要：
-        // - DAG 是无序的节点集合，生成代码前必须确定指令的先后顺序
-        // - 必须保证每条指令的操作数在使用前已被计算（拓扑序）
-        // - 需要正确处理 Chain 依赖，维持内存操作与副作用的顺序
-        //
-        // 如何做：
-        // - 后序遍历：从根节点（无使用者的节点）出发，先访问依赖再访问当前节点
+        std::vector<const DAG::SDNode*> result;
+        std::set<const DAG::SDNode*> visited;
 
-        TODO("实现 DAG 调度：输出拓扑序的节点列表");
+        // 后序遍历辅助函数
+        std::function<void(const DAG::SDNode*)> postOrder = [&](const DAG::SDNode* node) {
+            if (!node || visited.count(node)) return;
+            visited.insert(node);
+
+            // 先访问所有操作数（依赖）
+            for (unsigned i = 0; i < node->getNumOperands(); ++i)
+            {
+                const DAG::SDNode* opNode = node->getOperand(i).getNode();
+                if (opNode) postOrder(opNode);
+            }
+
+            // 后访问当前节点
+            result.push_back(node);
+        };
+
+        // 从所有节点开始遍历（确保不遗漏任何节点）
+        for (const auto* node : dag.getNodes())
+        {
+            if (node && !visited.count(node))
+                postOrder(node);
+        }
+
+        return result;
     }
 
     void DAGIsel::allocateRegistersForNode(const DAG::SDNode* node)
@@ -203,50 +228,127 @@ namespace BE::RV64
 
     void DAGIsel::importGlobals()
     {
-        // ============================================================================
-        // TODO: 导入全局变量
-        // ============================================================================
-        //
-        // 作用：
-        // 将 IR 模块中的全局变量转换为后端的 GlobalVariable 对象。
-        //
-        // 为什么需要：
-        // - 全局变量需在生成的汇编中声明和初始化
-        // - 需转换类型（ME::DataType → BE::DataType）
-        // - 需处理初始化值（标量 vs 数组）
-        //
-        // 关键点：
-        // - 遍历 ir_module_->globalVars
-        // - 创建 BE::GlobalVariable 对象
-        // - 处理数组维度（arrayDims）与初始值（initList/init）
-        // - 浮点数需位转换（FLOAT_TO_INT_BITS）
+        // 遍历 IR 模块中的所有全局变量
+        for (auto* glb : ir_module_->globalVars)
+        {
+            // 转换类型: ME::DataType -> BE::DataType
+            BE::DataType* beType = BE::I32;  // 默认 I32
+            if (glb->dt == ME::DataType::F32)
+                beType = BE::F32;
+            else if (glb->dt == ME::DataType::I64 || glb->dt == ME::DataType::PTR)
+                beType = BE::I64;
 
-        TODO("导入全局变量到后端模块");
+            // 创建后端全局变量对象
+            auto* gv = new BE::GlobalVariable(beType, glb->name);
+
+            // 处理数组维度
+            gv->dims = glb->initList.arrayDims;
+
+            // 处理初始化值
+            if (glb->init)
+            {
+                // 标量初始化
+                if (auto* immI32 = dynamic_cast<ME::ImmeI32Operand*>(glb->init))
+                    gv->initVals.push_back(immI32->value);
+                else if (auto* immF32 = dynamic_cast<ME::ImmeF32Operand*>(glb->init))
+                    gv->initVals.push_back(FLOAT_TO_INT_BITS(immF32->value));
+            }
+            else if (!glb->initList.initList.empty())
+            {
+                // 数组初始化列表
+                for (const auto& val : glb->initList.initList)
+                {
+                    if (val.type == FE::AST::floatType)
+                        gv->initVals.push_back(FLOAT_TO_INT_BITS(val.floatValue));
+                    else
+                        gv->initVals.push_back(val.intValue);
+                }
+            }
+
+            m_backend_module->globals.push_back(gv);
+        }
     }
 
     void DAGIsel::collectAllocas(ME::Function* ir_func)
     {
-        // ============================================================================
-        // TODO: 收集函数中的所有 alloca 并注册到 frameInfo
-        // ============================================================================
-        //
-        // 作用：
-        // 遍历函数的所有 IR 指令，找到所有 ALLOCA 指令，计算其需要的栈空间大小，
-        // 并在函数级别的栈帧管理中为其分配槽位。
+        // 遍历函数所有基本块中的指令
+        for (auto& [blockId, block] : ir_func->blocks)
+        {
+            for (auto* inst : block->insts)
+            {
+                // 查找 AllocaInst
+                if (auto* alloca = dynamic_cast<ME::AllocaInst*>(inst))
+                {
+                    // 获取结果寄存器的 ID
+                    auto* resReg = dynamic_cast<ME::RegOperand*>(alloca->res);
+                    if (!resReg) continue;
 
-        TODO("收集 alloca 并注册到 frameInfo");
+                    size_t irRegId = resReg->regNum;
+
+                    // 计算分配大小
+                    int elemSize = (alloca->dt == ME::DataType::F32 || alloca->dt == ME::DataType::I32) ? 4 : 8;
+                    int totalSize = elemSize;
+
+                    // 数组：计算总大小
+                    for (int dim : alloca->dims) totalSize *= dim;
+
+                    // 注册到 frameInfo
+                    ctx_.mfunc->frameInfo.createLocalObject(irRegId, totalSize, 16);
+
+                    // 记录 alloca 到栈帧索引的映射
+                    ctx_.allocaFI[irRegId] = static_cast<int>(irRegId);
+                }
+            }
+        }
     }
 
     void DAGIsel::setupParameters(ME::Function* ir_func)
     {
-        // ============================================================================
-        // TODO: 为函数参数创建虚拟寄存器
-        // ============================================================================
-        //
-        // 作用：
-        // 遍历 IR 函数定义中的所有参数，为每个参数分配虚拟寄存器，并记录参数的虚拟寄存器映射关系
+        // 入口块（假设 blockId 最小的为入口）
+        BE::Block* entry = nullptr;
+        if (!ctx_.mfunc->blocks.empty()) entry = ctx_.mfunc->blocks.begin()->second;
+        if (!entry) return;
 
-        TODO("为函数参数创建虚拟寄存器并建立映射");
+        const Register iArgRegs[] = {PR::a0, PR::a1, PR::a2, PR::a3, PR::a4, PR::a5, PR::a6, PR::a7};
+        const Register fArgRegs[] = {PR::fa0, PR::fa1, PR::fa2, PR::fa3, PR::fa4, PR::fa5, PR::fa6, PR::fa7};
+
+        size_t argIdx      = 0;
+        int    stackOffset = 0;
+
+        // 按参数顺序建立 vreg 映射并生成加载指令
+        for (const auto& [argType, argOp] : ir_func->funcDef->argRegs)
+        {
+            auto* regOp = dynamic_cast<ME::RegOperand*>(argOp);
+            if (!regOp) continue;
+
+            BE::DataType* beType = BE::I64;  // 默认 I64
+            if (argType == ME::DataType::F32)
+                beType = BE::F32;
+            else if (argType == ME::DataType::I32)
+                beType = BE::I32;
+
+            Register vreg = getOrCreateVReg(regOp->regNum, beType);
+            ctx_.mfunc->params.push_back(vreg);
+
+            if (argIdx < 8)
+            {
+                Register srcReg = (beType == BE::F32 || beType == BE::F64) ? fArgRegs[argIdx] : iArgRegs[argIdx];
+                entry->insts.push_back(createMove(new RegOperand(vreg), new RegOperand(srcReg), "param_reg"));
+            }
+            else
+            {
+                int      off = static_cast<int>((argIdx - 8) * 8);
+                Operator op  = getLoadOpForType(beType);
+                auto*    ld  = createIInst(op, vreg, PR::sp, off);
+                ld->comment = "param_stack";
+                entry->insts.push_back(ld);
+                stackOffset = off + 8;
+            }
+
+            ++argIdx;
+        }
+
+        if (stackOffset > 0) ctx_.mfunc->hasStackParam = true;
     }
 
     void DAGIsel::selectCopy(const DAG::SDNode* node, BE::Block* m_block)
@@ -264,23 +366,67 @@ namespace BE::RV64
 
     void DAGIsel::selectPhi(const DAG::SDNode* node, BE::Block* m_block)
     {
-        // ============================================================================
-        // TODO: 选择 PHI 节点
-        // ============================================================================
-        //
-        // 作用：
-        // 为 PHI 节点生成 MIR 的 PhiInst，记录所有前驱块与对应的值。
-        //
-        // 为什么需要：
-        // - PHI 节点在 SSA 中合并来自不同前驱的值
-        // - 需要保留前驱块信息，供后续 PHI 消解 Pass 使用
-        //
-        // 关键点：
-        // - 此处的常量应直接作为立即数，无需实例化为寄存器
-        // - 至于为什么，你可以思考一下 getOperandReg 的实现
-        // - getOperandReg 对于第一次使用常量的行为是什么，会将立即数加载的指令插入到什么地方？
+        // PHI 节点的操作数成对出现：[value0, label0, value1, label1, ...]
+        unsigned numOps = node->getNumOperands();
+        if (numOps < 2 || numOps % 2 != 0) return;
 
-        TODO("选择 PHI 节点：提取前驱与值，生成 PhiInst");
+        // 获取目标寄存器
+        Register dst = nodeToVReg_.at(node);
+
+        // 创建 PhiInst
+        auto* phi = new PhiInst(dst);
+
+        // 遍历操作数对
+        for (unsigned i = 0; i < numOps; i += 2)
+        {
+            const DAG::SDNode* valNode   = node->getOperand(i).getNode();
+            const DAG::SDNode* labelNode = node->getOperand(i + 1).getNode();
+
+            if (!valNode || !labelNode) continue;
+
+            // 获取前驱块标签
+            uint32_t predLabel = 0;
+            if (labelNode->hasImmI64())
+                predLabel = static_cast<uint32_t>(labelNode->getImmI64());
+
+            // 获取值：对于常量直接使用立即数，避免在当前块实例化
+            Operand* srcOp = nullptr;
+            auto     valOp = static_cast<DAG::ISD>(valNode->getOpcode());
+
+            if (valOp == DAG::ISD::CONST_I32 || valOp == DAG::ISD::CONST_I64)
+            {
+                int imm = valNode->hasImmI64() ? static_cast<int>(valNode->getImmI64()) : 0;
+                srcOp = new I32Operand(imm);
+            }
+            else if (valOp == DAG::ISD::CONST_F32)
+            {
+                float f = valNode->hasImmF32() ? valNode->getImmF32() : 0.0f;
+                srcOp = new F32Operand(f);
+            }
+            else
+            {
+                // 寄存器：使用 getOrCreateVReg 而非 getOperandReg（避免在当前块实例化）
+                if (valNode->hasIRRegId())
+                {
+                    DataType* dt = valNode->getNumValues() > 0 ? valNode->getValueType(0) : BE::I64;
+                    Register reg = getOrCreateVReg(valNode->getIRRegId(), dt);
+                    srcOp = new RegOperand(reg);
+                }
+                else
+                {
+                    // 已调度节点，从 nodeToVReg_ 获取
+                    auto it = nodeToVReg_.find(valNode);
+                    if (it != nodeToVReg_.end())
+                        srcOp = new RegOperand(it->second);
+                    else
+                        continue;
+                }
+            }
+
+            phi->incomingVals[predLabel] = srcOp;
+        }
+
+        m_block->insts.push_back(phi);
     }
 
     void DAGIsel::selectBinary(const DAG::SDNode* node, BE::Block* m_block)
@@ -488,11 +634,14 @@ namespace BE::RV64
             if (static_cast<DAG::ISD>(baseNode->getOpcode()) == DAG::ISD::FRAME_INDEX)
             {
                 int fi            = baseNode->getFrameIndex();
-                baseReg           = getVReg(BE::I64);
-                Instr* addrInst   = createIInst(Operator::ADDI, baseReg, PR::sp, 0);
-                addrInst->fiop    = new FrameIndexOperand(fi);
-                addrInst->use_ops = true;
-                m_block->insts.push_back(addrInst);
+                baseReg           = PR::sp;
+                Operator loadOp   = getLoadOpForType(dst.dt);
+                auto*    ldInst   = createIInst(loadOp, dst, baseReg, 0);
+                ldInst->imme      = static_cast<int>(offset);
+                ldInst->fiop      = new FrameIndexOperand(fi);
+                ldInst->use_ops   = true;
+                m_block->insts.push_back(ldInst);
+                return;
             }
             else if (static_cast<DAG::ISD>(baseNode->getOpcode()) == DAG::ISD::SYMBOL && baseNode->hasSymbol())
             {
@@ -504,7 +653,7 @@ namespace BE::RV64
             else
                 baseReg = getOperandReg(baseNode, m_block);
 
-            Operator loadOp = (dst.dt == BE::F32 || dst.dt == BE::F64) ? Operator::FLW : Operator::LW;
+            Operator loadOp = getLoadOpForType(dst.dt);
 
             if (offset < -2048 || offset > 2047)
             {
@@ -520,79 +669,342 @@ namespace BE::RV64
         else
         {
             Register addrReg = getOperandReg(addr, m_block);
-            Operator loadOp  = (dst.dt == BE::F32 || dst.dt == BE::F64) ? Operator::FLW : Operator::LW;
+            Operator loadOp  = getLoadOpForType(dst.dt);
             m_block->insts.push_back(createIInst(loadOp, dst, addrReg, 0));
         }
     }
 
     void DAGIsel::selectStore(const DAG::SDNode* node, BE::Block* m_block)
     {
-        // ============================================================================
-        // TODO: 选择 STORE 节点
-        // ============================================================================
-        //
-        // 作用：
-        // 为 STORE 节点生成目标相关的存储指令（SW/SD/FSW/FSD）。
-        //
-        // 与 LOAD 的相似性：
-        // - 同样需要地址选择与立即数范围检查
-        // - 操作数：[Chain, Value, Address]
+        // STORE 操作数：[Chain, Value, Address]
+        if (node->getNumOperands() < 3) return;
 
-        TODO("选择 STORE：地址折叠 + 生成存储指令");
+        const DAG::SDNode* valNode  = node->getOperand(1).getNode();
+        const DAG::SDNode* addrNode = node->getOperand(2).getNode();
+
+        if (!valNode || !addrNode) return;
+
+        // 获取要存储的值的寄存器
+        Register srcReg = getOperandReg(valNode, m_block);
+
+        // 确定存储指令类型
+        DataType* valType = valNode->getNumValues() > 0 ? valNode->getValueType(0) : BE::I32;
+        Operator  storeOp = getStoreOpForType(valType);
+
+        // 尝试地址选择
+        const DAG::SDNode* baseNode;
+        int64_t            offset = 0;
+
+        if (selectAddress(addrNode, baseNode, offset))
+        {
+            Register baseReg;
+
+            if (static_cast<DAG::ISD>(baseNode->getOpcode()) == DAG::ISD::FRAME_INDEX)
+            {
+                int fi            = baseNode->getFrameIndex();
+                baseReg           = PR::sp;
+                auto* storeInst   = createSInst(storeOp, srcReg, baseReg, 0);
+                storeInst->imme   = static_cast<int>(offset);
+                storeInst->fiop   = new FrameIndexOperand(fi);
+                storeInst->use_ops = true;
+                m_block->insts.push_back(storeInst);
+                return;
+            }
+            else if (static_cast<DAG::ISD>(baseNode->getOpcode()) == DAG::ISD::SYMBOL && baseNode->hasSymbol())
+            {
+                std::string symbol = baseNode->getSymbol();
+                baseReg            = getVReg(BE::I64);
+                Label symbolLabel(symbol, false, true);
+                m_block->insts.push_back(createUInst(Operator::LA, baseReg, symbolLabel));
+            }
+            else
+                baseReg = getOperandReg(baseNode, m_block);
+
+            // 检查立即数范围
+            if (offset < -2048 || offset > 2047)
+            {
+                Register offsetReg = getVReg(BE::I64);
+                m_block->insts.push_back(createMove(new RegOperand(offsetReg), static_cast<int>(offset), LOC_STR));
+                Register finalBase = getVReg(BE::I64);
+                m_block->insts.push_back(createRInst(Operator::ADD, finalBase, baseReg, offsetReg));
+                m_block->insts.push_back(createSInst(storeOp, srcReg, finalBase, 0));
+            }
+            else
+                m_block->insts.push_back(createSInst(storeOp, srcReg, baseReg, static_cast<int>(offset)));
+        }
+        else
+        {
+            Register addrReg = getOperandReg(addrNode, m_block);
+            m_block->insts.push_back(createSInst(storeOp, srcReg, addrReg, 0));
+        }
     }
 
     void DAGIsel::selectICmp(const DAG::SDNode* node, BE::Block* m_block)
     {
-        // ============================================================================
-        // TODO: 选择整数比较节点（ICMP）
-        // ============================================================================
+        if (node->getNumOperands() < 2) return;
 
-        TODO("选择 ICMP：根据条件生成比较指令序列");
+        Register dst = nodeToVReg_.at(node);
+
+        const DAG::SDNode* lhs = node->getOperand(0).getNode();
+        const DAG::SDNode* rhs = node->getOperand(1).getNode();
+
+        Register lhsReg = getOperandReg(lhs, m_block);
+        Register rhsReg = getOperandReg(rhs, m_block);
+
+        // 从节点的立即数中获取比较条件码
+        int condCode = node->hasImmI64() ? static_cast<int>(node->getImmI64()) : 0;
+        auto cond = static_cast<ME::ICmpOp>(condCode);
+
+        switch (cond)
+        {
+            case ME::ICmpOp::EQ:
+            {
+                // XOR + SEQZ: dst = (lhs ^ rhs) == 0
+                Register tmp = getVReg(BE::I64);
+                m_block->insts.push_back(createRInst(Operator::XOR, tmp, lhsReg, rhsReg));
+                m_block->insts.push_back(createIInst(Operator::SLTIU, dst, tmp, 1));
+                break;
+            }
+            case ME::ICmpOp::NE:
+            {
+                // XOR + SNEZ: dst = (lhs ^ rhs) != 0
+                Register tmp = getVReg(BE::I64);
+                m_block->insts.push_back(createRInst(Operator::XOR, tmp, lhsReg, rhsReg));
+                m_block->insts.push_back(createRInst(Operator::SLTU, dst, PR::x0, tmp));
+                break;
+            }
+            case ME::ICmpOp::SLT:
+                m_block->insts.push_back(createRInst(Operator::SLT, dst, lhsReg, rhsReg));
+                break;
+            case ME::ICmpOp::SGE:
+            {
+                // SGE = NOT(SLT)
+                Register tmp = getVReg(BE::I64);
+                m_block->insts.push_back(createRInst(Operator::SLT, tmp, lhsReg, rhsReg));
+                m_block->insts.push_back(createIInst(Operator::XORI, dst, tmp, 1));
+                break;
+            }
+            case ME::ICmpOp::SGT:
+                // SGT = SLT with swapped operands
+                m_block->insts.push_back(createRInst(Operator::SLT, dst, rhsReg, lhsReg));
+                break;
+            case ME::ICmpOp::SLE:
+            {
+                // SLE = NOT(SGT) = NOT(SLT swapped)
+                Register tmp = getVReg(BE::I64);
+                m_block->insts.push_back(createRInst(Operator::SLT, tmp, rhsReg, lhsReg));
+                m_block->insts.push_back(createIInst(Operator::XORI, dst, tmp, 1));
+                break;
+            }
+            case ME::ICmpOp::ULT:
+                m_block->insts.push_back(createRInst(Operator::SLTU, dst, lhsReg, rhsReg));
+                break;
+            case ME::ICmpOp::UGE:
+            {
+                Register tmp = getVReg(BE::I64);
+                m_block->insts.push_back(createRInst(Operator::SLTU, tmp, lhsReg, rhsReg));
+                m_block->insts.push_back(createIInst(Operator::XORI, dst, tmp, 1));
+                break;
+            }
+            case ME::ICmpOp::UGT:
+                m_block->insts.push_back(createRInst(Operator::SLTU, dst, rhsReg, lhsReg));
+                break;
+            case ME::ICmpOp::ULE:
+            {
+                Register tmp = getVReg(BE::I64);
+                m_block->insts.push_back(createRInst(Operator::SLTU, tmp, rhsReg, lhsReg));
+                m_block->insts.push_back(createIInst(Operator::XORI, dst, tmp, 1));
+                break;
+            }
+            default:
+                ERROR("Unsupported ICMP condition: %d", condCode);
+        }
     }
 
     void DAGIsel::selectFCmp(const DAG::SDNode* node, BE::Block* m_block)
     {
-        // ============================================================================
-        // TODO: 选择浮点比较节点（FCMP）
-        // ============================================================================
+        if (node->getNumOperands() < 2) return;
 
-        TODO("选择 FCMP：根据条件生成浮点比较指令");
+        Register dst = nodeToVReg_.at(node);
+
+        const DAG::SDNode* lhs = node->getOperand(0).getNode();
+        const DAG::SDNode* rhs = node->getOperand(1).getNode();
+
+        Register lhsReg = getOperandReg(lhs, m_block);
+        Register rhsReg = getOperandReg(rhs, m_block);
+
+        // 从节点的立即数中获取比较条件码
+        int condCode = node->hasImmI64() ? static_cast<int>(node->getImmI64()) : 0;
+        auto cond = static_cast<ME::FCmpOp>(condCode);
+
+        switch (cond)
+        {
+            case ME::FCmpOp::OEQ:
+            case ME::FCmpOp::UEQ:
+                m_block->insts.push_back(createRInst(Operator::FEQ_S, dst, lhsReg, rhsReg));
+                break;
+            case ME::FCmpOp::OLT:
+            case ME::FCmpOp::ULT:
+                m_block->insts.push_back(createRInst(Operator::FLT_S, dst, lhsReg, rhsReg));
+                break;
+            case ME::FCmpOp::OLE:
+            case ME::FCmpOp::ULE:
+                m_block->insts.push_back(createRInst(Operator::FLE_S, dst, lhsReg, rhsReg));
+                break;
+            case ME::FCmpOp::OGT:
+            case ME::FCmpOp::UGT:
+                // OGT = OLT with swapped operands
+                m_block->insts.push_back(createRInst(Operator::FLT_S, dst, rhsReg, lhsReg));
+                break;
+            case ME::FCmpOp::OGE:
+            case ME::FCmpOp::UGE:
+                // OGE = OLE with swapped operands
+                m_block->insts.push_back(createRInst(Operator::FLE_S, dst, rhsReg, lhsReg));
+                break;
+            case ME::FCmpOp::ONE:
+            case ME::FCmpOp::UNE:
+            {
+                // ONE = NOT(OEQ)
+                Register tmp = getVReg(BE::I64);
+                m_block->insts.push_back(createRInst(Operator::FEQ_S, tmp, lhsReg, rhsReg));
+                m_block->insts.push_back(createIInst(Operator::XORI, dst, tmp, 1));
+                break;
+            }
+            default:
+                ERROR("Unsupported FCMP condition: %d", condCode);
+        }
     }
 
     void DAGIsel::selectBranch(const DAG::SDNode* node, BE::Block* m_block)
     {
-        // ============================================================================
-        // TODO: 选择分支节点（BR / BRCOND）
-        // ============================================================================
-        //
-        // 作用：
-        // 为无条件分支与条件分支生成跳转指令。
-        // - BR 直接跳转，用 JAL x0, label
-        // - BRCOND 需判断条件（非 0 为真），生成 BNE + JAL 序列
+        auto opcode = static_cast<DAG::ISD>(node->getOpcode());
 
-        TODO("选择分支：区分 BR/BRCOND 生成跳转指令");
+        if (opcode == DAG::ISD::BR)
+        {
+            // 无条件分支: BR [Chain, Target]
+            if (node->getNumOperands() < 1) return;
+
+            // allow optional chain at operand 0
+            int                  targetIdx = (node->getNumOperands() == 1) ? 0 : 1;
+            const DAG::SDNode*   targetNode = node->getOperand(targetIdx).getNode();
+            if (!targetNode || !targetNode->hasImmI64()) return;
+
+            int targetLabel = static_cast<int>(targetNode->getImmI64());
+            m_block->insts.push_back(createJInst(Operator::JAL, PR::x0, Label(targetLabel)));
+        }
+        else if (opcode == DAG::ISD::BRCOND)
+        {
+            // 条件分支: BRCOND [Chain, Cond, TrueLabel, FalseLabel]
+            if (node->getNumOperands() < 3) return;
+
+            int condIdx = (node->getNumOperands() == 3) ? 0 : 1;
+            const DAG::SDNode* condNode      = node->getOperand(condIdx).getNode();
+            const DAG::SDNode* trueLabelNode = node->getOperand(condIdx + 1).getNode();
+            const DAG::SDNode* falseLabelNode = node->getOperand(condIdx + 2).getNode();
+
+            if (!condNode || !trueLabelNode || !falseLabelNode) return;
+
+            Register condReg = getOperandReg(condNode, m_block);
+
+            int trueLabel = trueLabelNode->hasImmI64() ? static_cast<int>(trueLabelNode->getImmI64()) : 0;
+            int falseLabel = falseLabelNode->hasImmI64() ? static_cast<int>(falseLabelNode->getImmI64()) : 0;
+
+            // 条件非 0 则跳转到 trueLabel
+            m_block->insts.push_back(createBInst(Operator::BNE, condReg, PR::x0, Label(trueLabel)));
+
+            // 否则跳转到 falseLabel
+            m_block->insts.push_back(createJInst(Operator::JAL, PR::x0, Label(falseLabel)));
+        }
     }
 
     void DAGIsel::selectCall(const DAG::SDNode* node, BE::Block* m_block)
     {
-        // ============================================================================
-        // TODO: 选择 CALL 节点
-        // ============================================================================
-        //
-        // 作用：
-        // 为函数调用生成参数传递、CALL 指令、返回值处理的完整序列。
-        // - 需要遵循目标调用约定（参数寄存器 vs 栈传参）
-        // - 整数与浮点参数使用不同的寄存器组
-        // - 内置函数（llvm.memset 等）需特殊处理，转化为对 memset 的调用
-        //
-        // 关键步骤：
-        // - 提取函数名（SYMBOL 节点）
-        // - 收集参数并分类（整数 vs 浮点）
-        // - 前 8 个整数参数 → a0-a7，前 8 个浮点参数 → fa0-fa7
-        // - 超出的参数 → 存储到栈上（SP + 0, SP + 8, ...）
-        // - 返回值从 a0/fa0 搬运到目标寄存器
+        // CALL 操作数: [Chain, Callee, Arg0, Arg1, ...]
+        if (node->getNumOperands() < 2) return;
 
-        TODO("选择 CALL：参数传递 + 生成调用指令 + 返回值处理");
+        const DAG::SDNode* calleeNode = node->getOperand(1).getNode();
+        if (!calleeNode) return;
+
+        // 提取函数名
+        std::string funcName = calleeNode->hasSymbol() ? calleeNode->getSymbol() : "unknown";
+
+        // 处理内置函数
+        if (funcName.find("llvm.memset") != std::string::npos)
+            funcName = "memset";
+        else if (funcName.find("llvm.memcpy") != std::string::npos)
+            funcName = "memcpy";
+
+        const Register iArgRegs[] = {PR::a0, PR::a1, PR::a2, PR::a3, PR::a4, PR::a5, PR::a6, PR::a7};
+        const Register fArgRegs[] = {PR::fa0, PR::fa1, PR::fa2, PR::fa3, PR::fa4, PR::fa5, PR::fa6, PR::fa7};
+
+        int argCount      = static_cast<int>(node->getNumOperands()) - 2;
+        int stackArgBytes = argCount > 8 ? (argCount - 8) * 8 : 0;
+        int tempBase      = stackArgBytes;  // 临时区紧跟在真实栈参数之后
+
+        int iRegCnt = 0;
+        int fRegCnt = 0;
+
+        struct ArgInfo
+        {
+            unsigned  pos;
+            Register  reg;
+            DataType* type;
+        };
+        std::vector<ArgInfo> regArgs;
+
+        // 先将所有参数写入栈上的缓冲区，避免后续搬运覆盖尚未使用的源值
+        for (unsigned idx = 2; idx < node->getNumOperands(); ++idx)
+        {
+            const DAG::SDNode* argNode = node->getOperand(idx).getNode();
+            if (!argNode) continue;
+
+            Register  argReg  = getOperandReg(argNode, m_block);
+            DataType* argType = argNode->getNumValues() > 0 ? argNode->getValueType(0) : BE::I64;
+
+            unsigned argPos = idx - 2;  // argument index in call
+            if (argPos < 8)
+            {
+                regArgs.push_back({argPos, argReg, argType});
+                Operator op = getStoreOpForType(argType);
+                auto*    st = createSInst(op, argReg, PR::sp, static_cast<int>(tempBase + argPos * 8));
+                st->comment = "call_stackarg";
+                m_block->insts.push_back(st);
+            }
+            else
+            {
+                int      off = static_cast<int>((argPos - 8) * 8);
+                Operator op  = getStoreOpForType(argType);
+                auto*    st  = createSInst(op, argReg, PR::sp, off);
+                st->comment  = "call_stackarg";
+                m_block->insts.push_back(st);
+            }
+        }
+
+        // 再从缓冲区加载到真实的调用寄存器，保证并行搬运正确
+        for (auto& info : regArgs)
+        {
+            Register dst = (info.type == BE::F32 || info.type == BE::F64) ? fArgRegs[info.pos] : iArgRegs[info.pos];
+            Operator op  = getLoadOpForType(info.type);
+            auto*    ld  = createIInst(op, dst, PR::sp, static_cast<int>(tempBase + info.pos * 8));
+            ld->comment  = "call_stackarg";
+            m_block->insts.push_back(ld);
+            if (info.type == BE::F32 || info.type == BE::F64)
+                ++fRegCnt;
+            else
+                ++iRegCnt;
+        }
+
+        // 生成 CALL 指令
+        m_block->insts.push_back(createCallInst(Operator::CALL, funcName, iRegCnt, fRegCnt));
+
+        // 处理返回值
+        auto it = nodeToVReg_.find(node);
+        if (it != nodeToVReg_.end())
+        {
+            Register dst = it->second;
+            Register srcReg = (dst.dt == BE::F32 || dst.dt == BE::F64) ? PR::fa0 : PR::a0;
+            m_block->insts.push_back(createMove(new RegOperand(dst), new RegOperand(srcReg), LOC_STR));
+        }
     }
 
     void DAGIsel::selectRet(const DAG::SDNode* node, BE::Block* m_block)
@@ -616,14 +1028,36 @@ namespace BE::RV64
 
     void DAGIsel::selectCast(const DAG::SDNode* node, BE::Block* m_block)
     {
-        // ============================================================================
-        // TODO: 选择类型转换节点（ZEXT / SITOFP / FPTOSI）
-        // ============================================================================
-        //
-        // 作用：
-        // 为类型转换节点生成目标相关的转换指令。
+        if (node->getNumOperands() < 1) return;
 
-        TODO("选择类型转换：生成 FCVT 或扩展指令");
+        auto opcode = static_cast<DAG::ISD>(node->getOpcode());
+        Register dst = nodeToVReg_.at(node);
+
+        const DAG::SDNode* srcNode = node->getOperand(0).getNode();
+        if (!srcNode) return;
+
+        Register srcReg = getOperandReg(srcNode, m_block);
+
+        switch (opcode)
+        {
+            case DAG::ISD::ZEXT:
+                // 零扩展: 使用 ZEXT.W 或 SLLI + SRLI
+                m_block->insts.push_back(createR2Inst(Operator::ZEXT_W, dst, srcReg));
+                break;
+
+            case DAG::ISD::SITOFP:
+                // 有符号整数转浮点
+                m_block->insts.push_back(createR2Inst(Operator::FCVT_S_W, dst, srcReg));
+                break;
+
+            case DAG::ISD::FPTOSI:
+                // 浮点转有符号整数
+                m_block->insts.push_back(createR2Inst(Operator::FCVT_W_S, dst, srcReg));
+                break;
+
+            default:
+                ERROR("Unsupported cast opcode: %s", DAG::toString(opcode));
+        }
     }
 
     void DAGIsel::selectNode(const DAG::SDNode* node, BE::Block* m_block)
@@ -678,48 +1112,82 @@ namespace BE::RV64
 
     void DAGIsel::selectBlock(ME::Block* ir_block, const DAG::SelectionDAG& dag)
     {
-        // ============================================================================
-        // TODO: 选择基本块的所有指令
-        // ============================================================================
-        //
-        // 作用：
-        // 将一个基本块的 DAG 转换为 MIR 指令序列。
-        //
-        // 采用两阶段：
-        // - 阶段 1：调度与寄存器分配
-        //   * 调度 DAG 节点，确定指令顺序
-        //   * 为每个节点预分配虚拟寄存器（如果不预分配会怎么样？可以怎么解决？）
-        // - 阶段 2：指令选择
-        //   * 按调度顺序遍历节点，调用 selectNode 生成具体指令
-        //   * 使用已选择集合避免重复选择
+        // 获取当前 MIR 基本块
+        BE::Block* m_block = ctx_.mfunc->blocks[static_cast<uint32_t>(ir_block->blockId)];
 
-        TODO("选择基本块：调度 + 分配寄存器 + 生成指令");
+        // 重置块级状态
+        nodeToVReg_.clear();
+        selected_.clear();
+
+        // 阶段 1：调度 DAG 节点
+        auto scheduledNodes = scheduleDAG(dag);
+
+        // 阶段 1.5：为每个节点预分配虚拟寄存器
+        for (const auto* node : scheduledNodes)
+            allocateRegistersForNode(node);
+
+        // 阶段 2：指令选择
+        for (const auto* node : scheduledNodes)
+        {
+            if (selected_.count(node)) continue;
+            selected_.insert(node);
+            selectNode(node, m_block);
+        }
     }
 
     void DAGIsel::selectFunction(ME::Function* ir_func)
     {
-        // ============================================================================
-        // TODO: 选择函数的所有指令
-        // ============================================================================
-        //
-        // 作用：
-        // 协调整个函数的指令选择流程，包括栈帧管理、参数设置、基本块选择。
-        //
-        // 为什么需要函数级初始化：
-        // - 每个函数有独立的虚拟寄存器空间（vregMap、nodeToVReg_）
-        // - 需要计算栈帧布局（传出参数区、局部变量区）
-        // - 需要创建所有基本块的 MIR 对象
-        //
-        // 关键步骤：
-        // 1. 重置上下文
-        // 2. 创建后端函数对象
-        // 3. 计算传出参数区大小
-        // 4. 收集局部变量
-        // 5. 创建所有基本块对象
-        // 6. 为参数分配虚拟寄存器
-        // 7. 对每个基本块做指令选择
+        // 1. 重置函数级上下文
+        ctx_.mfunc = nullptr;
+        ctx_.vregMap.clear();
+        ctx_.allocaFI.clear();
 
-        TODO("选择函数：初始化上下文 + 栈帧管理 + 逐块选择");
+        // 2. 创建后端函数对象
+        std::string funcName = ir_func->funcDef->funcName;
+        ctx_.mfunc = new BE::Function(funcName);
+        m_backend_module->functions.push_back(ctx_.mfunc);
+
+        // 3. 计算传出参数区大小（遍历所有 CALL 指令找最大参数数量）
+        //    为前 8 个寄存器参数预留临时区，避免搬运时被覆盖
+        int maxCallBytes = 0;
+        for (auto& [blockId, block] : ir_func->blocks)
+        {
+            for (auto* inst : block->insts)
+            {
+                if (auto* call = dynamic_cast<ME::CallInst*>(inst))
+                {
+                    int argCount      = static_cast<int>(call->args.size());
+                    int stackArgBytes = std::max(0, argCount - 8) * 8;
+                    int regTempBytes  = std::min(argCount, 8) * 8;  // 为 a0-a7 预留的临时区
+                    int totalBytes    = stackArgBytes + regTempBytes;
+                    if (totalBytes > maxCallBytes) maxCallBytes = totalBytes;
+                }
+            }
+        }
+        ctx_.mfunc->paramSize = maxCallBytes;
+        ctx_.mfunc->frameInfo.setParamAreaSize(ctx_.mfunc->paramSize);
+
+        // 4. 收集局部变量（alloca）
+        collectAllocas(ir_func);
+
+        // 5. 创建所有基本块的 MIR 对象
+        for (auto& [blockId, block] : ir_func->blocks)
+        {
+            auto* m_block = new BE::Block(static_cast<uint32_t>(blockId));
+            ctx_.mfunc->blocks[static_cast<uint32_t>(blockId)] = m_block;
+        }
+
+        // 6. 为参数分配虚拟寄存器
+        setupParameters(ir_func);
+
+        // 7. 对每个基本块构建 DAG 并做指令选择
+        for (auto& [blockId, block] : ir_func->blocks)
+        {
+            // 获取该块的 SelectionDAG（由 target_->buildDAG 预先构建）
+            auto it = target_->block_dags.find(block);
+            if (it != target_->block_dags.end() && it->second)
+                selectBlock(block, *(it->second));
+        }
     }
 
     void DAGIsel::runImpl()

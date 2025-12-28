@@ -3,6 +3,8 @@
 
 #include <debug.h>
 
+
+//定义了目标无关的通用操作码
 namespace BE
 {
     namespace DAG

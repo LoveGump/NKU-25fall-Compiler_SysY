@@ -39,17 +39,11 @@ namespace BE
     bool Register::operator<(Register other) const
     {
         if (isVreg != other.isVreg) return isVreg < other.isVreg;
-        if (rId != other.rId) return rId < other.rId;
-        if (dt != other.dt)
-        {
-            if (dt->dt != other.dt->dt) return dt->dt < other.dt->dt;
-            return dt->dl < other.dt->dl;
-        }
-        return false;
+        return rId < other.rId;
     }
 
     bool Register::operator==(Register other) const
     {
-        return rId == other.rId && dt == other.dt && isVreg == other.isVreg;
+        return rId == other.rId && isVreg == other.isVreg;
     }
 }  // namespace BE

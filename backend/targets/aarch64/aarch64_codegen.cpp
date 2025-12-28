@@ -126,8 +126,7 @@ namespace BE::AArch64
             case OpType::L:
             {
                 auto* lb = static_cast<LabelOperand*>(inst->operands[0]);
-                ss << " "
-                   << "." << cur_func_->name << "_" << lb->targetBlockId;
+                ss << " " << "." << cur_func_->name << "_" << lb->targetBlockId;
                 break;
             }
             case OpType::SYM:

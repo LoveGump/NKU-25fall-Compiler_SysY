@@ -32,6 +32,7 @@ namespace BE
         std::vector<FrameObject>                spillSlots_;      // spill slots (indexed by FI)
         int                                     paramSize_ = 0;   // outgoing args area (max)
         int                                     baseAlign_ = 16;  // default stack alignment
+        int                                     baseOffset_ = 0;  // extra offset added in lowering (e.g. callee-saved area)
 
         static inline int alignTo(int v, int a) { return (v + (a - 1)) & ~(a - 1); }
 
@@ -61,13 +62,13 @@ namespace BE
         {
             auto it = irRegToObject_.find(irRegId);
             if (it == irRegToObject_.end()) return -1;
-            return it->second.offset;
+            return it->second.offset < 0 ? -1 : it->second.offset + baseOffset_;
         }
 
         int getSpillSlotOffset(int fi) const
         {
             if (fi < 0 || fi >= static_cast<int>(spillSlots_.size())) return -1;
-            return spillSlots_[fi].offset;
+            return spillSlots_[fi].offset < 0 ? -1 : spillSlots_[fi].offset + baseOffset_;
         }
 
         bool hasObject(size_t irRegId) const { return irRegToObject_.find(irRegId) != irRegToObject_.end(); }
@@ -77,6 +78,8 @@ namespace BE
 
         void setBaseAlignment(int a) { baseAlign_ = std::max(8, a); }
         int  getBaseAlignment() const { return baseAlign_; }
+        void setBaseOffset(int off) { baseOffset_ = off; }
+        int  getBaseOffset() const { return baseOffset_; }
 
         int calculateOffsets()
         {
@@ -106,7 +109,7 @@ namespace BE
                 if (obj.offset >= 0) maxOff = std::max(maxOff, obj.offset + obj.size);
             for (auto& slot : spillSlots_)
                 if (slot.offset >= 0) maxOff = std::max(maxOff, slot.offset + slot.size);
-            return alignTo(maxOff, baseAlign_);
+            return alignTo(maxOff, baseAlign_) + baseOffset_;
         }
 
         int createOrGetObject(size_t irRegId, int sizeBytes, int alignment = 16)

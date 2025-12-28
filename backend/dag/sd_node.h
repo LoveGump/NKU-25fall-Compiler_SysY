@@ -14,10 +14,12 @@ namespace BE
     {
         class SDNode;
 
+        // SDValue: 指向 DAG 节点的"智能引用"
+        // 一个节点可能产生多个结果，res_no_ 指定是哪个结果
         class SDValue
         {
-            SDNode*  node_;
-            uint32_t res_no_;
+            SDNode*  node_;// 指向的节点
+            uint32_t res_no_;//结果编号
 
           public:
             SDValue() : node_(nullptr), res_no_(0) {}
@@ -28,25 +30,27 @@ namespace BE
             explicit operator bool() const { return node_ != nullptr; }
         };
 
+        
+        // SDNode: DAG 中的一个节点，代表一个操作
         class SDNode
         {
-            uint32_t               id_ = 0;
-            uint32_t               opcode_;
-            std::vector<SDValue>   operands_;
-            std::vector<DataType*> value_types_;
+            uint32_t               id_ = 0;// 节点编号
+            uint32_t               opcode_;// 操作码
+            std::vector<SDValue>   operands_;// 操作数
+            std::vector<DataType*> value_types_;// 结果类型
 
-            bool        has_imm_i64_ = false;
-            int64_t     imm_i64_     = 0;
-            bool        has_imm_f32_ = false;
-            float       imm_f32_     = 0.0f;
-            bool        has_symbol_  = false;
-            std::string symbol_;
+            bool        has_imm_i64_ = false;// 是否有整数立即数
+            int64_t     imm_i64_     = 0;// 整数立即数
+            bool        has_imm_f32_ = false;// 是否有浮点数立即数
+            float       imm_f32_     = 0.0f;// 浮点数立即数
+            bool        has_symbol_  = false;// 是否有符号
+            std::string symbol_;//符号名
 
-            bool   has_ir_reg_id_ = false;
-            size_t ir_reg_id_     = 0;
+            bool   has_ir_reg_id_ = false;// 是否有 IR 寄存器 ID
+            size_t ir_reg_id_     = 0;// IR 寄存器 ID
 
-            bool has_frame_index_ = false;
-            int  frame_index_     = -1;
+            bool has_frame_index_ = false;// 是否有栈帧索引
+            int  frame_index_     = -1;// 栈帧索引
 
           public:
             SDNode(uint32_t opcode, const std::vector<DataType*>& vts, const std::vector<SDValue>& ops)

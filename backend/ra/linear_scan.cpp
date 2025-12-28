@@ -31,7 +31,7 @@ namespace BE::RA
      * 4) 活跃区间构建：按基本块从后向前，根据 IN/OUT 与指令次序，累积每个 vreg 的若干 [start, end) 段并合并。
      * 5) 标记跨调用：若区间与任意调用点重叠（交叉），标记 crossesCall=true，以便后续优先使用被调用者保存寄存器。
      * 6) 线性扫描分配：将区间按起点排序，维护活动集合 active；到达新区间时先移除已过期区间，然后
-     *    尝试选择空闲物理寄存器；若无空闲则选择一个区间溢出（常见启发：溢出“结束点更远”的区间）。
+     *    尝试选择空闲物理寄存器；若无空闲则选择一个区间溢出（常见启发：溢出"结束点更远"的区间）。
      * 7) 重写 MIR：对未分配物理寄存器的 use/def，在指令前/后插入 reload/spill，并用临时物理寄存器替换操作数。
      *
      * 提示：
@@ -46,39 +46,159 @@ namespace BE::RA
             int end;
             Segment(int s = 0, int e = 0) : start(s), end(e) {}
         };
+
         struct Interval
         {
             BE::Register         vreg;
             std::vector<Segment> segs;
             bool                 crossesCall = false;
+            int                  assignedReg = -1;    // Assigned physical register ID, -1 if spilled
+            int                  spillSlot   = -1;    // Spill slot index, -1 if not spilled
 
             void addSegment(int s, int e)
             {
                 if (s >= e) return;
                 segs.emplace_back(s, e);
             }
-            void merge() { TODO("考虑如何合并区间"); }
+
+            void merge()
+            {
+                if (segs.empty()) return;
+                // Sort segments by start point
+                std::sort(segs.begin(), segs.end(), [](const Segment& a, const Segment& b) { return a.start < b.start; });
+                // Merge overlapping or adjacent segments
+                std::vector<Segment> merged;
+                merged.push_back(segs[0]);
+                for (size_t i = 1; i < segs.size(); ++i)
+                {
+                    if (segs[i].start <= merged.back().end)
+                    {
+                        merged.back().end = std::max(merged.back().end, segs[i].end);
+                    }
+                    else
+                    {
+                        merged.push_back(segs[i]);
+                    }
+                }
+                segs = std::move(merged);
+            }
+
+            int getStart() const { return segs.empty() ? INT_MAX : segs.front().start; }
+            int getEnd() const { return segs.empty() ? 0 : segs.back().end; }
+
+            bool overlaps(int point) const
+            {
+                for (const auto& seg : segs)
+                {
+                    if (point >= seg.start && point < seg.end) return true;
+                }
+                return false;
+            }
+
+            bool overlapsInterval(const Interval& other) const
+            {
+                for (const auto& s1 : segs)
+                {
+                    for (const auto& s2 : other.segs)
+                    {
+                        if (s1.start < s2.end && s2.start < s1.end) return true;
+                    }
+                }
+                return false;
+            }
         };
 
         struct IntervalOrder
         {
-            bool operator()(const Interval* a, const Interval* b) const { TODO("实现 IntervalOrder 的比较"); }
+            bool operator()(const Interval* a, const Interval* b) const
+            {
+                // Sort by start point, then by vreg ID for determinism
+                if (a->getStart() != b->getStart()) return a->getStart() < b->getStart();
+                return a->vreg.rId < b->vreg.rId;
+            }
         };
+
+        // Comparator for active set (sorted by end point for easy expiration)
+        struct ActiveOrder
+        {
+            bool operator()(const Interval* a, const Interval* b) const
+            {
+                if (a->getEnd() != b->getEnd()) return a->getEnd() < b->getEnd();
+                return a->vreg.rId < b->vreg.rId;
+            }
+        };
+
+        bool isIntegerType(BE::DataType* dt)
+        {
+            if (!dt) return true;
+            return dt->dt == BE::DataType::Type::INT || dt->dt == BE::DataType::Type::TOKEN;
+        }
+
+        bool isFloatType(BE::DataType* dt)
+        {
+            return dt && dt->dt == BE::DataType::Type::FLOAT;
+        }
     }  // namespace
 
     static std::vector<int> buildAllocatableInt(const BE::Targeting::TargetRegInfo& ri)
     {
-        TODO("收集可分配的 GPR 集合");
+        std::vector<int> allocatable;
+        const auto&      intRegs      = ri.intRegs();
+        const auto&      reservedRegs = ri.reservedRegs();
+        std::set<int>    reserved(reservedRegs.begin(), reservedRegs.end());
+
+        // Include callee-saved registers first (they are preferred for cross-call intervals)
+        const auto& calleeSaved = ri.calleeSavedIntRegs();
+        for (int r : calleeSaved)
+        {
+            if (!reserved.count(r)) allocatable.push_back(r);
+        }
+
+        // Then include caller-saved registers (temporary registers)
+        for (int r : intRegs)
+        {
+            if (!reserved.count(r) && std::find(allocatable.begin(), allocatable.end(), r) == allocatable.end())
+            {
+                allocatable.push_back(r);
+            }
+        }
+        return allocatable;
     }
+
     static std::vector<int> buildAllocatableFloat(const BE::Targeting::TargetRegInfo& ri)
     {
-        TODO("收集可分配的 FPR 集合");
+        std::vector<int> allocatable;
+        const auto&      floatRegs    = ri.floatRegs();
+        const auto&      reservedRegs = ri.reservedRegs();
+        std::set<int>    reserved(reservedRegs.begin(), reservedRegs.end());
+
+        // Include callee-saved FP registers first
+        const auto& calleeSaved = ri.calleeSavedFloatRegs();
+        for (int r : calleeSaved)
+        {
+            if (!reserved.count(r)) allocatable.push_back(r);
+        }
+
+        // Then include caller-saved FP registers
+        for (int r : floatRegs)
+        {
+            if (!reserved.count(r) && std::find(allocatable.begin(), allocatable.end(), r) == allocatable.end())
+            {
+                allocatable.push_back(r);
+            }
+        }
+        return allocatable;
     }
 
     void LinearScanRA::allocateFunction(BE::Function& func, const BE::Targeting::TargetRegInfo& regInfo)
     {
+        std::cerr << "[RA] function " << func.name << " begin" << std::endl;
         ASSERT(BE::Targeting::g_adapter && "TargetInstrAdapter is not set");
 
+        std::cerr << "[RA] " << func.name << " step1 numbering" << std::endl;
+        // ============================================================================
+        // Step 1: Instruction numbering 
+        // ============================================================================
         std::map<BE::Block*, std::pair<int, int>>                                   blockRange;
         std::vector<std::pair<BE::Block*, std::deque<BE::MInstruction*>::iterator>> id2iter;
         std::set<int>                                                               callPoints;
@@ -94,6 +214,10 @@ namespace BE::RA
             blockRange[block] = {start, ins_id};
         }
 
+        std::cerr << "[RA] " << func.name << " step2 USE/DEF" << std::endl;
+        // ============================================================================
+        // Step 2: Build USE/DEF sets for each block
+        // ============================================================================
         std::map<BE::Block*, std::set<BE::Register>> USE, DEF;
         for (auto& [bid, block] : func.blocks)
         {
@@ -112,20 +236,34 @@ namespace BE::RA
             DEF[block] = std::move(def);
         }
 
+        std::cerr << "[RA] " << func.name << " step3 CFG" << std::endl;
         // ============================================================================
-        // 构建 CFG 后继关系
+        // Step 3: Build CFG and get successor relations
         // ============================================================================
-        // 作用：搭建活跃性数据流的图结构。
-        // 如何做：可直接用 MIR::CFGBuilder 生成 CFG，再转换为 succs 映射。
-        BE::MIR::CFG*                                 cfg = nullptr;
+        BE::MIR::CFGBuilder                           builder(BE::Targeting::g_adapter);
+        BE::MIR::CFG*                                 cfg = builder.buildCFGForFunction(&func);
         std::map<BE::Block*, std::vector<BE::Block*>> succs;
-        TODO("RA: 构建 CFG 并获取后继关系");
 
+        if (cfg)
+        {
+            for (auto& [id, block] : func.blocks)
+            {
+                succs[block] = {};
+                if (id < cfg->graph.size())
+                {
+                    for (BE::Block* succ : cfg->graph[id])
+                    {
+                        if (succ) succs[block].push_back(succ);
+                    }
+                }
+            }
+        }
+
+        std::cerr << "[RA] " << func.name << " step4 liveness" << std::endl;
         // ============================================================================
-        // 活跃性分析（IN/OUT）
+        // Step 4: Liveness analysis (IN/OUT)
         // ============================================================================
-        // IN[b] = USE[b] ∪ (OUT[b] − DEF[b])，OUT[b] = ⋃ IN[s]，其中 s ∈ succs[b]
-        // 迭代执行上述操作直到不变为止
+        // IN[b] = USE[b] ∪ (OUT[b] − DEF[b])，OUT[b] = ⋃ IN[s]，s ∈ succs[b]
         std::map<BE::Block*, std::set<BE::Register>> IN, OUT;
         bool                                         changed = true;
         while (changed)
@@ -144,41 +282,340 @@ namespace BE::RA
                 for (auto& r : newOUT)
                     if (!DEF[block].count(r)) newIN.insert(r);
 
-                if (!(newOUT != OUT[block] || newIN != IN[block])) continue;
-
-                OUT[block] = std::move(newOUT);
-                IN[block]  = std::move(newIN);
-                changed    = true;
+                if (newOUT != OUT[block] || newIN != IN[block])
+                {
+                    OUT[block] = std::move(newOUT);
+                    IN[block]  = std::move(newIN);
+                    changed    = true;
+                }
             }
         }
 
         delete cfg;
 
+        std::cerr << "[RA] " << func.name << " step5 intervals" << std::endl;
         // ============================================================================
-        // 构建活跃区间（Intervals）
+        // Step 5: Build live intervals
         // ============================================================================
-        // 作用：得到每个 vreg 的若干 [start,end) 段并合并（interval.merge()）。
-        // 如何做：对每个基本块，反向遍历其指令序列，根据 IN/OUT/uses/defs 更新段的开始/结束。
-        TODO("RA: 构建活跃区间");
+        std::map<BE::Register, Interval> intervals;
 
+        for (auto& [bid, block] : func.blocks)
+        {
+            auto [blockStart, blockEnd] = blockRange[block];
+
+            // All registers in OUT are live at block end
+            for (const auto& r : OUT[block])
+            {
+                if (!r.isVreg) continue;
+                intervals[r].vreg = r;
+                intervals[r].addSegment(blockStart, blockEnd);
+            }
+
+            // Walk instructions backward to build intervals
+            int instIdx = blockEnd - 1;
+            for (auto it = block->insts.rbegin(); it != block->insts.rend(); ++it, --instIdx)
+            {
+                std::vector<BE::Register> uses, defs;
+                BE::Targeting::g_adapter->enumUses(*it, uses);
+                BE::Targeting::g_adapter->enumDefs(*it, defs);
+
+                // Definitions kill the live range at this point
+                for (auto& d : defs)
+                {
+                    if (!d.isVreg) continue;
+                    intervals[d].vreg = d;
+                    // Definition point starts a new segment
+                    intervals[d].addSegment(instIdx, instIdx + 1);
+                }
+
+                // Uses extend the live range
+                for (auto& u : uses)
+                {
+                    if (!u.isVreg) continue;
+                    intervals[u].vreg = u;
+                    intervals[u].addSegment(blockStart, instIdx + 1);
+                }
+            }
+        }
+
+        // Merge segments in each interval
+        for (auto& [vreg, interval] : intervals)
+        {
+            interval.merge();
+        }
+
+        // Mark intervals that cross call points
+        for (auto& [vreg, interval] : intervals)
+        {
+            for (int callPt : callPoints)
+            {
+                if (interval.overlaps(callPt))
+                {
+                    interval.crossesCall = true;
+                    break;
+                }
+            }
+        }
+
+        std::cerr << "[RA] " << func.name << " step6 allocate" << std::endl;
         // ============================================================================
-        // 线性扫描主循环
+        // Step 6: Linear scan main loop
         // ============================================================================
-        // 作用：按区间起点排序；进入新区间前，先从活动集合 active 移除“已结束”的区间；
-        // 然后尝试分配空闲物理寄存器；若无可用，执行溢出策略（如“溢出结束点更远”的区间）。
         auto allIntRegs   = buildAllocatableInt(regInfo);
         auto allFloatRegs = buildAllocatableFloat(regInfo);
-        TODO("RA: 实现 active 维护、空闲物理寄存器选择/冲突检测、溢出策略与记录（assignedPhys / spillFrameIndex）");
 
+        // Separate intervals by type
+        std::vector<Interval*> intIntervals, fpIntervals;
+        for (auto& [vreg, interval] : intervals)
+        {
+            if (isIntegerType(vreg.dt))
+                intIntervals.push_back(&interval);
+            else if (isFloatType(vreg.dt))
+                fpIntervals.push_back(&interval);
+        }
+
+        // Sort by start point
+        std::sort(intIntervals.begin(), intIntervals.end(), IntervalOrder());
+        std::sort(fpIntervals.begin(), fpIntervals.end(), IntervalOrder());
+
+        // Callee-saved register sets for prioritization
+        std::set<int> calleeSavedIntSet(regInfo.calleeSavedIntRegs().begin(), regInfo.calleeSavedIntRegs().end());
+        std::set<int> calleeSavedFPSet(regInfo.calleeSavedFloatRegs().begin(), regInfo.calleeSavedFloatRegs().end());
+
+        // Allocate integer registers
+        auto allocateIntervals = [&](std::vector<Interval*>& toAlloc, const std::vector<int>& allocRegs,
+                                     const std::set<int>& calleeSaved) {
+            std::set<Interval*, ActiveOrder> active;
+            std::set<int>                    freeRegs(allocRegs.begin(), allocRegs.end());
+
+            auto spillInterval = [&](Interval* iv) {
+                if (!iv) return;
+                iv->assignedReg = -1;
+                int spillWidth  = iv->vreg.dt ? iv->vreg.dt->getDataWidth() : 8;
+                if (iv->spillSlot < 0) iv->spillSlot = func.frameInfo.createSpillSlot(spillWidth);
+            };
+
+            for (Interval* interval : toAlloc)
+            {
+                int start = interval->getStart();
+
+                // Expire old intervals
+                for (auto it = active.begin(); it != active.end();)
+                {
+                    if ((*it)->getEnd() <= start)
+                    {
+                        if ((*it)->assignedReg >= 0) freeRegs.insert((*it)->assignedReg);
+                        it = active.erase(it);
+                    }
+                    else
+                    {
+                        ++it;
+                    }
+                }
+
+                // Try to find a free register
+                int chosenReg = -1;
+
+                if (interval->crossesCall)
+                {
+                    // Prefer callee-saved registers; if none available, force spill later
+                    for (int r : freeRegs)
+                    {
+                        if (calleeSaved.count(r))
+                        {
+                            chosenReg = r;
+                            break;
+                        }
+                    }
+                }
+                else if (!freeRegs.empty())
+                {
+                    chosenReg = *freeRegs.begin();
+                }
+
+                if (chosenReg >= 0)
+                {
+                    interval->assignedReg = chosenReg;
+                    freeRegs.erase(chosenReg);
+                    active.insert(interval);
+                }
+                else
+                {
+                    // Need to spill: choose the interval with the furthest end point
+                    Interval* toSpill = nullptr;
+                    for (auto* act : active)
+                    {
+                        if (interval->crossesCall && !calleeSaved.count(act->assignedReg)) continue;
+                        if (!toSpill || act->getEnd() > toSpill->getEnd()) toSpill = act;
+                    }
+
+                    bool canTakeReg = toSpill && (!interval->crossesCall || calleeSaved.count(toSpill->assignedReg));
+                    if (canTakeReg && toSpill->getEnd() > interval->getEnd())
+                    {
+                        // Spill the active interval, give its register to current
+                        interval->assignedReg = toSpill->assignedReg;
+                        spillInterval(toSpill);
+                        active.erase(toSpill);
+                        active.insert(interval);
+                    }
+                    else
+                    {
+                        // Spill current interval
+                        spillInterval(interval);
+                    }
+                }
+            }
+        };
+
+        allocateIntervals(intIntervals, allIntRegs, calleeSavedIntSet);
+        allocateIntervals(fpIntervals, allFloatRegs, calleeSavedFPSet);
+
+        std::cerr << "[RA] " << func.name << " step7 rewrite" << std::endl;
         // ============================================================================
-        // 重写 MIR（插入 reload/spill，替换 use/def）
+        // Step 7: Rewrite MIR (insert reload/spill, replace use/def)
         // ============================================================================
-        // 作用：将未分配物理寄存器的 use/def 改写为使用 scratch + FILoad/FIStore（由 Adapter 注入）。
-        // 如何做：
-        // - 对每条指令枚举 uses：若该 vreg 分配了物理寄存器，则直接替换；
-        //   否则在指令前插入 reload 到一个 scratch，然后用 scratch 替换 use。
-        // - 对每条指令枚举 defs：若分配了物理寄存器则直接替换；
-        //   否则先将 def 写到一个 scratch，再在指令后插入 spill 到对应 FI。
-        TODO("RA: 调用 Adapter 的接口改写指令");
+        // Build vreg -> assignment mapping
+        std::map<BE::Register, std::pair<int, int>> vregToAssignment;  // vreg -> (physReg, spillSlot)
+        for (auto& [vreg, interval] : intervals)
+        {
+            vregToAssignment[vreg] = {interval.assignedReg, interval.spillSlot};
+        }
+        if (func.name == "reverse")
+        {
+            std::cerr << "[RA] mapping for reverse:" << std::endl;
+            for (auto& [vr, asg] : vregToAssignment)
+            {
+                std::cerr << "  v" << vr.rId << " isV=" << vr.isVreg << " dt=" << (vr.dt ? (vr.dt->dt == BE::DataType::Type::INT ? "I" : "F") : "?")
+                          << " -> reg " << asg.first << " spill " << asg.second << std::endl;
+            }
+        }
+
+        // Get scratch registers (prefer reserved registers that are not sp/ra/zero)
+        std::vector<int> scratchIntPool;
+        std::vector<int> scratchFloatPool;
+        for (int r : regInfo.reservedRegs())
+        {
+            if (r >= 32)
+                scratchFloatPool.push_back(r);
+            else if (r != regInfo.spRegId() && r != regInfo.raRegId() && r != regInfo.zeroRegId() && r != 3 && r != 4 &&
+                     r != 5)  // t0 is used by lowering for big offsets, avoid clobbering it
+                scratchIntPool.push_back(r);
+        }
+        if (scratchIntPool.empty() && !allIntRegs.empty()) scratchIntPool.push_back(allIntRegs.back());
+        if (scratchFloatPool.empty() && !allFloatRegs.empty()) scratchFloatPool.push_back(allFloatRegs.back());
+
+        for (auto& [bid, block] : func.blocks)
+        {
+            for (size_t idx = 0; idx < block->insts.size(); ++idx)
+            {
+                auto* inst = block->insts[idx];
+
+                std::vector<BE::Register> uses, defs;
+                BE::Targeting::g_adapter->enumUses(inst, uses);
+                BE::Targeting::g_adapter->enumDefs(inst, defs);
+
+                std::vector<BE::Register>      physRegs;
+                BE::Targeting::g_adapter->enumPhysRegs(inst, physRegs);
+                std::set<int> busyPhys;
+                for (auto& pr : physRegs) busyPhys.insert(pr.rId);
+
+                std::vector<BE::MInstruction*> before, after;
+                std::set<int>                   usedScratchInt, usedScratchFloat;
+                std::vector<int>               useScratchIntList, useScratchFloatList;
+
+                // Handle uses: replace vreg with physReg or insert reload
+                for (const auto& u : uses)
+                {
+                    if (!u.isVreg) continue;
+                    auto assignIt = vregToAssignment.find(u);
+                    if (assignIt == vregToAssignment.end()) continue;
+
+                    auto [physReg, spillSlot] = assignIt->second;
+                    if (physReg >= 0)
+                    {
+                        BE::Register phys(physReg, u.dt, false);
+                        BE::Targeting::g_adapter->replaceUse(inst, u, phys);
+                    }
+                    else if (spillSlot >= 0)
+                    {
+                        bool isFloat = isFloatType(u.dt);
+                        auto& pool   = isFloat ? scratchFloatPool : scratchIntPool;
+                        auto& used   = isFloat ? usedScratchFloat : usedScratchInt;
+                        int   scratch = -1;
+                        for (int r : pool)
+                        {
+                            if (used.count(r) || busyPhys.count(r)) continue;
+                            scratch = r;
+                            used.insert(r);
+                            break;
+                        }
+                        if (scratch >= 0)
+                        {
+                            BE::Register scratchReg(scratch, u.dt, false);
+                            before.push_back(new BE::FILoadInst(scratchReg, spillSlot, "reload from spill slot"));
+                            BE::Targeting::g_adapter->replaceUse(inst, u, scratchReg);
+                            if (isFloat)
+                                useScratchFloatList.push_back(scratch);
+                            else
+                                useScratchIntList.push_back(scratch);
+                        }
+                    }
+                }
+
+                // Handle defs: replace vreg with physReg or insert spill
+                for (const auto& d : defs)
+                {
+                    if (!d.isVreg) continue;
+                    auto assignIt = vregToAssignment.find(d);
+                    if (assignIt == vregToAssignment.end()) continue;
+
+                    auto [physReg, spillSlot] = assignIt->second;
+                    if (physReg >= 0)
+                    {
+                        BE::Register phys(physReg, d.dt, false);
+                        BE::Targeting::g_adapter->replaceDef(inst, d, phys);
+                    }
+                    else if (spillSlot >= 0)
+                    {
+                        bool isFloat = isFloatType(d.dt);
+                        auto& pool   = isFloat ? scratchFloatPool : scratchIntPool;
+                        auto& used   = isFloat ? usedScratchFloat : usedScratchInt;
+                        int   scratch = -1;
+                        for (int r : pool)
+                        {
+                            if (used.count(r)) continue;
+                            scratch = r;
+                            used.insert(r);
+                            break;
+                        }
+                        if (scratch < 0)
+                        {
+                            if (!isFloat && !useScratchIntList.empty()) scratch = useScratchIntList.front();
+                            if (isFloat && !useScratchFloatList.empty()) scratch = useScratchFloatList.front();
+                        }
+                        if (scratch >= 0)
+                        {
+                            BE::Register scratchReg(scratch, d.dt, false);
+                            BE::Targeting::g_adapter->replaceDef(inst, d, scratchReg);
+                            after.push_back(new BE::FIStoreInst(scratchReg, spillSlot, "spill to spill slot"));
+                        }
+                    }
+                }
+
+                if (!before.empty())
+                {
+                    block->insts.insert(block->insts.begin() + idx, before.begin(), before.end());
+                    idx += before.size();
+                }
+
+                if (!after.empty())
+                {
+                    block->insts.insert(block->insts.begin() + idx + 1, after.begin(), after.end());
+                }
+            }
+        }
+
+        // Debug: check remaining vregs
+        std::cerr << "[RA] function " << func.name << " end" << std::endl;
     }
 }  // namespace BE::RA
