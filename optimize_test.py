@@ -79,7 +79,7 @@ def execute_ir(input,output,opt,stdin,stdout,testout):
         print("\033[91mWrong Answer on \033[0m"+input)
         return 0
 
-input_folders = ["basic_mem2reg","mem2reg","eliUnreachablebb","scalar_licm"]
+input_folders = ["basic_mem2reg","mem2reg","eliUnreachablebb","adce","scalar_cse","scalar_licm","sccp"]
 output_folder = "test_output"
 opt_arg = "-O1"
 

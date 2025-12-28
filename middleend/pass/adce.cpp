@@ -18,7 +18,7 @@ namespace ME
         Instruction* term = block->insts.back();
         if (term->opcode == Operator::BR_UNCOND)
         {
-            auto* br    = dynamic_cast<BrUncondInst*>(term);
+            auto* br = dynamic_cast<BrUncondInst*>(term);
             if (br->target) succs.push_back(br->target->getLabelNum());
         }
         else if (term->opcode == Operator::BR_COND)
@@ -83,7 +83,7 @@ namespace ME
         // 2. 处理不可达块对可达块 Phi 节点的影响
         for (auto& [id, block] : function.blocks)
         {
-            if (reachable.count(id)) continue; // 可达块跳过
+            if (reachable.count(id)) continue;  // 可达块跳过
 
             // 这是一个不可达块，找到它的后继
             std::vector<size_t> succs = getSuccessors(block);
@@ -118,9 +118,9 @@ namespace ME
     {
         switch (inst->opcode)
         {
-            case Operator::STORE:       // 存储指令
-            case Operator::CALL:        // 函数调用可能有副作用
-            case Operator::RET:         // 返回指令
+            case Operator::STORE:  // 存储指令
+            case Operator::CALL:   // 函数调用可能有副作用
+            case Operator::RET:    // 返回指令
                 return true;
             default: return false;
         }
@@ -131,12 +131,12 @@ namespace ME
         Analysis::Manager::getInstance().invalidate(function);
 
         // 获取控制流图 CFG 和后支配信息
-        auto* cfg = Analysis::Manager::getInstance().get<Analysis::CFG>(function);
+        auto* cfg         = Analysis::Manager::getInstance().get<Analysis::CFG>(function);
         auto* postDomInfo = Analysis::Manager::getInstance().get<Analysis::PostDomInfo>(function);
 
-        numBlocks = cfg->G_id.size();
-        postImmDom = postDomInfo->getImmPostDom(); // 获取后支配树的直接支配者数组
-        const auto& pdf = postDomInfo->getPostDomFrontier();    // 获取后支配边界数组
+        numBlocks       = cfg->G_id.size();
+        postImmDom      = postDomInfo->getImmPostDom();       // 获取后支配树的直接支配者数组
+        const auto& pdf = postDomInfo->getPostDomFrontier();  // 获取后支配边界数组
 
         // 构建寄存器定义映射，寄存器 -> 定义寄存器值的指令
         std::map<size_t, Instruction*> regDefInst;
@@ -151,7 +151,7 @@ namespace ME
             }
         }
 
-        std::queue<Instruction*>       worklist; // 存储待处理的活跃指令
+        std::queue<Instruction*>       worklist;  // 存储待处理的活跃指令
         std::map<Instruction*, size_t> instToBlock;
 
         // 标记所有有副作用的指令为活跃，CFG已经移除了不可达块
@@ -169,7 +169,7 @@ namespace ME
         }
 
         // 传播活跃性
-        std::map<size_t, int> dummyMap;// 收集使用的寄存器
+        std::map<size_t, int> dummyMap;  // 收集使用的寄存器
         while (!worklist.empty())
         {
             Instruction* inst = worklist.front();
@@ -178,7 +178,7 @@ namespace ME
             // 1. 操作数活跃性：标记定义使用操作数的指令为活跃
             dummyMap.clear();
             UseCollector collector(dummyMap);
-            apply(collector, *inst);    // 将该指令进行收集
+            apply(collector, *inst);  // 将该指令进行收集
 
             for (auto& [reg, _] : dummyMap)
             {
@@ -211,13 +211,13 @@ namespace ME
                         auto   predIt = function.blocks.find(predId);
                         // 前驱不在函数中则跳过
                         if (predIt == function.blocks.end()) continue;
-                        
+
                         // 前驱块为空则跳过
                         Block* predBlock = predIt->second;
                         if (!predBlock) continue;
-                        
+
                         if (!predBlock->insts.empty())
-                        {   
+                        {
                             // 将前驱块中的终结指令标记为活跃
                             Instruction* term = predBlock->insts.back();
                             if (term->isTerminator() && liveInsts.find(term) == liveInsts.end())
@@ -231,7 +231,7 @@ namespace ME
             }
 
             // 3. 控制依赖活跃性
-            size_t blockId = instToBlock[inst]; // 当前块 id
+            size_t blockId = instToBlock[inst];  // 当前块 id
             if (blockId < pdf.size())
             {
                 for (int cdBlockId : pdf[blockId])
@@ -314,13 +314,12 @@ namespace ME
                     if (inst->opcode == Operator::BR_UNCOND)
                     {
                         auto* br = dynamic_cast<BrUncondInst*>(inst);
-                        
+
                         if ((int)br->target->getLabelNum() == targetId)
                         {
                             newInsts.push_back(inst);  // 已经跳转到正确目标
                             continue;
                         }
-                        
                     }
 
                     // 否则就，创建新的无条件跳转
@@ -352,7 +351,7 @@ namespace ME
                 {
                     auto* br = dynamic_cast<BrCondInst*>(inst);
                     if (auto* target = dynamic_cast<LabelOperand*>(br->trueTar))
-                    {   // 创建无条件跳转到 true 目标
+                    {  // 创建无条件跳转到 true 目标
                         auto* newBr = new BrUncondInst(target);
                         delete inst;
                         newInsts.push_back(newBr);
@@ -365,10 +364,7 @@ namespace ME
                     }
                 }
                 // 情况3: 其他情况保留原终结符
-                else
-                {
-                    newInsts.push_back(inst);
-                }
+                else { newInsts.push_back(inst); }
             }
 
             block->insts = newInsts;

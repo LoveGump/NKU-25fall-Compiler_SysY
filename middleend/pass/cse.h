@@ -6,7 +6,10 @@
 
 namespace ME
 {
-    // 标量公共子表达式消除（CSE）
+    class Instruction;
+
+    // 标量公共子表达式消除
+    // 将指令的清理工作留给 DCE Pass
     class CSEPass : public FunctionPass
     {
       public:
@@ -14,6 +17,11 @@ namespace ME
         ~CSEPass() = default;
 
         void runOnFunction(Function& function) override;
+
+      private:
+        // 块内的cse
+        bool runBlockLocalCSE(Function& function);
+        bool runDominatorCSE(Function& function);
     };
 }  // namespace ME
 

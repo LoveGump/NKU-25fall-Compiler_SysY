@@ -59,8 +59,8 @@ namespace ME
 
       private:
         const std::unordered_map<size_t, Instruction*>& regDefs;
-        std::unordered_map<size_t, bool> memo;
-        std::unordered_set<size_t> visiting;
+        std::unordered_map<size_t, bool>                memo;
+        std::unordered_set<size_t>                      visiting;
     };
 }  // namespace ME
 

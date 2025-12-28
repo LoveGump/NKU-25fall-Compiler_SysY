@@ -72,8 +72,7 @@ namespace ME
             case Operator::CALL:   // 可能改变内存或有其他副作用
             case Operator::RET:    // 会改变控制流
             case Operator::BR_COND:
-            case Operator::BR_UNCOND:
-                return true;
+            case Operator::BR_UNCOND: return true;
             default: return false;
         }
     }

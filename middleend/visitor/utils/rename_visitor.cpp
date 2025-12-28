@@ -7,7 +7,7 @@ namespace ME
     {
         if (!operand || operand->getType() != OperandType::REG) return;
 
-        auto        it    = renameMap.find(operand->getRegNum());
+        auto it = renameMap.find(operand->getRegNum());
         if (it == renameMap.end()) return;
         operand = getRegOperand(it->second);
     }

@@ -23,30 +23,19 @@ namespace ME
         void runOnFunction(Function& function) override;
 
       private:
-        // 构建调用图判断递归
-        bool         isRecursive(Function& target, Module& module);
-        // 查找被调用函数
-        Function*    findCallee(Module& module, const std::string& name);
-        // 将被内联函数的寄存器映射到调用者寄存器
-        Operand*     mapOperand(Operand* op, const std::map<size_t, Operand*>& operandMap);
-        // 深拷贝 IR 指令
-        Instruction* cloneInstruction(const Instruction* inst);
-        // 重映射跳转标签
-        void         remapLabels(Instruction* inst, const std::map<size_t, size_t>& labelMap);
-        // 更新 phi 的前驱标签
-        void         replacePhiIncoming(Block* block, size_t oldLabel, size_t newLabel);
-        // 构造寄存器映射表
         std::map<size_t, Operand*> buildOperandMap(Function& caller, Function& callee, CallInst* callInst);
-        // 定位函数入口块
-        Block*      findEntryBlock(Function& func);
-        // 内联单条 call 指令
-        bool        inlineCall(Function& caller, Block* callBlock, size_t callIndex, CallInst* callInst, Function& callee);
-        // 结合策略执行内联
-        bool        inlineWithStrategy(Function& function, InlineStrategy& strategy);
-        // 在函数内定位 call 指令的位置
-        bool        findCallLocation(Function& function, CallInst* callInst, Block*& block, size_t& index);
+        bool                       inlineCall(Function& caller, Block* callBlock, CallInst* callInst, Function& callee);
 
-        Module* module_ = nullptr;
+        // 辅助函数：更新后继块的 phi incoming（块切分后使用）
+        void updatePhiSucc(Function& caller, Operand* target, size_t oldBlockId, size_t newBlockId);
+        // 辅助函数：重映射指令中的 label 目标
+        void remapLabels(Instruction* inst);
+        // 辅助函数：重映射单个 label 操作数
+        void remapLabel(Operand*& target);
+
+        Module*                    module_ = nullptr;
+        std::map<size_t, size_t>   labelMap_;    // 内联时的 label 映射
+        std::map<size_t, Operand*> operandMap_;  // callee id -> caller operand
     };
 }  // namespace ME
 

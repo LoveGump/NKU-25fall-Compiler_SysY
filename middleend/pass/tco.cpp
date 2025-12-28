@@ -21,13 +21,13 @@ namespace ME
         if (!start) return false;
 
         // 判断从 start 开始的分支链是否最终返回 void
-        std::unordered_set<size_t> visited; //  记录访问过的基本块，防止环路
+        std::unordered_set<size_t> visited;  //  记录访问过的基本块，防止环路
         Block*                     cur = start;
         while (cur)
         {
             if (!visited.insert(cur->blockId).second) return false;
-            if (cur->insts.size() != 1) return false;  
-            Instruction* inst = cur->insts.back(); 
+            if (cur->insts.size() != 1) return false;
+            Instruction* inst = cur->insts.back();
             if (inst->opcode == Operator::RET)
             {
                 // 返回指令，检查是否返回 void
@@ -51,10 +51,7 @@ namespace ME
         Operand* paramOp = function.funcDef->argRegs[idx].second;
         if (!paramOp || !arg) return false;
         if (paramOp->getType() != arg->getType()) return false;
-        if (paramOp->getType() == OperandType::REG)
-        {
-            return paramOp->getRegNum() == arg->getRegNum();
-        }
+        if (paramOp->getType() == OperandType::REG) { return paramOp->getRegNum() == arg->getRegNum(); }
         return paramOp == arg;
     }
 
@@ -85,10 +82,10 @@ namespace ME
         Block* entry = function.blocks.begin()->second;
 
         // 建立参数寄存器到栈槽的映射
-        std::vector<Operand*>              paramSlots(function.funcDef->argRegs.size(), nullptr);   // 参数栈槽，就是存储参数的地址
-        std::vector<size_t>                paramStorePos(function.funcDef->argRegs.size(), 0);  // 参数初始化 store 指令位置
-        std::vector<size_t>                paramRegNums(function.funcDef->argRegs.size(), 0);   // 参数寄存器号列表
-        std::unordered_map<size_t, size_t> regToIndex;  // 参数寄存器号 -> 参数索引
+        std::vector<Operand*> paramSlots(function.funcDef->argRegs.size(), nullptr);  // 参数栈槽，就是存储参数的地址
+        std::vector<size_t> paramStorePos(function.funcDef->argRegs.size(), 0);  // 参数初始化 store 指令位置
+        std::vector<size_t> paramRegNums(function.funcDef->argRegs.size(), 0);   // 参数寄存器号列表
+        std::unordered_map<size_t, size_t> regToIndex;                           // 参数寄存器号 -> 参数索引
 
         for (size_t i = 0; i < function.funcDef->argRegs.size(); ++i)
         {
@@ -111,7 +108,7 @@ namespace ME
                 auto* store = static_cast<StoreInst*>(inst);
                 if (store->val && store->val->getType() == OperandType::REG)
                 {
-                    auto   it  = regToIndex.find(store->val->getRegNum());
+                    auto it = regToIndex.find(store->val->getRegNum());
                     if (it != regToIndex.end())
                     {
                         // 如果store的位置是 参数寄存器，记录数据 和 指令位置
@@ -124,8 +121,8 @@ namespace ME
         }
 
         // 分析所有尾递归调用点，确定需要创建栈槽的参数
-        bool              needsSlotUpdate = false;  // 是否需要更新栈槽
-        std::vector<bool> paramNeedsSlot(function.funcDef->argRegs.size(), false); // 参数是否需要栈槽
+        bool              needsSlotUpdate = false;                                  // 是否需要更新栈槽
+        std::vector<bool> paramNeedsSlot(function.funcDef->argRegs.size(), false);  // 参数是否需要栈槽
 
         // 记录尾递归调用点: (block, retBlock)，retBlock 为 nullptr 表示直接 ret
         // block 为尾递归调用点所在块，retBlock 为返回块
@@ -147,20 +144,17 @@ namespace ME
             if (call->args.size() != paramSlots.size()) continue;
             if (allocaChecker.hasAllocaDerivedArg(call)) continue;
 
-            Block* retBlock = nullptr;
+            Block* retBlock   = nullptr;
             bool   isTailCall = false;
             if (termInst->opcode == Operator::RET)
             {
                 // 直接跟ret，保证返回类型和值相同
                 auto* ret = static_cast<RetInst*>(termInst);
-                if (function.funcDef->retType == DataType::VOID)
-                {
-                    isTailCall = (ret->res == nullptr);
-                }
+                if (function.funcDef->retType == DataType::VOID) { isTailCall = (ret->res == nullptr); }
                 else
                 {
-                    if (ret->res && call->res &&
-                        ret->res->getType() == OperandType::REG && call->res->getType() == OperandType::REG)
+                    if (ret->res && call->res && ret->res->getType() == OperandType::REG &&
+                        call->res->getType() == OperandType::REG)
                     {
                         isTailCall = (ret->res->getRegNum() == call->res->getRegNum());
                     }
@@ -175,7 +169,7 @@ namespace ME
                     auto* br = static_cast<BrUncondInst*>(termInst);
                     if (br->target && br->target->getType() == OperandType::LABEL)
                     {
-                        retBlock = function.getBlock(br->target->getLabelNum());
+                        retBlock   = function.getBlock(br->target->getLabelNum());
                         isTailCall = isVoidReturnChain(function, retBlock);
                     }
                 }
@@ -212,9 +206,8 @@ namespace ME
             entry->insertFront(new AllocaInst(argType, slotOp));
             // 加入newParamStores 列表
             newParamStores.push_back(new StoreInst(argType, function.funcDef->argRegs[i].second, slotOp));
-            paramSlots[i] = slotOp; // 更新参数栈槽
+            paramSlots[i] = slotOp;  // 更新参数栈槽
         }
-
 
         if (!newParamStores.empty())
         {
@@ -229,7 +222,7 @@ namespace ME
 
         // 计算最后一个参数初始化 store 的位置
         size_t lastParamStoreIdx = 0;
-        size_t initStoreIndex    = 0;   // 遍历入口块指令索引
+        size_t initStoreIndex    = 0;  // 遍历入口块指令索引
         for (auto* inst : entry->insts)
         {
             if (inst->opcode == Operator::STORE)
@@ -250,7 +243,6 @@ namespace ME
             ++initStoreIndex;
         }
 
-
         // 将入口块分为"参数初始化"与"循环头"
         Block* loopHeader = entry;
         if (!paramSlots.empty() && needsSlotUpdate)
@@ -263,7 +255,7 @@ namespace ME
 
             // 构造新列表并替换
             newHeader->insts = std::deque<Instruction*>(splitIt, entry->insts.end());
-            entry->insts = std::deque<Instruction*>(entry->insts.begin(), splitIt);
+            entry->insts     = std::deque<Instruction*>(entry->insts.begin(), splitIt);
 
             // 在入口块末尾添加跳转到新循环头的无条件分支
             entry->insts.push_back(new BrUncondInst(getLabelOperand(newHeader->blockId)));
@@ -274,7 +266,7 @@ namespace ME
         Operand* loopLabel = getLabelOperand(loopHeader->blockId);
 
         // 对新建栈槽的参数在循环头读取，并替换后续使用
-        std::unordered_map<size_t, Operand*> replaceRegs; // 需要替换的寄存器映射
+        std::unordered_map<size_t, Operand*> replaceRegs;  // 需要替换的寄存器映射
         for (size_t i = 0; i < paramNeedsSlot.size(); ++i)
         {
             if (!paramNeedsSlot[i]) continue;
@@ -294,9 +286,7 @@ namespace ME
             {
                 // 如果是入口块且循环头不是入口块，跳过
                 if (block == entry && loopHeader != entry) continue;
-                for (auto* inst : block->insts) { 
-                    apply(replaceVisitor, *inst); 
-                }
+                for (auto* inst : block->insts) { apply(replaceVisitor, *inst); }
             }
         }
 

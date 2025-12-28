@@ -11,39 +11,33 @@ namespace ME
     // 避免重复入队导致不必要的遍历
     void SCCPEvalVisitor::updateValue(SCCPPass& pass, Operand* dest, const SCCPPass::LatticeVal& val)
     {
-        if (!dest || dest->getType() != OperandType::REG) return;   // 仅处理寄存器目标
-        size_t reg    = dest->getRegNum(); // 目标寄存器编号
+        if (!dest || dest->getType() != OperandType::REG) return;  // 仅处理寄存器目标
+        size_t reg = dest->getRegNum();                            // 目标寄存器编号
         // 获取当前格值并合并新值
-        auto   curr   = getValue(pass, dest); // 当前格值
-        auto   merged = mergeValue(curr, val); // 合并后格值
+        auto curr   = getValue(pass, dest);   // 当前格值
+        auto merged = mergeValue(curr, val);  // 合并后格值
 
         // 合并后与原值比较，决定是否需要继续向后传播
         // 由于 mergeValue 保证单调性，只需检查 kind 是否提升
-        
+
         // 类型不同则一定变化，类型相同则具体值变化才算变化
         bool changed = (curr.kind != merged.kind);
         // 如果 kind 相同且都是 CONST，还需比较具体常量值
         if (!changed && merged.kind == SCCPPass::LatticeKind::CONST)
         {
-            if (curr.type == DataType::F32 && merged.type == DataType::F32){
-                changed = (curr.f32 != merged.f32);
-            }
-            else{
-                changed = (curr.i32 != merged.i32);
-            }
+            if (curr.type == DataType::F32 && merged.type == DataType::F32) { changed = (curr.f32 != merged.f32); }
+            else { changed = (curr.i32 != merged.i32); }
         }
         if (changed)
         {
-             // 只有值变更才通知使用者，减少无效迭代
+            // 只有值变更才通知使用者，减少无效迭代
             pass.valueMap[reg] = merged;
-           
+
             auto it = pass.userMap.find(reg);
             if (it != pass.userMap.end())
             {
                 // 将所有使用该寄存器的指令加入工作队列
-                for (auto* user : it->second) {
-                    pass.instWorklist.push_back(user);
-                }
+                for (auto* user : it->second) { pass.instWorklist.push_back(user); }
             }
         }
     }
@@ -119,7 +113,7 @@ namespace ME
         {
             // 整型立即数
             auto* imm = static_cast<ImmeI32Operand*>(op);
-            return makeConstInt(imm->value); 
+            return makeConstInt(imm->value);
         }
         if (op->getType() == OperandType::IMMEF32)
         {
@@ -245,11 +239,27 @@ namespace ME
             // 将操作数转为浮点数进行计算
             float l = lhs.type == DataType::F32 ? lhs.f32 : static_cast<float>(lhs.i32);
             float r = rhs.type == DataType::F32 ? rhs.f32 : static_cast<float>(rhs.i32);
-            if (inst.opcode == Operator::FADD) { updateValue(pass, inst.res, makeConstFloat(l + r)); return; }
-            if (inst.opcode == Operator::FSUB) { updateValue(pass, inst.res, makeConstFloat(l - r)); return; }
-            if (inst.opcode == Operator::FMUL) { updateValue(pass, inst.res, makeConstFloat(l * r)); return; }
+            if (inst.opcode == Operator::FADD)
+            {
+                updateValue(pass, inst.res, makeConstFloat(l + r));
+                return;
+            }
+            if (inst.opcode == Operator::FSUB)
+            {
+                updateValue(pass, inst.res, makeConstFloat(l - r));
+                return;
+            }
+            if (inst.opcode == Operator::FMUL)
+            {
+                updateValue(pass, inst.res, makeConstFloat(l * r));
+                return;
+            }
             // 这里不对除零做特殊处理，因为在IEEE 754 浮点标准中，浮点数除以零是有定义的行为，不会产生异常
-            if (inst.opcode == Operator::FDIV) { updateValue(pass, inst.res, makeConstFloat(l / r)); return; }
+            if (inst.opcode == Operator::FDIV)
+            {
+                updateValue(pass, inst.res, makeConstFloat(l / r));
+                return;
+            }
             updateValue(pass, inst.res, makeOverdefined());
             return;
         }
@@ -257,27 +267,63 @@ namespace ME
         // 整数运算 需处理除零与位操作
         int32_t l = static_cast<int32_t>(lhs.i32);
         int32_t r = static_cast<int32_t>(rhs.i32);
-        if (inst.opcode == Operator::ADD) { updateValue(pass, inst.res, makeConstInt(static_cast<int>(l + r))); return; }
-        if (inst.opcode == Operator::SUB) { updateValue(pass, inst.res, makeConstInt(static_cast<int>(l - r))); return; }
-        if (inst.opcode == Operator::MUL) { updateValue(pass, inst.res, makeConstInt(static_cast<int>(l * r))); return; }
+        if (inst.opcode == Operator::ADD)
+        {
+            updateValue(pass, inst.res, makeConstInt(static_cast<int>(l + r)));
+            return;
+        }
+        if (inst.opcode == Operator::SUB)
+        {
+            updateValue(pass, inst.res, makeConstInt(static_cast<int>(l - r)));
+            return;
+        }
+        if (inst.opcode == Operator::MUL)
+        {
+            updateValue(pass, inst.res, makeConstInt(static_cast<int>(l * r)));
+            return;
+        }
         if (inst.opcode == Operator::DIV)
         {
-            if (r == 0) { updateValue(pass, inst.res, makeOverdefined()); return; }
+            if (r == 0)
+            {
+                updateValue(pass, inst.res, makeOverdefined());
+                return;
+            }
             updateValue(pass, inst.res, makeConstInt(static_cast<int>(l / r)));
             return;
         }
         if (inst.opcode == Operator::MOD)
         {
-            if (r == 0) { updateValue(pass, inst.res, makeOverdefined()); return; }
+            if (r == 0)
+            {
+                updateValue(pass, inst.res, makeOverdefined());
+                return;
+            }
             updateValue(pass, inst.res, makeConstInt(static_cast<int>(l % r)));
             return;
         }
-        if (inst.opcode == Operator::BITXOR) { updateValue(pass, inst.res, makeConstInt(static_cast<int>(l ^ r))); return; }
-        if (inst.opcode == Operator::BITAND) { updateValue(pass, inst.res, makeConstInt(static_cast<int>(l & r))); return; }
+        if (inst.opcode == Operator::BITXOR)
+        {
+            updateValue(pass, inst.res, makeConstInt(static_cast<int>(l ^ r)));
+            return;
+        }
+        if (inst.opcode == Operator::BITAND)
+        {
+            updateValue(pass, inst.res, makeConstInt(static_cast<int>(l & r)));
+            return;
+        }
         // 位移操作仅考虑低5位移位数，也就是说最大移位31位
-        if (inst.opcode == Operator::SHL) { updateValue(pass, inst.res, makeConstInt(static_cast<int>(l << (r & 31)))); return; }
+        if (inst.opcode == Operator::SHL)
+        {
+            updateValue(pass, inst.res, makeConstInt(static_cast<int>(l << (r & 31))));
+            return;
+        }
         // ASHR算数右移：保留符号位，LSHR逻辑右移：不保留符号位
-        if (inst.opcode == Operator::ASHR) { updateValue(pass, inst.res, makeConstInt(static_cast<int>(l >> (r & 31)))); return; }
+        if (inst.opcode == Operator::ASHR)
+        {
+            updateValue(pass, inst.res, makeConstInt(static_cast<int>(l >> (r & 31))));
+            return;
+        }
         if (inst.opcode == Operator::LSHR)
         {
             uint32_t ul = static_cast<uint32_t>(l);
@@ -417,12 +463,8 @@ namespace ME
         auto condVal = getValue(pass, inst.cond);
         if (condVal.kind == SCCPPass::LatticeKind::CONST && condVal.type != DataType::F32)
         {
-            if (condVal.i32 != 0){
-                markEdgeReachable(pass, block->blockId, trueId);
-            }
-            else{
-                markEdgeReachable(pass, block->blockId, falseId);
-            }
+            if (condVal.i32 != 0) { markEdgeReachable(pass, block->blockId, trueId); }
+            else { markEdgeReachable(pass, block->blockId, falseId); }
             return;
         }
 
@@ -455,8 +497,16 @@ namespace ME
     {
         // 浮点转整型常量折叠
         auto src = getValue(pass, inst.src);
-        if (src.kind == SCCPPass::LatticeKind::OVERDEFINED) { updateValue(pass, inst.dest, makeOverdefined()); return; }
-        if (src.kind == SCCPPass::LatticeKind::UNDEF) { updateValue(pass, inst.dest, makeUndef()); return; }
+        if (src.kind == SCCPPass::LatticeKind::OVERDEFINED)
+        {
+            updateValue(pass, inst.dest, makeOverdefined());
+            return;
+        }
+        if (src.kind == SCCPPass::LatticeKind::UNDEF)
+        {
+            updateValue(pass, inst.dest, makeUndef());
+            return;
+        }
 
         float val = src.type == DataType::F32 ? src.f32 : static_cast<float>(src.i32);
         updateValue(pass, inst.dest, makeConstInt(static_cast<int>(val)));
@@ -465,8 +515,16 @@ namespace ME
     {
         // 整形转浮点
         auto src = getValue(pass, inst.src);
-        if (src.kind == SCCPPass::LatticeKind::OVERDEFINED) { updateValue(pass, inst.dest, makeOverdefined()); return; }
-        if (src.kind == SCCPPass::LatticeKind::UNDEF) { updateValue(pass, inst.dest, makeUndef()); return; }
+        if (src.kind == SCCPPass::LatticeKind::OVERDEFINED)
+        {
+            updateValue(pass, inst.dest, makeOverdefined());
+            return;
+        }
+        if (src.kind == SCCPPass::LatticeKind::UNDEF)
+        {
+            updateValue(pass, inst.dest, makeUndef());
+            return;
+        }
 
         int val = src.type == DataType::F32 ? static_cast<int>(src.f32) : src.i32;
         updateValue(pass, inst.dest, makeConstFloat(static_cast<float>(val)));
@@ -475,18 +533,27 @@ namespace ME
     {
         // 零扩展常量折叠
         auto src = getValue(pass, inst.src);
-        if (src.kind == SCCPPass::LatticeKind::OVERDEFINED) { updateValue(pass, inst.dest, makeOverdefined()); return; }
-        if (src.kind == SCCPPass::LatticeKind::UNDEF) { updateValue(pass, inst.dest, makeUndef()); return; }
+        if (src.kind == SCCPPass::LatticeKind::OVERDEFINED)
+        {
+            updateValue(pass, inst.dest, makeOverdefined());
+            return;
+        }
+        if (src.kind == SCCPPass::LatticeKind::UNDEF)
+        {
+            updateValue(pass, inst.dest, makeUndef());
+            return;
+        }
 
         updateValue(pass, inst.dest, makeConstInt(src.type == DataType::F32 ? static_cast<int>(src.f32) : src.i32));
     }
     void SCCPEvalVisitor::visit(PhiInst& inst, SCCPPass& pass, Block* block)
     {
         // Phi 只合并可达前驱的格值
-        if (!block) { 
+        if (!block)
+        {
             // 如果块不存在，结果视为 UNDEF
-            updateValue(pass, inst.res, makeUndef()); 
-            return; 
+            updateValue(pass, inst.res, makeUndef());
+            return;
         }
         SCCPPass::LatticeVal result      = makeUndef();
         bool                 hasIncoming = false;
@@ -506,10 +573,11 @@ namespace ME
             if (result.kind == SCCPPass::LatticeKind::OVERDEFINED) break;
         }
 
-        if (!hasIncoming) {
+        if (!hasIncoming)
+        {
             // 没有可达前驱，结果视为 UNDEF
-            updateValue(pass, inst.res, makeUndef()); 
-            return; 
+            updateValue(pass, inst.res, makeUndef());
+            return;
         }
         // 更新 Phi 结果格值
         updateValue(pass, inst.res, result);
@@ -529,17 +597,11 @@ namespace ME
         if (val.kind != SCCPPass::LatticeKind::CONST) return;
 
         // 直接替换为对应的立即数操作数
-        if (val.type == DataType::F32){
-            op = getImmeF32Operand(val.f32);
-        }
-        else{
-            op = getImmeI32Operand(val.i32);
-        }
+        if (val.type == DataType::F32) { op = getImmeF32Operand(val.f32); }
+        else { op = getImmeI32Operand(val.i32); }
     }
 
-    void SCCPReplaceVisitor::visit(LoadInst& inst, SCCPPass& pass) { 
-        replaceOperandIfConst(pass, inst.ptr); 
-    }
+    void SCCPReplaceVisitor::visit(LoadInst& inst, SCCPPass& pass) { replaceOperandIfConst(pass, inst.ptr); }
     void SCCPReplaceVisitor::visit(StoreInst& inst, SCCPPass& pass)
     {
         replaceOperandIfConst(pass, inst.ptr);
@@ -566,9 +628,7 @@ namespace ME
     void SCCPReplaceVisitor::visit(GlbVarDeclInst& inst, SCCPPass& pass) { replaceOperandIfConst(pass, inst.init); }
     void SCCPReplaceVisitor::visit(CallInst& inst, SCCPPass& pass)
     {
-        for (auto& arg : inst.args) {
-            replaceOperandIfConst(pass, arg.second);
-        }
+        for (auto& arg : inst.args) { replaceOperandIfConst(pass, arg.second); }
     }
     void SCCPReplaceVisitor::visit(FuncDeclInst& inst, SCCPPass& pass) { (void)inst; }
     void SCCPReplaceVisitor::visit(FuncDefInst& inst, SCCPPass& pass) { (void)inst; }

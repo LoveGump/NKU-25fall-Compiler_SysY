@@ -97,8 +97,8 @@ namespace ME::Analysis
         return false;
     }
 
-    void LoopInfo::collectLoopNodes(size_t header, size_t latch,
-        const std::vector<std::vector<size_t>>& invG, std::set<size_t>& loopNodes) const
+    void LoopInfo::collectLoopNodes(
+        size_t header, size_t latch, const std::vector<std::vector<size_t>>& invG, std::set<size_t>& loopNodes) const
     {
         // 从 latch 反向遍历，找到所有能到达 header 的节点
         std::deque<size_t> worklist;
@@ -151,8 +151,9 @@ namespace ME::Analysis
         std::vector<Loop*> sortedLoops;
         for (auto& loop : allLoops) sortedLoops.push_back(loop.get());
 
-        std::sort(sortedLoops.begin(), sortedLoops.end(),
-            [](const Loop* a, const Loop* b) { return a->blocks.size() < b->blocks.size(); });
+        std::sort(sortedLoops.begin(), sortedLoops.end(), [](const Loop* a, const Loop* b) {
+            return a->blocks.size() < b->blocks.size();
+        });
 
         // 为每个循环找到最小的包含它的循环作为父循环
         for (size_t i = 0; i < sortedLoops.size(); ++i)
@@ -194,8 +195,9 @@ namespace ME::Analysis
         std::vector<Loop*> sortedLoops;
         for (auto& loop : allLoops) sortedLoops.push_back(loop.get());
 
-        std::sort(sortedLoops.begin(), sortedLoops.end(),
-            [](const Loop* a, const Loop* b) { return a->blocks.size() < b->blocks.size(); });
+        std::sort(sortedLoops.begin(), sortedLoops.end(), [](const Loop* a, const Loop* b) {
+            return a->blocks.size() < b->blocks.size();
+        });
 
         for (Loop* loop : sortedLoops)
         {

@@ -8,7 +8,7 @@
 
 namespace ME
 {
-    // 统一替换寄存器操作数的访问者
+    // 统一替换寄存器操作数
     class OperandReplaceVisitor : public InsVisitor_t<void>
     {
       public:

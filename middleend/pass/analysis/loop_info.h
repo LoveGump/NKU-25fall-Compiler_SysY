@@ -23,14 +23,14 @@ namespace ME::Analysis
     // 循环结构
     struct Loop
     {
-        size_t           header = 0;        // 循环头块 ID
-        std::set<size_t> blocks;            // 循环体所有块 ID
-        std::set<size_t> latches;           // 回边源块 ID（latch）
-        std::set<size_t> exitBlocks;        // 出口块 ID（循环外的后继）
-        std::set<size_t> exitingBlocks;     // 退出块 ID（有边指向循环外的循环内块）
-        Loop*            parent = nullptr;  // 外层循环
-        std::vector<Loop*> subLoops;        // 内层循环列表
-        int              depth = 0;         // 循环嵌套深度（最外层为 1）
+        size_t             header = 0;        // 循环头块 ID
+        std::set<size_t>   blocks;            // 循环体所有块 ID
+        std::set<size_t>   latches;           // 回边源块 ID（latch）
+        std::set<size_t>   exitBlocks;        // 出口块 ID（循环外的后继）
+        std::set<size_t>   exitingBlocks;     // 退出块 ID（有边指向循环外的循环内块）
+        Loop*              parent = nullptr;  // 外层循环
+        std::vector<Loop*> subLoops;          // 内层循环列表
+        int                depth = 0;         // 循环嵌套深度（最外层为 1）
 
         // 判断某块是否在循环内
         bool contains(size_t blockId) const { return blocks.count(blockId) > 0; }
@@ -80,16 +80,16 @@ namespace ME::Analysis
         int getLoopDepth(size_t blockId) const;
 
       private:
-        std::map<size_t, Loop*>              blockToLoop;     // 块 ID -> 最内层循环
-        std::vector<Loop*>                   topLevelLoops;   // 顶层循环列表
-        std::vector<std::unique_ptr<Loop>>   allLoops;        // 所有循环（拥有所有权）
+        std::map<size_t, Loop*>            blockToLoop;    // 块 ID -> 最内层循环
+        std::vector<Loop*>                 topLevelLoops;  // 顶层循环列表
+        std::vector<std::unique_ptr<Loop>> allLoops;       // 所有循环（拥有所有权）
 
         // 辅助函数：判断 dom 是否支配 node
         bool dominates(int dom, int node, const std::vector<int>& imm_dom) const;
 
         // 从回边收集自然循环的所有节点
-        void collectLoopNodes(size_t header, size_t latch,
-            const std::vector<std::vector<size_t>>& invG, std::set<size_t>& loopNodes) const;
+        void collectLoopNodes(size_t header, size_t latch, const std::vector<std::vector<size_t>>& invG,
+            std::set<size_t>& loopNodes) const;
 
         // 计算循环的退出块和退出边源块
         void computeExitInfo(Loop& loop, const std::vector<std::vector<size_t>>& G) const;

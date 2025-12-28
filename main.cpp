@@ -16,6 +16,7 @@
 #include <middleend/pass/tco.h>
 #include <middleend/pass/licm.h>
 #include <middleend/pass/cse.h>
+#include <middleend/pass/simplify_cfg.h>
 
 #include <backend/mir/m_module.h>
 #include <backend/target/registry.h>
@@ -338,31 +339,40 @@ int main(int argc, char** argv)
             ME::TCOPass tcoPass;
             tcoPass.runOnModule(m);
 
-            // ME::UnifyReturnPass unifyReturnPass;
-            // unifyReturnPass.runOnModule(m);
+            ME::UnifyReturnPass unifyReturnPass;
+            unifyReturnPass.runOnModule(m);
 
+            ME::Mem2RegPass mem2RegPass;
+            mem2RegPass.runOnModule(m);
             ME::Mem2RegPass mem2RegPass;
             mem2RegPass.runOnModule(m);
 
             ME::DCEPass dcePass;
             dcePass.runOnModule(m);
+            ME::DCEPass dcePass;
+            dcePass.runOnModule(m);
 
-            // ME::InlinePass inlinePass;
-            // inlinePass.runOnModule(m);
+            ME::InlinePass inlinePass;
+            inlinePass.runOnModule(m);
 
+            ME::SCCPPass sccpPass;
+            sccpPass.runOnModule(m);
+
+            ME::LICMPass licmPass;
+            licmPass.runOnModule(m);
             ME::SCCPPass sccpPass;
             sccpPass.runOnModule(m);
             
             
 
-            ME::LICMPass licmPass;
-            licmPass.runOnModule(m);
+            ME::ADCEPass adcePass;
+            adcePass.runOnModule(m);
 
             ME::CSEPass csePass;
             csePass.runOnModule(m);
 
-            // ME::ADCEPass adcePass;
-            // adcePass.runOnModule(m);
+            ME::SimplifyCFGPass simplifyCFGPass;
+            simplifyCFGPass.runOnModule(m);
         }
 
         if (step == "-llvm")

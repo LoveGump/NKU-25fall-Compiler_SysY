@@ -26,10 +26,7 @@ namespace ME
 
     bool AllocaDerivedVisitor::visit(ZextInst& inst) { return isRegDerived(inst.src); }
 
-    bool AllocaDerivedVisitor::visit(ArithmeticInst& inst)
-    {
-        return isRegDerived(inst.lhs) || isRegDerived(inst.rhs);
-    }
+    bool AllocaDerivedVisitor::visit(ArithmeticInst& inst) { return isRegDerived(inst.lhs) || isRegDerived(inst.rhs); }
 
     bool AllocaDerivedVisitor::visit(LoadInst& inst) { return false; }
     bool AllocaDerivedVisitor::visit(StoreInst& inst) { return false; }
@@ -47,7 +44,8 @@ namespace ME
 
     // AllocaDerivedChecker 实现
     AllocaDerivedChecker::AllocaDerivedChecker(const std::unordered_map<size_t, Instruction*>& regDefs)
-        : regDefs(regDefs) {}
+        : regDefs(regDefs)
+    {}
 
     bool AllocaDerivedChecker::isAllocaDerived(size_t regNum)
     {
@@ -59,14 +57,12 @@ namespace ME
         if (!visiting.insert(regNum).second) return false;
 
         bool derived = false;
-        auto defIt = regDefs.find(regNum);
+        auto defIt   = regDefs.find(regNum);
         if (defIt != regDefs.end())
         {
             // 创建 visitor，回调到本对象的 isAllocaDerived
-            AllocaDerivedVisitor::RegChecker checker = [this](size_t reg) {
-                return this->isAllocaDerived(reg);
-            };
-            AllocaDerivedVisitor visitor(checker);
+            AllocaDerivedVisitor::RegChecker checker = [this](size_t reg) { return this->isAllocaDerived(reg); };
+            AllocaDerivedVisitor             visitor(checker);
             derived = apply(visitor, *defIt->second);
         }
 

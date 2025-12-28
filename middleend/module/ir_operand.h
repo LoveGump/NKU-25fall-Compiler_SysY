@@ -24,8 +24,8 @@ namespace ME
 
       public:
         OperandType         getType() const { return type; }
-        virtual std::string toString() const  = 0;
-        virtual size_t      getRegNum() const = 0;
+        virtual std::string toString() const    = 0;
+        virtual size_t      getRegNum() const   = 0;
         virtual size_t      getLabelNum() const = 0;
     };
 

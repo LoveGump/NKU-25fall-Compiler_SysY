@@ -58,8 +58,8 @@ namespace ME
             const std::unordered_map<Instruction*, size_t>& instBlock, const std::vector<int>& imm_dom,
             const std::set<Operand*>& loopStoreGlobals, bool loopHasCall) const;
 
-        void collectLoopEffects(
-            Function& function, const Analysis::Loop& loop, std::set<Operand*>& loopStoreGlobals, bool& loopHasCall) const;
+        void collectLoopEffects(Function& function, const Analysis::Loop& loop, std::set<Operand*>& loopStoreGlobals,
+            bool& loopHasCall) const;
 
         void collectInvariantInsts(Function& function, const Analysis::Loop& loop,
             const std::unordered_map<size_t, size_t>&          regDefBlock,
@@ -68,8 +68,8 @@ namespace ME
             bool restrictHeader, const std::set<Operand*>& loopStoreGlobals, bool loopHasCall,
             std::set<Instruction*>& invariantInsts, std::set<size_t>& invariantRegs);
 
-        void buildHoistOrder(Function& function, const Analysis::Loop& loop, const std::set<Instruction*>& invariantInsts,
-            std::vector<Instruction*>& hoistOrder);
+        void buildHoistOrder(Function& function, const Analysis::Loop& loop,
+            const std::set<Instruction*>& invariantInsts, std::vector<Instruction*>& hoistOrder);
         void removeInstFromBlock(Block* block, Instruction* inst);
         void hoistInstructions(Block* preheader, const std::vector<Instruction*>& hoistOrder,
             std::unordered_map<Instruction*, size_t>& instBlock, std::unordered_map<size_t, size_t>& regDefBlock,

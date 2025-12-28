@@ -8,10 +8,8 @@ namespace ME
     void OperandReplaceVisitor::replaceOperand(Operand*& op)
     {
         if (!op || op->getType() != OperandType::REG) return;
-        auto   it     = replaceRegs.find(op->getRegNum());
-        if (it != replaceRegs.end()) {
-            op = it->second;
-        }
+        auto it = replaceRegs.find(op->getRegNum());
+        if (it != replaceRegs.end()) { op = it->second; }
     }
 
     void OperandReplaceVisitor::visit(LoadInst& inst) { replaceOperand(inst.ptr); }

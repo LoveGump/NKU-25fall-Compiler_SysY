@@ -118,7 +118,7 @@ namespace ME::Analysis
                 // 获取目标标签
                 size_t trueLabelId  = brInst->trueTar->getLabelNum();
                 size_t falseLabelId = brInst->falseTar->getLabelNum();
-                
+
                 // 连接true分支
                 if (id2block.find(trueLabelId) != id2block.end())
                 {
@@ -149,7 +149,7 @@ namespace ME::Analysis
 
             if (brInst->target->getType() == OperandType::LABEL)
             {
-                size_t        targetLabelId = brInst->target->getLabelNum();
+                size_t targetLabelId = brInst->target->getLabelNum();
 
                 // 连接目标分支
                 if (id2block.find(targetLabelId) != id2block.end())

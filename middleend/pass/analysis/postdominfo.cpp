@@ -41,10 +41,7 @@ namespace ME::Analysis
         invGraph_int.resize(cfg.invG_id.size());
         for (size_t i = 0; i < cfg.invG_id.size(); ++i)
         {
-            for (size_t pred : cfg.invG_id[i])
-            {
-                invGraph_int[i].push_back((int)pred);
-            }
+            for (size_t pred : cfg.invG_id[i]) { invGraph_int[i].push_back((int)pred); }
         }
 
         // 在反向图上计算支配树 = 后支配树

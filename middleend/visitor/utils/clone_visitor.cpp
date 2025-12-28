@@ -4,21 +4,27 @@ namespace ME
 {
     Instruction* InstCloner::visit(LoadInst& inst) { return new LoadInst(inst.dt, inst.ptr, inst.res, inst.comment); }
 
-    Instruction* InstCloner::visit(StoreInst& inst)
-    {
-        return new StoreInst(inst.dt, inst.val, inst.ptr, inst.comment);
-    }
+    Instruction* InstCloner::visit(StoreInst& inst) { return new StoreInst(inst.dt, inst.val, inst.ptr, inst.comment); }
 
     Instruction* InstCloner::visit(ArithmeticInst& inst)
     {
         return new ArithmeticInst(inst.opcode, inst.dt, inst.lhs, inst.rhs, inst.res, inst.comment);
     }
 
-    Instruction* InstCloner::visit(IcmpInst& inst) { return new IcmpInst(inst.dt, inst.cond, inst.lhs, inst.rhs, inst.res); }
+    Instruction* InstCloner::visit(IcmpInst& inst)
+    {
+        return new IcmpInst(inst.dt, inst.cond, inst.lhs, inst.rhs, inst.res);
+    }
 
-    Instruction* InstCloner::visit(FcmpInst& inst) { return new FcmpInst(inst.dt, inst.cond, inst.lhs, inst.rhs, inst.res); }
+    Instruction* InstCloner::visit(FcmpInst& inst)
+    {
+        return new FcmpInst(inst.dt, inst.cond, inst.lhs, inst.rhs, inst.res);
+    }
 
-    Instruction* InstCloner::visit(AllocaInst& inst) { return new AllocaInst(inst.dt, inst.res, inst.dims, inst.comment); }
+    Instruction* InstCloner::visit(AllocaInst& inst)
+    {
+        return new AllocaInst(inst.dt, inst.res, inst.dims, inst.comment);
+    }
 
     Instruction* InstCloner::visit(BrCondInst& inst)
     {
@@ -33,7 +39,10 @@ namespace ME
         return new GlbVarDeclInst(inst.dt, inst.name, inst.initList);
     }
 
-    Instruction* InstCloner::visit(CallInst& inst) { return new CallInst(inst.retType, inst.funcName, inst.args, inst.res, inst.comment); }
+    Instruction* InstCloner::visit(CallInst& inst)
+    {
+        return new CallInst(inst.retType, inst.funcName, inst.args, inst.res, inst.comment);
+    }
 
     Instruction* InstCloner::visit(FuncDeclInst& inst)
     {
@@ -60,7 +69,7 @@ namespace ME
 
     Instruction* InstCloner::visit(PhiInst& inst)
     {
-        auto* phi = new PhiInst(inst.dt, inst.res, inst.comment);
+        auto* phi         = new PhiInst(inst.dt, inst.res, inst.comment);
         phi->incomingVals = inst.incomingVals;
         return phi;
     }
