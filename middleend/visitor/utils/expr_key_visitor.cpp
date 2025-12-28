@@ -6,10 +6,7 @@
 
 namespace ME
 {
-    std::string ExprKeyVisitor::operandKey(Operand* op)
-    {
-        return op ? op->toString() : "null";
-    }
+    std::string ExprKeyVisitor::operandKey(Operand* op) { return op ? op->toString() : "null"; }
 
     bool ExprKeyVisitor::isCommutativeOp(Operator op)
     {
@@ -32,8 +29,8 @@ namespace ME
         if (isCommutativeOp(inst.opcode) && lhsKey > rhsKey) std::swap(lhsKey, rhsKey);
 
         std::stringstream ss;
-        ss << static_cast<int>(inst.opcode) << "|dt:" << static_cast<int>(inst.dt)
-           << "|lhs:" << lhsKey << "|rhs:" << rhsKey;
+        ss << static_cast<int>(inst.opcode) << "|dt:" << static_cast<int>(inst.dt) << "|lhs:" << lhsKey
+           << "|rhs:" << rhsKey;
         result = ss.str();
     }
 
@@ -61,8 +58,8 @@ namespace ME
         }
 
         std::stringstream ss;
-        ss << static_cast<int>(inst.opcode) << "|dt:" << static_cast<int>(inst.dt)
-           << "|cond:" << static_cast<int>(cond) << "|lhs:" << lhsKey << "|rhs:" << rhsKey;
+        ss << static_cast<int>(inst.opcode) << "|dt:" << static_cast<int>(inst.dt) << "|cond:" << static_cast<int>(cond)
+           << "|lhs:" << lhsKey << "|rhs:" << rhsKey;
         result = ss.str();
     }
 
@@ -90,8 +87,8 @@ namespace ME
         }
 
         std::stringstream ss;
-        ss << static_cast<int>(inst.opcode) << "|dt:" << static_cast<int>(inst.dt)
-           << "|cond:" << static_cast<int>(cond) << "|lhs:" << lhsKey << "|rhs:" << rhsKey;
+        ss << static_cast<int>(inst.opcode) << "|dt:" << static_cast<int>(inst.dt) << "|cond:" << static_cast<int>(cond)
+           << "|lhs:" << lhsKey << "|rhs:" << rhsKey;
         result = ss.str();
     }
 

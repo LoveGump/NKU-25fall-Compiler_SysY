@@ -19,9 +19,10 @@ namespace ME
         Block* entry = function.blocks.begin()->second;
 
         // 从入口块开始，标记其为可达块
-        if (reachableBlocks.insert(entry->blockId).second) { 
+        if (reachableBlocks.insert(entry->blockId).second)
+        {
             // 将入口id插入可达块集合成功，说明是新可达块
-            blockWorklist.push_back(entry); 
+            blockWorklist.push_back(entry);
         }
 
         SCCPEvalVisitor evaluator;
@@ -34,9 +35,10 @@ namespace ME
                 Block* block = blockWorklist.front();
                 blockWorklist.pop_front();
                 // 先处理新可达块，遍历块内所有指令
-                for (auto* inst : block->insts) { 
+                for (auto* inst : block->insts)
+                {
                     // 遍历指令并进行格值的计算
-                    apply(evaluator, *inst, *this, block); 
+                    apply(evaluator, *inst, *this, block);
                 }
             }
             else
@@ -58,9 +60,7 @@ namespace ME
         {
             // 仅对可达块做常量替换
             if (reachableBlocks.count(id) == 0) continue;
-            for (auto* inst : block->insts) { 
-                apply(replacer, *inst, *this); 
-            }
+            for (auto* inst : block->insts) { apply(replacer, *inst, *this); }
         }
 
         // Phi 消除与 CFG 简化
@@ -115,7 +115,7 @@ namespace ME
                 }
 
                 // 用无条件分支替换原条件分支
-                auto* newBr = new BrUncondInst(target);
+                auto* newBr         = new BrUncondInst(target);
                 block->insts.back() = newBr;
                 delete br;
             }
@@ -143,12 +143,12 @@ namespace ME
                     auto* br = static_cast<BrCondInst*>(term);
                     if (br->trueTar && br->trueTar->getType() == OperandType::LABEL)
                     {
-                        Block* succ  = function.getBlock(br->trueTar->getLabelNum());
+                        Block* succ = function.getBlock(br->trueTar->getLabelNum());
                         if (succ) removePhiIncoming(succ, getLabelOperand(blockId));
                     }
                     if (br->falseTar && br->falseTar->getType() == OperandType::LABEL)
                     {
-                        Block* succ  = function.getBlock(br->falseTar->getLabelNum());
+                        Block* succ = function.getBlock(br->falseTar->getLabelNum());
                         if (succ) removePhiIncoming(succ, getLabelOperand(blockId));
                     }
                 }
@@ -157,7 +157,7 @@ namespace ME
                     auto* br = static_cast<BrUncondInst*>(term);
                     if (br->target && br->target->getType() == OperandType::LABEL)
                     {
-                        Block* succ  = function.getBlock(br->target->getLabelNum());
+                        Block* succ = function.getBlock(br->target->getLabelNum());
                         if (succ) removePhiIncoming(succ, getLabelOperand(blockId));
                     }
                 }
@@ -193,7 +193,7 @@ namespace ME
                 instBlockMap[inst] = block;
             }
         }
-        userMap = std::move(collector.userMap); // 寄存器编号 -> 使用该寄存器的指令列表
+        userMap = std::move(collector.userMap);  // 寄存器编号 -> 使用该寄存器的指令列表
 
         // 参数寄存器视为不确定值，避免错误传播
         if (function.funcDef)
@@ -204,8 +204,8 @@ namespace ME
                 if (op && op->getType() == OperandType::REG)
                 {
                     LatticeVal overdef;
-                    overdef.kind                                   = LatticeKind::OVERDEFINED;
-                    overdef.type                                   = DataType::UNK;
+                    overdef.kind              = LatticeKind::OVERDEFINED;
+                    overdef.type              = DataType::UNK;
                     valueMap[op->getRegNum()] = overdef;
                 }
             }

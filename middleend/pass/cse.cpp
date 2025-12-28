@@ -22,7 +22,6 @@ namespace ME
         if (changed) Analysis::AM.invalidate(function);
     }
 
- 
     // 对于跨块的cse，需要考虑支配关系和控制流
     // 使用支配树进行深度优先遍历，在遍历过程中维护表达式-值映射表
     bool CSEPass::runDominatorCSE(Function& function)
@@ -36,16 +35,16 @@ namespace ME
         const auto&                               domTree = dom->getDomTree();
         std::unordered_map<std::string, Operand*> exprMap;
 
-        std::unordered_set<Instruction*>          eraseSet;
+        std::unordered_set<Instruction*> eraseSet;
 
-        std::unordered_map<size_t, Operand*>      replaceRegs;
-        OperandReplaceVisitor                     replacer(replaceRegs);
+        std::unordered_map<size_t, Operand*> replaceRegs;
+        OperandReplaceVisitor                replacer(replaceRegs);
 
-        std::unordered_set<size_t>                visited;
-        ExprKeyVisitor                            keyVisitor;
+        std::unordered_set<size_t> visited;
+        ExprKeyVisitor             keyVisitor;
 
         // 隐式CSE：记录已知条件值 (寄存器号 -> true/false)
-        std::unordered_map<size_t, bool>          knownConditions;
+        std::unordered_map<size_t, bool> knownConditions;
 
         std::function<void(size_t)> dfs = [&](size_t blockId) {
             // 深度优先搜索遍历所有基本块
@@ -63,9 +62,7 @@ namespace ME
             for (auto* inst : block->insts)
             {
                 // 先进行寄存器替换
-                if (!replaceRegs.empty()) {
-                    apply(replacer, *inst);
-                }
+                if (!replaceRegs.empty()) { apply(replacer, *inst); }
 
                 // 隐式CSE：检查条件分支是否使用已知条件
                 // 如果当前指令是条件分支指令，且条件寄存器的值已知，则替换为无条件跳转
@@ -137,18 +134,17 @@ namespace ME
             if (blockId < domTree.size())
             {
                 // 获取当前块的终结指令，检查是否为条件分支
-                BrCondInst* brCond = nullptr;
+                BrCondInst* brCond  = nullptr;
                 size_t      condReg = 0;
                 if (!block->insts.empty())
                 {
                     brCond = dynamic_cast<BrCondInst*>(block->insts.back());
-                    if (brCond && brCond->cond && brCond->cond->getType() == OperandType::REG){
+                    if (brCond && brCond->cond && brCond->cond->getType() == OperandType::REG)
+                    {
                         // 如果是条件分支，记录条件寄存器编号
                         condReg = brCond->cond->getRegNum();
                     }
-                    else{
-                        brCond = nullptr;
-                    }
+                    else { brCond = nullptr; }
                 }
 
                 for (int child : domTree[blockId])
@@ -166,8 +162,7 @@ namespace ME
                         size_t childId    = static_cast<size_t>(child);
 
                         // 检查子块是否只有一个前驱，如果只有一个前驱，则可以确定条件值（这里先只考虑这种情况）
-                        bool singlePred = childId < cfg->invG_id.size() &&
-                                          cfg->invG_id[childId].size() == 1;
+                        bool singlePred = childId < cfg->invG_id.size() && cfg->invG_id[childId].size() == 1;
 
                         if (singlePred && trueBlock != falseBlock)
                         {
@@ -204,13 +199,12 @@ namespace ME
                 const std::string& key    = std::get<0>(*it);
                 bool               hadOld = std::get<1>(*it);
                 Operand*           oldVal = std::get<2>(*it);
-                if (hadOld){
+                if (hadOld)
+                {
                     // 将key映射为旧值
                     exprMap[key] = oldVal;
                 }
-                else{
-                    exprMap.erase(key);
-                }
+                else { exprMap.erase(key); }
             }
         };
 
@@ -224,12 +218,8 @@ namespace ME
                 std::deque<Instruction*> newInsts;
                 for (auto* inst : block->insts)
                 {
-                    if (eraseSet.count(inst)) {
-                        delete inst;
-                    }
-                    else{
-                        newInsts.push_back(inst);
-                    }
+                    if (eraseSet.count(inst)) { delete inst; }
+                    else { newInsts.push_back(inst); }
                 }
                 block->insts = newInsts;
             }
@@ -241,25 +231,22 @@ namespace ME
             OperandReplaceVisitor finalReplacer(replaceRegs);
             for (auto& [id, block] : function.blocks)
             {
-                for (auto* inst : block->insts) {
-                    apply(finalReplacer, *inst);
-                }
+                for (auto* inst : block->insts) { apply(finalReplacer, *inst); }
             }
         }
         return changed;
     }
-
 
     // 对于同一块内的cse，不考虑支配关系和控制流
     // 直接将等价表达式替换为已存在的值即可
     // 没有使用
     bool CSEPass::runBlockLocalCSE(Function& function)
     {
-        bool  changed = false;
+        bool changed = false;
 
         // 记录每一条指令对应的块，以及使用某个寄存器的指令列表
         std::unordered_map<Instruction*, size_t> inst2block;
-        UserCollector  userCollector;
+        UserCollector                            userCollector;
         for (auto& [id, block] : function.blocks)
         {
             for (auto* inst : block->insts)
@@ -272,15 +259,15 @@ namespace ME
         for (auto& [id, block] : function.blocks)
         {
             // 寄存器编号 -> 替换用的操作数
-            std::unordered_map<size_t, Operand*>      replaceRegs;
-            OperandReplaceVisitor                     replacer(replaceRegs);
+            std::unordered_map<size_t, Operand*> replaceRegs;
+            OperandReplaceVisitor                replacer(replaceRegs);
 
             // 表达式键 -> 已存在的操作数
             std::unordered_map<std::string, Operand*> exprMap;
             ExprKeyVisitor                            keyVisitor;
 
             // 新建指令列表
-            std::deque<Instruction*>                  newInsts;
+            std::deque<Instruction*> newInsts;
 
             for (auto* inst : block->insts)
             {
@@ -332,9 +319,7 @@ namespace ME
 
                     // 更改映射至新的操作数
                     replaceRegs[defReg] = found->second;
-                    if (externalUse){
-                        newInsts.push_back(inst);
-                    }
+                    if (externalUse) { newInsts.push_back(inst); }
                     else
                     {
                         delete inst;
@@ -351,6 +336,5 @@ namespace ME
         }
         return changed;
     }
-
 
 }  // namespace ME

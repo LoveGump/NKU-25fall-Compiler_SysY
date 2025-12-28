@@ -66,15 +66,12 @@ namespace ME
                 {
                     if (auto* ubr = dynamic_cast<BrUncondInst*>(inst))
                     {
-                        if (ubr->target->getLabelNum() == deleteId)
-                            ubr->target = getLabelOperand(targetId);
+                        if (ubr->target->getLabelNum() == deleteId) ubr->target = getLabelOperand(targetId);
                     }
                     else if (auto* cbr = dynamic_cast<BrCondInst*>(inst))
                     {
-                        if (cbr->trueTar->getLabelNum() == deleteId)
-                            cbr->trueTar = getLabelOperand(targetId);
-                        if (cbr->falseTar->getLabelNum() == deleteId)
-                            cbr->falseTar = getLabelOperand(targetId);
+                        if (cbr->trueTar->getLabelNum() == deleteId) cbr->trueTar = getLabelOperand(targetId);
+                        if (cbr->falseTar->getLabelNum() == deleteId) cbr->falseTar = getLabelOperand(targetId);
                     }
                 }
             }

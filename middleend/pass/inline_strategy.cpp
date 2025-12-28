@@ -52,7 +52,8 @@ namespace ME
         // 函数名到函数对象的映射：只对有 funcDef 的定义函数建表
         for (auto* func : module.functions)
         {
-            if (func && func->funcDef) {
+            if (func && func->funcDef)
+            {
                 // 函数名 -> 函数对象 映射
                 name_map[func->funcDef->funcName] = func;
             }
@@ -73,9 +74,7 @@ namespace ME
             {
                 for (auto& arg : func->funcDef->argRegs)
                 {
-                    if (arg.first == DataType::PTR) {
-                        info.has_pointer_params = true;
-                    }
+                    if (arg.first == DataType::PTR) { info.has_pointer_params = true; }
                 }
             }
 
@@ -98,11 +97,11 @@ namespace ME
         auto* dom = Analysis::AM.get<Analysis::DomInfo>(func);
         if (!cfg || !dom) return;
 
-        const auto& imm_dom = dom->getImmDom(); // 即时支配关系
+        const auto& imm_dom = dom->getImmDom();  // 即时支配关系
         const auto& G_id    = cfg->G_id;
         const auto& invG_id = cfg->invG_id;
 
-        std::map<size_t, int> loop_depth; // blockId -> loop depth
+        std::map<size_t, int> loop_depth;  // blockId -> loop depth
         bool                  has_loop = false;
 
         // 通过回边识别循环，并估计循环深度：
@@ -119,7 +118,7 @@ namespace ME
                 if (!dominates(static_cast<int>(v), static_cast<int>(u), imm_dom)) continue;
 
                 has_loop = true;
-                std::set<size_t>   loop_nodes; // 循环体节点集合
+                std::set<size_t>   loop_nodes;  // 循环体节点集合
                 std::deque<size_t> worklist;    // 反向遍历工作队列
 
                 loop_nodes.insert(v);
@@ -136,7 +135,8 @@ namespace ME
                     for (size_t pred : invG_id[node])
                     {
                         // 遍历前驱节点，统计过的跳过
-                        if (loop_nodes.insert(pred).second) {
+                        if (loop_nodes.insert(pred).second)
+                        {
                             // 将所有能到达回边源的节点加入循环体
                             worklist.push_back(pred);
                         }
@@ -148,9 +148,9 @@ namespace ME
             }
         }
 
-        info.has_loops  = has_loop;
+        info.has_loops = has_loop;
         // 初步估计的循环深度
-        info.loop_depth =loop_depth;
+        info.loop_depth = loop_depth;
     }
 
     void InlineStrategy::collectCallSites(Function& func)
@@ -173,7 +173,7 @@ namespace ME
     // 统计函数调用点信息
     void InlineStrategy::recordCallSite(Function& func, Block& block, CallInst& call_inst)
     {
-        auto info_it = function_info.find(&func); // 调用者信息
+        auto info_it = function_info.find(&func);  // 调用者信息
         if (info_it == function_info.end()) return;
 
         // 通过函数名找到被调用函数
@@ -188,7 +188,8 @@ namespace ME
 
         // 判断是否在循环内
         auto depth_it = info_it->second.loop_depth.find(block.blockId);
-        if (depth_it != info_it->second.loop_depth.end()){
+        if (depth_it != info_it->second.loop_depth.end())
+        {
             // 如果深度大于0，则在循环内
             cs.in_loop = depth_it->second > 0;
         }
@@ -204,8 +205,8 @@ namespace ME
         // 在调用图中标记递归函数：
         // DFS 过程中维护当前递归栈，若访问到栈内节点则形成环
         // 将该环上的函数标记为递归，后续策略会直接拒绝内联递归函数
-        std::set<Function*>    visited; // 已访问节点
-        std::vector<Function*> stack;  // 当前递归调用栈
+        std::set<Function*>    visited;  // 已访问节点
+        std::vector<Function*> stack;    // 当前递归调用栈
 
         std::function<void(Function*)> dfs = [&](Function* func) {
             if (!func) return;
@@ -220,13 +221,15 @@ namespace ME
                 auto it = std::find(stack.begin(), stack.end(), callee);
                 if (it != stack.end())
                 {
-                    for (; it != stack.end(); ++it) {
+                    for (; it != stack.end(); ++it)
+                    {
                         // 将栈上的函数标记为递归
                         function_info[*it].is_recursive = true;
                     }
                     continue;
                 }
-                if (!visited.count(callee)) {
+                if (!visited.count(callee))
+                {
                     // 如果没有访问过，则继续 DFS
                     dfs(callee);
                 }
@@ -238,9 +241,7 @@ namespace ME
         for (auto& [func, info] : function_info)
         {
             // 遍历所有函数
-            if (!visited.count(func)) {
-                dfs(func);
-            }
+            if (!visited.count(func)) { dfs(func); }
         }
     }
 
@@ -256,21 +257,22 @@ namespace ME
             if (!func || visited.count(func)) return;
             visited.insert(func);
             // 先处理被调函数，再处理调用者
-            for (auto* callee : call_graph[func]) {
+            for (auto* callee : call_graph[func])
+            {
                 // 递归 函数调用图 DFS
                 dfs(callee);
             }
             topo_order.push_back(func);
         };
 
-        for (auto& [func, info] : function_info) {
+        for (auto& [func, info] : function_info)
+        {
             // 遍历所有函数
             dfs(func);
         }
     }
 
-    bool InlineStrategy::shouldInline(
-        Function& caller, Function& callee, CallInst& call_inst) const
+    bool InlineStrategy::shouldInline(Function& caller, Function& callee, CallInst& call_inst) const
     {
         auto caller_it = function_info.find(&caller);
         auto callee_it = function_info.find(&callee);
@@ -308,11 +310,10 @@ namespace ME
             }
         }
 
-        return smallFunc || sizeOk || hasPtr || inLoop; // 
+        return smallFunc || sizeOk || hasPtr || inLoop;  //
     }
 
     std::vector<Function*> InlineStrategy::getProcessingOrder() const { return topo_order; }
-
 
     Function* InlineStrategy::findFunction(const std::string& name) const
     {

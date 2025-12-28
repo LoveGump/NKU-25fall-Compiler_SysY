@@ -107,10 +107,7 @@ namespace ME
     // 收集使用指定寄存器的指令列表
     void UserCollector::addUse(Operand* op)
     {
-        if (op && op->getType() == OperandType::REG)
-        {
-            userMap[op->getRegNum()].push_back(currentInst);
-        }
+        if (op && op->getType() == OperandType::REG) { userMap[op->getRegNum()].push_back(currentInst); }
     }
 
     void UserCollector::visit(LoadInst& inst)

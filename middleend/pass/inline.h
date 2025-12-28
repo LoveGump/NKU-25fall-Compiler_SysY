@@ -24,7 +24,7 @@ namespace ME
 
       private:
         std::map<size_t, Operand*> buildOperandMap(Function& caller, Function& callee, CallInst* callInst);
-        bool inlineCall(Function& caller, Block* callBlock, CallInst* callInst, Function& callee);
+        bool                       inlineCall(Function& caller, Block* callBlock, CallInst* callInst, Function& callee);
 
         // 辅助函数：更新后继块的 phi incoming（块切分后使用）
         void updatePhiSucc(Function& caller, Operand* target, size_t oldBlockId, size_t newBlockId);
@@ -33,8 +33,8 @@ namespace ME
         // 辅助函数：重映射单个 label 操作数
         void remapLabel(Operand*& target);
 
-        Module* module_ = nullptr;
-        std::map<size_t, size_t> labelMap_;    // 内联时的 label 映射
+        Module*                    module_ = nullptr;
+        std::map<size_t, size_t>   labelMap_;    // 内联时的 label 映射
         std::map<size_t, Operand*> operandMap_;  // callee id -> caller operand
     };
 }  // namespace ME

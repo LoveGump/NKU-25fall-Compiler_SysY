@@ -29,10 +29,10 @@ namespace ME
         }
 
         // 收集被调函数内出现的所有寄存器（use/def），并为未映射寄存器分配 caller 侧新编号
-        std::set<size_t> regs;
+        std::set<size_t>      regs;
         std::map<size_t, int> useCounts;
-        UseCollector useCollector(useCounts);
-        DefCollector defCollector;
+        UseCollector          useCollector(useCounts);
+        DefCollector          defCollector;
         for (auto& [id, block] : callee.blocks)
         {
             for (auto* inst : block->insts)
@@ -41,18 +41,16 @@ namespace ME
                 apply(useCollector, *inst);
                 apply(defCollector, *inst);
                 size_t def = defCollector.getResult();
-                if (def != 0)
-                {
-                   regs.insert(def);
-                }
+                if (def != 0) { regs.insert(def); }
             }
         }
-        for (auto& [reg, _] : useCounts)
-            regs.insert(reg);
+        for (auto& [reg, _] : useCounts) regs.insert(reg);
 
-        for (auto reg : regs){
+        for (auto reg : regs)
+        {
             // 遍历所有寄存器，若未映射则分配新寄存器
-            if (operandMap.find(reg) == operandMap.end()){
+            if (operandMap.find(reg) == operandMap.end())
+            {
                 // 为该寄存器分配 caller 侧新寄存器，并建立新的映射
                 operandMap[reg] = getRegOperand(caller.getNewRegId());
             }
@@ -89,8 +87,9 @@ namespace ME
     // - phi 指令：重映射 incoming 的 label
     void InlinePass::remapLabels(Instruction* inst)
     {
-        if (auto* br = dynamic_cast<BrUncondInst*>(inst)){  
-            // 替换目标标签 
+        if (auto* br = dynamic_cast<BrUncondInst*>(inst))
+        {
+            // 替换目标标签
             remapLabel(br->target);
         }
         else if (auto* br = dynamic_cast<BrCondInst*>(inst))
@@ -127,14 +126,14 @@ namespace ME
         if (!target || target->getType() != OperandType::LABEL) return;
         // 找到映射关系
         auto it = labelMap_.find(target->getLabelNum());
-        if (it != labelMap_.end()) {
+        if (it != labelMap_.end())
+        {
             // 重映射到新的标签操作数
             target = getLabelOperand(it->second);
         }
     }
 
-    bool InlinePass::inlineCall(
-        Function& caller, Block* callBlock, CallInst* callInst, Function& callee)
+    bool InlinePass::inlineCall(Function& caller, Block* callBlock, CallInst* callInst, Function& callee)
     {
         // 内联基本流程：
         // 1) 校验签名与返回约束
@@ -152,15 +151,14 @@ namespace ME
         {
             for (auto& [_, block] : callee.blocks)
                 for (auto* inst : block->insts)
-                    if (inst->opcode == Operator::RET && !static_cast<RetInst*>(inst)->res)
-                        return false;
+                    if (inst->opcode == Operator::RET && !static_cast<RetInst*>(inst)->res) return false;
         }
 
         // 在块内查找 call 指令，将指令分为 call 之前和 call 之后两部分
-        auto& insts = callBlock->insts;
+        auto&                    insts = callBlock->insts;
         std::deque<Instruction*> beforeCall;
         std::deque<Instruction*> afterCallInsts;
-        bool found = false;
+        bool                     found = false;
         for (auto* inst : insts)
         {
             if (inst == callInst)
@@ -168,11 +166,13 @@ namespace ME
                 found = true;
                 continue;  // 跳过 call 指令本身
             }
-            if (!found){
+            if (!found)
+            {
                 // 调用函数之前的指令
                 beforeCall.push_back(inst);
             }
-            else{
+            else
+            {
                 // 调用函数之后的指令
                 afterCallInsts.push_back(inst);
             }
@@ -190,7 +190,8 @@ namespace ME
         if (!afterCall->insts.empty())
         {
             //  更新其目标块的 phi incoming
-            if (auto* br = dynamic_cast<BrUncondInst*>(afterCall->insts.back())){
+            if (auto* br = dynamic_cast<BrUncondInst*>(afterCall->insts.back()))
+            {
                 // 无条件跳转
                 updatePhiSucc(caller, br->target, callBlock->blockId, afterCall->blockId);
             }
@@ -202,7 +203,7 @@ namespace ME
         }
 
         // 为 callee 的每个基本块创建对应的新块（blockMap/labelMap_ 用于重映射跳转目标）
-        std::map<size_t, Block*> blockMap; // callee block id -> caller new block ptr
+        std::map<size_t, Block*> blockMap;  // callee block id -> caller new block ptr
         labelMap_.clear();                  // callee block id -> caller new block id
         for (auto& [id, _] : callee.blocks)
         {
@@ -217,7 +218,7 @@ namespace ME
         callBlock->insertBack(new BrUncondInst(getLabelOperand(blockMap[entryId]->blockId)));
 
         // callee id -> caller operand
-        operandMap_ = buildOperandMap(caller, callee, callInst); // 
+        operandMap_ = buildOperandMap(caller, callee, callInst);  //
         OperandRename renamer;
         InstCloner    cloner;
 
@@ -238,7 +239,7 @@ namespace ME
         Block* entryBlockForAllocas = nullptr;
         if (!caller.blocks.empty())
         {
-            auto it = caller.blocks.find(0);
+            auto it              = caller.blocks.find(0);
             entryBlockForAllocas = it != caller.blocks.end() ? it->second : caller.blocks.begin()->second;
         }
         // 收集待提升的 alloca 指令
@@ -249,7 +250,7 @@ namespace ME
         // - 其它指令：克隆后做寄存器重命名与 label 重映射
         for (auto& [id, block] : callee.blocks)
         {
-            Block* newBlock = blockMap[id]; // 获取对应的新块
+            Block* newBlock = blockMap[id];  // 获取对应的新块
             for (auto* inst : block->insts)
             {
                 if (inst->opcode == Operator::RET)
@@ -263,7 +264,8 @@ namespace ME
                         {
                             // 有返回值
                             auto it = operandMap_.find(mappedRes->getRegNum());
-                            if (it != operandMap_.end()){
+                            if (it != operandMap_.end())
+                            {
                                 // 获取映射后的操作数
                                 mappedRes = it->second;
                             }
@@ -284,12 +286,8 @@ namespace ME
                 remapLabels(cloned);
 
                 // 如果是 alloca 指令，暂时先不插入块，后续统一提升到入口块
-                if (cloned->opcode == Operator::ALLOCA && entryBlockForAllocas)
-                {    hoistedAllocas.push_back(cloned);
-                }
-                else{
-                    newBlock->insertBack(cloned);
-                }
+                if (cloned->opcode == Operator::ALLOCA && entryBlockForAllocas) { hoistedAllocas.push_back(cloned); }
+                else { newBlock->insertBack(cloned); }
             }
         }
 
@@ -299,8 +297,7 @@ namespace ME
             auto lastAlloca = entryBlockForAllocas->insts.begin();
             for (auto it = entryBlockForAllocas->insts.begin(); it != entryBlockForAllocas->insts.end(); ++it)
             {
-                if ((*it)->opcode == Operator::ALLOCA)
-                    lastAlloca = std::next(it);
+                if ((*it)->opcode == Operator::ALLOCA) lastAlloca = std::next(it);
             }
             entryBlockForAllocas->insts.insert(lastAlloca, hoistedAllocas.begin(), hoistedAllocas.end());
         }
@@ -312,7 +309,7 @@ namespace ME
     {
         module_ = &module;
         InlineStrategy strategy;
-        bool changed = true;
+        bool           changed = true;
 
         while (changed)
         {
@@ -338,8 +335,7 @@ namespace ME
                         auto* call = dynamic_cast<CallInst*>(inst);
                         if (!call) continue;
                         auto* callee = strategy.findFunction(call->funcName);
-                        if (callee && strategy.shouldInline(*func, *callee, *call))
-                            calls.emplace_back(call, callee);
+                        if (callee && strategy.shouldInline(*func, *callee, *call)) calls.emplace_back(call, callee);
                     }
                 }
 
@@ -350,7 +346,8 @@ namespace ME
                     for (auto& [_, blk] : func->blocks)
                     {
                         if (!blk) continue;
-                        if (std::find(blk->insts.begin(), blk->insts.end(), static_cast<Instruction*>(call)) != blk->insts.end())
+                        if (std::find(blk->insts.begin(), blk->insts.end(), static_cast<Instruction*>(call)) !=
+                            blk->insts.end())
                         {
                             foundBlock = blk;
                             break;

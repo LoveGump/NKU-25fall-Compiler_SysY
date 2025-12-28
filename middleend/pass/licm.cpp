@@ -141,7 +141,8 @@ namespace ME
         return false;
     }
 
-    bool LICMPass::dominatesAllLatches(size_t blockId, const Analysis::Loop& loop, const std::vector<int>& imm_dom) const
+    bool LICMPass::dominatesAllLatches(
+        size_t blockId, const Analysis::Loop& loop, const std::vector<int>& imm_dom) const
     {
         if (loop.latches.empty()) return true;
         for (size_t latchId : loop.latches)
@@ -676,10 +677,7 @@ namespace ME
             phi->addIncoming(zero, getLabelOperand(elseBlock->blockId));
             mergeBlock->insts.push_back(phi);
 
-            if (oldRes && oldRes->getType() == OperandType::REG)
-            {
-                replaceRegs[oldRes->getRegNum()] = phiRes;
-            }
+            if (oldRes && oldRes->getType() == OperandType::REG) { replaceRegs[oldRes->getRegNum()] = phiRes; }
 
             finalBlock[inst] = thenBlock->blockId;
             current          = mergeBlock;

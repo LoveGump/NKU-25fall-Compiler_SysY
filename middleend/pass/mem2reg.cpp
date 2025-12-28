@@ -69,8 +69,7 @@ namespace ME
                         {
                             StoreInst* store = static_cast<StoreInst*>(user);
                             // Store 必须将 alloca 作为指针，而不是作为值
-                            if (store->ptr->getType() != OperandType::REG ||
-                                store->ptr->getRegNum() != regNum)
+                            if (store->ptr->getType() != OperandType::REG || store->ptr->getRegNum() != regNum)
                             {
                                 promotable = false;
                                 break;

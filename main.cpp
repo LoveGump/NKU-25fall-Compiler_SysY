@@ -336,37 +336,35 @@ int main(int argc, char** argv)
              * - 难度不低于上述 pass 的其它优化
              */
             // 下面这个 pass 可以作为参考，主要是示范如何通过cache获取分析pass的结果
-            // ME::TCOPass tcoPass;
-            // tcoPass.runOnModule(m);
+            ME::TCOPass tcoPass;
+            tcoPass.runOnModule(m);
 
-            // ME::UnifyReturnPass unifyReturnPass;
-            // unifyReturnPass.runOnModule(m);
+            ME::UnifyReturnPass unifyReturnPass;
+            unifyReturnPass.runOnModule(m);
 
-            // ME::Mem2RegPass mem2RegPass;
-            // mem2RegPass.runOnModule(m);
+            ME::Mem2RegPass mem2RegPass;
+            mem2RegPass.runOnModule(m);
 
-            // ME::DCEPass dcePass;
-            // dcePass.runOnModule(m);
+            ME::DCEPass dcePass;
+            dcePass.runOnModule(m);
 
             ME::InlinePass inlinePass;
             inlinePass.runOnModule(m);
 
-            // ME::SCCPPass sccpPass;
-            // sccpPass.runOnModule(m);
-            
+            ME::SCCPPass sccpPass;
+            sccpPass.runOnModule(m);
 
-            // ME::LICMPass licmPass;
-            // licmPass.runOnModule(m);
+            ME::LICMPass licmPass;
+            licmPass.runOnModule(m);
 
-            // ME::ADCEPass adcePass;
-            // adcePass.runOnModule(m);
+            ME::ADCEPass adcePass;
+            adcePass.runOnModule(m);
 
-            // ME::CSEPass csePass;
-            // csePass.runOnModule(m);
+            ME::CSEPass csePass;
+            csePass.runOnModule(m);
 
-            // ME::SimplifyCFGPass simplifyCFGPass;
-            // simplifyCFGPass.runOnModule(m);
-
+            ME::SimplifyCFGPass simplifyCFGPass;
+            simplifyCFGPass.runOnModule(m);
         }
 
         if (step == "-llvm")
