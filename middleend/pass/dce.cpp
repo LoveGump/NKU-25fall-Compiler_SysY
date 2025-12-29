@@ -8,6 +8,10 @@ namespace ME
 {
     void DCEPass::runOnFunction(Function& function)
     {
+        // DCE（Dead Code Elimination）：
+        // 以“结果寄存器无人使用”为判据，删除无副作用的死指令。
+        // 由于删除会让一些寄存器的 use 计数归零，需要迭代到收敛。
+
         // 反复执行直到不再有改动
         bool changed = true;
         while (changed) { changed = eliminateDeadCode(function); }
@@ -18,7 +22,7 @@ namespace ME
         std::map<size_t, int> useCounts;        // 寄存器使用次数   寄存器编号->使用次数
         bool                  changed = false;  // 是否有改动
 
-        // 1. 收集使用次数
+        // 1) 统计全函数的寄存器 use 次数
         UseCollector useCollector(useCounts);
         // 遍历所有指令，收集使用信息
         for (auto& [id, block] : function.blocks)
@@ -26,7 +30,9 @@ namespace ME
             for (auto inst : block->insts) { apply(useCollector, *inst); }
         }
 
-        // 2. 识别死指令并构建新的指令列表，再线性时间复杂度内进行删除
+        // 2) 在线性遍历中删除死指令：
+        //    - 只删除“无副作用”指令
+        //    - 且该指令定义的寄存器 defReg 的 use 次数为 0
         DefCollector defCollector;  // 用于获取指令定义的寄存器
 
         for (auto& [id, block] : function.blocks)
@@ -77,3 +83,10 @@ namespace ME
         }
     }
 }  // namespace ME
+
+/*
+DCE 流程总结（对应本文件实现）：
+1) 扫描全函数，统计每个寄存器的 use 次数。
+2) 遍历指令：若指令无副作用且其 def 寄存器 use 次数为 0，则删除该指令。
+3) 因为删除会减少其它寄存器的 use 次数，重复执行 1)-2) 直到不再发生删除。
+*/

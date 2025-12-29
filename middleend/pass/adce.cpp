@@ -8,7 +8,7 @@
 
 namespace ME
 {
-    // 辅助函数：提取基本块的后继
+    // 提取基本块的后继
     static std::vector<size_t> getSuccessors(Block* block)
     {
         // 提取基本块的后继
@@ -35,13 +35,18 @@ namespace ME
         liveInsts.clear();
         postImmDom.clear();
 
-        // 1. 标记活跃指令
+        // ADCE（Aggressive Dead Code Elimination）：
+        // - 先从“必活跃（有副作用）”指令出发做活跃性传播，得到 liveInsts
+        // - 再删除不活跃指令，并利用后支配信息把死分支重定向到最近的活跃后支配块
+        // - 最后清理不可达块以及因此造成的 Phi 入边
+
+        // 1) 标记活跃指令
         markLive(function);
 
-        // 2. 移除死代码
+        // 2) 移除死代码（包含死指令删除 + 死终结符分支修复）
         removeDeadCode(function);
 
-        // 3. 清理不可达块
+        // 3) 清理不可达块（以及可达块 Phi 中来自不可达前驱的 incoming）
         cleanUp(function);
         Analysis::Manager::getInstance().invalidate(function);
         Analysis::Manager::getInstance().get<Analysis::CFG>(function);
@@ -49,7 +54,7 @@ namespace ME
 
     void ADCEPass::cleanUp(Function& function)
     {
-        // 1. 计算可达性
+        // 1) 从入口块做 BFS，计算可达块集合
         std::set<size_t>   reachable;
         std::queue<size_t> q;
 
@@ -80,7 +85,7 @@ namespace ME
             }
         }
 
-        // 2. 处理不可达块对可达块 Phi 节点的影响
+        // 2) 不可达块仍可能是可达块的 CFG 前驱：需要从可达块的 Phi 中移除该 incoming
         for (auto& [id, block] : function.blocks)
         {
             if (reachable.count(id)) continue;  // 可达块跳过
@@ -116,10 +121,11 @@ namespace ME
 
     bool ADCEPass::isSideEffect(Instruction* inst)
     {
+        // “必活跃”起点：这些指令即使结果没人用，也不能删（会改变可观察行为）
         switch (inst->opcode)
         {
             case Operator::STORE:  // 存储指令
-            case Operator::CALL:   // 函数调用可能有副作用
+            case Operator::CALL:   // 函数调用我们默认是有副作用的，完整adce也可以对函数进行分析，分析函数是否有副作用
             case Operator::RET:    // 返回指令
                 return true;
             default: return false;
@@ -128,9 +134,9 @@ namespace ME
 
     void ADCEPass::markLive(Function& function)
     {
-        Analysis::Manager::getInstance().invalidate(function);
+        Analysis::Manager::getInstance().invalidate     (function);
 
-        // 获取控制流图 CFG 和后支配信息
+        // 获取控制流图 CFG 和后支配信息（用于控制依赖传播）
         auto* cfg         = Analysis::Manager::getInstance().get<Analysis::CFG>(function);
         auto* postDomInfo = Analysis::Manager::getInstance().get<Analysis::PostDomInfo>(function);
 
@@ -138,7 +144,7 @@ namespace ME
         postImmDom      = postDomInfo->getImmPostDom();       // 获取后支配树的直接支配者数组
         const auto& pdf = postDomInfo->getPostDomFrontier();  // 获取后支配边界数组
 
-        // 构建寄存器定义映射，寄存器 -> 定义寄存器值的指令
+        // 构建寄存器定义映射：reg -> 定义该 reg 的指令
         std::map<size_t, Instruction*> regDefInst;
         for (auto& [id, block] : function.blocks)
         {
@@ -154,7 +160,7 @@ namespace ME
         std::queue<Instruction*>       worklist;  // 存储待处理的活跃指令
         std::map<Instruction*, size_t> instToBlock;
 
-        // 标记所有有副作用的指令为活跃，CFG已经移除了不可达块
+        // 初始化：把所有有副作用的指令加入活跃集合与工作队列
         for (auto& [id, block] : function.blocks)
         {
             for (auto* inst : block->insts)
@@ -168,14 +174,20 @@ namespace ME
             }
         }
 
-        // 传播活跃性
-        std::map<size_t, int> dummyMap;  // 收集使用的寄存器
+        // 活跃性传播（三条规则）：
+        // 1) 数据依赖：活跃指令用到的寄存器，其定义指令也必须活跃
+        // 2) Phi 前驱：若 Phi 活跃，则所有 incoming 对应前驱块的终结符必须活跃（否则 CFG 结构会被破坏）
+        // 3) 控制依赖：若某块里有活跃指令，则其后支配边界(PostDomFrontier)上的终结符必须活跃
+        //    直观理解：这些终结符控制了是否会走到该活跃指令（必须保留控制流）
+        // 在这里就是程序流上面的分支点
+
+        std::map<size_t, int> dummyMap;  // 收集使用的寄存器 (寄存器号 -> 使用次数)，仅用作占位
         while (!worklist.empty())
         {
             Instruction* inst = worklist.front();
             worklist.pop();
 
-            // 1. 操作数活跃性：标记定义使用操作数的指令为活跃
+            // 1) 数据依赖传播：标记定义所用寄存器的指令
             dummyMap.clear();
             UseCollector collector(dummyMap);
             apply(collector, *inst);  // 将该指令进行收集
@@ -196,7 +208,7 @@ namespace ME
                 }
             }
 
-            // 2. Phi 节点前驱活跃性
+            // 2) Phi 前驱传播：Phi 活跃 => incoming 对应前驱块的 terminator 活跃
             if (inst->opcode == Operator::PHI)
             {
                 // 如果是 Phi 指令，标记其前驱块的终结指令为活跃
@@ -230,7 +242,7 @@ namespace ME
                 }
             }
 
-            // 3. 控制依赖活跃性
+            // 3) 控制依赖传播：通过 post-dominance frontier 找到控制本块可达性的分支点
             size_t blockId = instToBlock[inst];  // 当前块 id
             if (blockId < pdf.size())
             {
@@ -260,6 +272,9 @@ namespace ME
 
     bool ADCEPass::removeDeadCode(Function& function)
     {
+        // 根据 liveInsts 删除死指令，并修复因此可能破坏的 CFG：
+        // - 非终结符死指令：直接删除
+        // - 终结符死指令：利用后支配链重定向到最近的“活跃后支配块”（保证仍能到达副作用）
         bool changed = false;
 
         for (auto& [id, block] : function.blocks)
@@ -281,11 +296,14 @@ namespace ME
                     changed = true;
                     continue;
                 }
+                
+                // jump/branch这样的terminal的处理。如果一个块的terminal被标记为不活跃的，应当跳到它的后继中第一个活跃的块上
                 // 如果一个节点x是不活跃的，那么说x到anti_dom(x)的这些节点一定都不是活跃的
+                // https://www.cnblogs.com/lixingyang/p/17728846.html
                 // 死终结符：寻找活跃的后支配块作为跳转目标，-1表示没有找到
                 int targetId = postImmDom[id];
 
-                // 沿着后支配树向上找到第一个活跃块
+                // 沿着后支配树向上找到第一个 包含活跃指令 的块
                 while (targetId != -1 && targetId < (int)numBlocks)
                 {
                     auto bIt = function.blocks.find(targetId);
@@ -325,7 +343,7 @@ namespace ME
                     // 否则就，创建新的无条件跳转
                     auto* newBr = new BrUncondInst(OperandFactory::getInstance().getLabelOperand(targetId));
 
-                    // 更新目标块的 Phi 节点
+                    // 更新目标块的 Phi：如果当前块成为目标块的新前驱，需要补齐 incoming（默认 0）
                     if (auto it = function.blocks.find(targetId); it != function.blocks.end() && it->second)
                     {
                         auto* currentLabel = OperandFactory::getInstance().getLabelOperand(id);
@@ -372,3 +390,15 @@ namespace ME
         return changed;
     }
 }  // namespace ME
+
+/*
+ADCE 流程总结（对应本文件实现）：
+1) 构建活跃集合 liveInsts：
+   - 起点：STORE/CALL/RET 等有副作用的指令；
+   - 传播：数据依赖(寄存器 def) + Phi 前驱终结符 + 控制依赖(后支配边界上的终结符)。
+2) 删除死代码：
+   - 删除不活跃的非终结符指令；
+   - 对死终结符：沿后支配链找到最近的“活跃后支配块”，改写为无条件跳转，并维护目标块 Phi 的 incoming。
+3) 清理 CFG：
+   - BFS 计算可达块，移除不可达块对可达块 Phi 的 incoming 影响。
+*/

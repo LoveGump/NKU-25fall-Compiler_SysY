@@ -1,3 +1,4 @@
+// https://roife.github.io/posts/mem2reg-pass/
 #include <middleend/pass/mem2reg.h>
 #include <middleend/module/ir_block.h>
 #include <middleend/module/ir_instruction.h>
@@ -20,20 +21,27 @@ namespace ME
 
     bool Mem2RegPass::promoteMemoryToRegister(Function& function)
     {
+        // mem2reg：将“只被 Load/Store 使用的局部栈变量(alloca)”提升到 SSA 寄存器形式
+        // 关键依赖：
+        // - 支配边界 DF：决定 Phi 插入位置
+        // - 支配树 DomTree：用于沿支配树做重命名(经典 SSA rename)
+
         // 获取支配信息
         auto* domInfo = Analysis::AM.get<Analysis::DomInfo>(function);
         if (!domInfo) return false;
 
-        // 1. 收集所有指令的使用情况
+        // 1) 扫描全函数，建立 def-use（用于判断 alloca 是否只被 load/store 使用）
         UserCollector collector;
         for (auto& [id, block] : function.blocks)
         {
             for (auto inst : block->insts) { apply(collector, *inst); }
         }
 
-        // 2. 识别可提升的 Alloca 指令
+        // 2) 识别可提升的 Alloca：
+        //    - alloca 的结果寄存器，只能作为 load/store 的 ptr 操作数
+        //    - 且 store 必须把它作为“地址”，不能把它当成“值”参与运算
         std::vector<AllocaInst*>                             allocas;         // 可提升的 Alloca 列表
-        std::map<size_t, int>                                regToAllocaIdx;  // Alloca 寄存器编号 -> 索引
+        std::map<size_t, int>                                regToAllocaIdx;  // Alloca 寄存器编号 -> 上面数组的索引
         std::unordered_set<Instruction*>                     toRemove;        // 待删除的指令集合
         std::vector<std::vector<std::pair<int, StoreInst*>>> storeInfo;  // allocaIdx -> (定义块ID, StoreInst) 列表
 
@@ -55,7 +63,8 @@ namespace ME
                         continue;
                     }
 
-                    // 检查是否可提升：只被 Load/Store 使用，且 Store 将其作为指针
+                    // 检查是否可提升：只被 Load/Store 使用，且 Store 将其作为 ptr
+                    // 如果 store 将 alloca 作为值使用，可能会导致间接内存访问，无法提升
                     bool  promotable = true;
                     auto& users      = it->second;
                     for (auto* user : users)
@@ -93,7 +102,8 @@ namespace ME
                 }
                 else if (inst->opcode == Operator::STORE)
                 {
-                    // 如果是store指令，检查是否存储到可提升的Alloca
+                    // 如果是 Store，顺便记录它是否写入某个可提升 alloca
+                    // 用于 Phi 插入的 defBlocks 集合
                     StoreInst* store = static_cast<StoreInst*>(inst);
                     if (store->ptr->getType() == OperandType::REG)
                     {
@@ -110,10 +120,13 @@ namespace ME
             }
         }
 
-        // 如果没有可提升的变量，直接返回
+        // 如果没有可提升的变量，并且也没有“无用 alloca/store/load”需要清理，直接返回
         if (allocas.empty() && toRemove.empty()) return false;
 
-        // 单定义快速路径
+        // 3) 单定义快速路径：
+        //    若某个 alloca 只有一个 store 且发生在入口块，则它在所有路径上等价于一个常量/单值：
+        //    - 用 store 的值替换所有 load 结果
+        //    - 删除该 alloca 与 store/load
         std::vector<bool> usesFastPath(allocas.size(), false);
 
         // 记录单一定义的operand
@@ -136,7 +149,9 @@ namespace ME
             }
         }
 
-        // 插入 Phi 节点
+        // 4) Phi 插入（基于支配边界 DF 的经典工作队列算法）：
+        //    对每个 alloca(i)，从所有定义块 defBlocks 出发，在 DF 上扩散插入 Phi，
+        //    直到收敛（插入 Phi 的块也会成为新的“定义块”继续扩散）。
         const auto&                                                DF = domInfo->getDomFrontier();  // 支配边界
         std::unordered_map<int, std::unordered_map<int, PhiInst*>> blockPhis;  // 块ID -> (allocaIdx -> PhiInst)
 
@@ -187,9 +202,15 @@ namespace ME
 
         // 变量重命名
 
-        // 每个alloca(i) 对应一个栈，储存这个节点最新的SSA值
+        // 5) SSA 重命名：
+        //    为每个 alloca(i) 维护一条“值栈”，栈顶永远表示“当前支配路径上最新的 SSA 值”。
+        //    沿支配树 DFS：
+        //    - 进入块：先把本块的 Phi 结果压栈（它们在块开头定义）
+        //    - 遍历指令：load 用栈顶替换，store 把新值压栈
+        //    - 处理 CFG 后继：为后继块的 Phi 增加来自当前块的 incoming
+        //    - 退出块：按进入块期间的压栈次数弹栈，恢复到父块状态
         std::vector<std::stack<Operand*>> stacks(allocas.size());
-        OperandRename                     renamer;    // 用于重命名寄存器的工具
+        OperandRename                     renamer;    // 用于重命名寄存器的工具，根据 renameMap 替换指令中的寄存器操作数
         OperandMap                        renameMap;  // 记录重命名映射关系
 
         // 处理快速路径的 Alloca
@@ -262,14 +283,13 @@ namespace ME
                 }
             }
 
-            // 处理指令，重命名
+            // 处理指令，重命名与消除 load/store/alloca
             for (auto inst : blk->insts)
             {
                 // 如果是 Load/Store/Alloca，特殊处理
                 if (inst->opcode == Operator::LOAD)
                 {
-                    // load是将结果进行更新，所以需要使用栈顶值
-                    // 对于 Load 指令，使用栈顶值重命名结果
+                    // Load：如果从可提升 alloca 读取，则直接用栈顶值替换该 load 的结果寄存器
                     LoadInst* load = static_cast<LoadInst*>(inst);
                     if (load->ptr->getType() == OperandType::REG)
                     {
@@ -315,7 +335,7 @@ namespace ME
                         auto   it  = regToAllocaIdx.find(reg);
                         if (it != regToAllocaIdx.end() && !usesFastPath[it->second])
                         {
-                            // 如果要存储的寄存器是alloca(i)的结果，并且没有使用快速路径
+                            // Store：如果写入可提升 alloca，则把“写入的值”压栈，作为后续 load 的当前版本
                             isPromotable = true;  // 说明该 Store 可提升
                             int      idx = it->second;
                             Operand* val = store->val;
@@ -345,7 +365,7 @@ namespace ME
                 }
             }
 
-            // 更新后继块的 Phi 参数
+            // 在“离开当前块”之前，为 CFG 后继块的 Phi 补齐来自当前块的 incoming
             Instruction*        term = blk->insts.back();  // 获取终止指令
             std::vector<Block*> succs;                     // 存储后继块
             if (term->opcode == Operator::BR_COND)
@@ -377,7 +397,7 @@ namespace ME
                         if (!stacks[idx].empty()) { val = stacks[idx].top(); }
                         else
                         {
-                            // 如果栈为空，使用默认值
+                            // 栈空意味着：该变量在到达此处前未定义，按语言语义使用默认零值
                             if (allocas[idx]->dt == DataType::F32)
                             {
                                 val = OperandFactory::getInstance().getImmeF32Operand(0.0f);
@@ -403,7 +423,7 @@ namespace ME
             }
         }
 
-        // 移除指令
+        // 6) 统一删除：将可提升相关的 alloca/load/store 移除（包括 fast path）
         for (auto& [id, block] : function.blocks)
         {
             std::deque<Instruction*> newInsts;
@@ -422,3 +442,16 @@ namespace ME
         return true;
     }
 }  // namespace ME
+
+/*
+mem2reg 流程总结（对应本文件实现）：
+1) 计算支配信息：DomInfo 提供 DomTree 与支配边界 DF。
+2) 扫描指令用法：找出“结果寄存器只被 Load/Store 当作地址使用”的 alloca 作为候选。
+3) 收集定义点：记录每个候选 alloca 被 Store 写入的基本块集合 defBlocks。
+4) 插入 Phi：从 defBlocks 出发沿 DF 扩散，在需要合流的位置插入 Phi（Phi 所在块也视为新定义点继续扩散）。
+5) 重命名：按支配树 DFS，维护每个候选 alloca 的值栈；
+   - 进入块先压入本块 Phi 的结果；
+   - load 用栈顶值替换并删除；store 把新值压栈并删除；其它指令按 renameMap 重命名操作数；
+   - 为 CFG 后继块的 Phi 补 incoming（来自当前块的栈顶值或默认零值）。
+6) 清理：统一删除被提升的 alloca/load/store（以及无用 alloca）。
+*/

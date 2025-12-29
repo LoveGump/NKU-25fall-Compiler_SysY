@@ -17,6 +17,10 @@ namespace ME
 {
     void CSEPass::runOnFunction(Function& function)
     {
+        // CSE（Common Subexpression Elimination）：
+        // - 跨块 CSE：沿支配树 DFS，在支配路径上维护“表达式 -> 已有值”的映射
+        // - 同时做一个轻量的“隐式 CSE”：当条件寄存器值可确定时，将条件分支改写为无条件跳转
+        // - 删除被替代的冗余指令，并对剩余指令做操作数替换
         bool changed = runDominatorCSE(function);
         // changed |= runBlockLocalCSE(function);
         if (changed) Analysis::AM.invalidate(function);
@@ -33,35 +37,43 @@ namespace ME
 
         bool                                      changed = false;
         const auto&                               domTree = dom->getDomTree();
+        // exprMap：在 “当前 DFS 支配路径” 上可用的公共表达式缓存
+        // key 由 ExprKeyVisitor 生成（同一个 key 视为等价表达式）
         std::unordered_map<std::string, Operand*> exprMap;
 
+        // eraseSet：记录可以删除的冗余指令（其结果会被已有值替换）
         std::unordered_set<Instruction*> eraseSet;
 
+        // replaceRegs：reg -> operand，表示 “这个寄存器的值等价于另一个值”，用于后续改写操作数
+        // 在遍历过程中动态维护
         std::unordered_map<size_t, Operand*> replaceRegs;
         OperandReplaceVisitor                replacer(replaceRegs);
 
-        std::unordered_set<size_t> visited;
-        ExprKeyVisitor             keyVisitor;
+        std::unordered_set<size_t> visited;     // 记录已访问的基本块，防止重复访问
+        ExprKeyVisitor             keyVisitor;  // 获取指令的key
+
 
         // 隐式CSE：记录已知条件值 (寄存器号 -> true/false)
+        // 当跳转到一个新块的时候，如果该块只有一个前驱且该前驱是条件分支，
+        // 则可以根据跳转方向推导出条件寄存器的值
         std::unordered_map<size_t, bool> knownConditions;
 
         std::function<void(size_t)> dfs = [&](size_t blockId) {
-            // 深度优先搜索遍历所有基本块
+            // 沿支配树做 DFS，保证当访问某块时：它的支配者块都已被访问并建立了 exprMap
             if (visited.count(blockId)) return;
             visited.insert(blockId);
             // 获取当前基本块
             Block* block = function.getBlock(blockId);
             if (!block) return;
 
-            // 记录本块内新增的表达式映射，以便在离开块时撤销
-            std::vector<std::tuple<std::string, bool, Operand*>> localStack;
-            // 记录本块内新增的已知条件，以便在离开块时撤销
+            // 记录本块内新增映射的的key，以便在离开块时撤销，保证 exprMap 只对支配子树可见
+            std::vector<std::string> localStack;
+            // 记录本块内新增的已知条件，以便在离开块时撤销（保证条件信息只在可推导的子路径有效）
             std::vector<size_t> localConditions;
 
             for (auto* inst : block->insts)
             {
-                // 先进行寄存器替换
+                // 先做一次“已知等价寄存器”的替换，避免 key 受旧寄存器干扰
                 if (!replaceRegs.empty()) { apply(replacer, *inst); }
 
                 // 隐式CSE：检查条件分支是否使用已知条件
@@ -104,18 +116,20 @@ namespace ME
                     }
                 }
 
-                // 获取指令对应的key值
+                // 为指令生成“表达式键”，只对可消除的指令产生 key（例如纯计算、无副作用指令）
                 keyVisitor.result.clear();
                 apply(keyVisitor, *inst);
                 if (keyVisitor.result.empty()) continue;
 
-                // 获取指令定义的新值的寄存器编号
+                // 只有定义了寄存器结果的指令才有替换意义
                 DefCollector defCollector;
                 apply(defCollector, *inst);
                 size_t defReg = defCollector.getResult();
                 if (defReg == 0) continue;
 
-                // 查询是否已有等价表达式
+                // 查询当前支配路径上是否已有等价表达式：
+                // - 若存在：当前指令冗余，用已有值替换 defReg，并删除当前指令
+                // - 若不存在：将本指令结果加入 exprMap，使其对支配子树可用
                 auto found = exprMap.find(keyVisitor.result);
                 if (found != exprMap.end())
                 {
@@ -128,7 +142,7 @@ namespace ME
 
                 // 没有等价表达式，记录下来
                 exprMap[keyVisitor.result] = getRegOperand(defReg);
-                localStack.emplace_back(keyVisitor.result, false, nullptr);
+                localStack.push_back(keyVisitor.result); // 记录新增的表达式
             }
 
             if (blockId < domTree.size())
@@ -149,11 +163,12 @@ namespace ME
 
                 for (int child : domTree[blockId])
                 {
+                    // 遍历孩子节点
                     if (child == static_cast<int>(blockId)) continue;
 
                     // 隐式CSE：根据分支方向设置已知条件值
                     // 条件：1) 子块是直接分支目标 2) 子块只有一个前驱（当前块）
-                    size_t prevSize = localConditions.size();
+                    size_t prevSize = localConditions.size(); // 记录当前已知条件数量，便于回溯
                     if (brCond && condReg != 0)
                     {
                         // 如果是条件分支，记录条件寄存器编号
@@ -161,12 +176,12 @@ namespace ME
                         size_t falseBlock = brCond->falseTar->getLabelNum();
                         size_t childId    = static_cast<size_t>(child);
 
-                        // 检查子块是否只有一个前驱，如果只有一个前驱，则可以确定条件值（这里先只考虑这种情况）
+                        // 检查当前子块是否只有一个前驱，如果只有一个前驱，则可以确定条件值（这里先只考虑这种情况）
                         bool singlePred = childId < cfg->invG_id.size() && cfg->invG_id[childId].size() == 1;
 
                         if (singlePred && trueBlock != falseBlock)
                         {
-                            // 将条件寄存器的值设置为true，压栈
+                            // 将条件寄存器的值设置为 true/false，仅对“唯一前驱”的子块成立
                             if (childId == trueBlock)
                             {
                                 knownConditions[condReg] = true;
@@ -194,22 +209,12 @@ namespace ME
             }
 
             // 撤销本块内的表达式映射
-            for (auto it = localStack.rbegin(); it != localStack.rend(); ++it)
-            {
-                const std::string& key    = std::get<0>(*it);
-                bool               hadOld = std::get<1>(*it);
-                Operand*           oldVal = std::get<2>(*it);
-                if (hadOld)
-                {
-                    // 将key映射为旧值
-                    exprMap[key] = oldVal;
-                }
-                else { exprMap.erase(key); }
-            }
+            for (const auto& key : localStack) { exprMap.erase(key); }
         };
 
         dfs(0);
 
+        // 先删冗余指令，避免后续 finalReplacer 遇到悬挂指令指针
         if (!eraseSet.empty())
         {
             // 根据eraseSet，构造新的指令列表
@@ -239,7 +244,6 @@ namespace ME
 
     // 对于同一块内的cse，不考虑支配关系和控制流
     // 直接将等价表达式替换为已存在的值即可
-    // 没有使用
     bool CSEPass::runBlockLocalCSE(Function& function)
     {
         bool changed = false;
@@ -338,3 +342,15 @@ namespace ME
     }
 
 }  // namespace ME
+
+/*
+CSE 流程总结对应 dominator CSE ：
+1) 构建 CFG 与支配树，从入口块(0)沿支配树 DFS 遍历基本块。
+2) 维护 exprMap：在当前 DFS 支配路径上记录“表达式 key -> 已有结果 operand”。
+3) 逐指令处理：
+   - 先用 replaceRegs 做操作数替换，保证 key 计算基于最新等价值；
+   - 若遇到条件分支且条件值已知：改写为无条件跳转，并更新被跳过块的 Phi incoming；
+   - 为可消除指令生成 key：若 key 已在 exprMap 中出现，记录 defReg 替换并删除该指令；否则将其加入 exprMap。
+4) 递归访问支配子块，并在离开块时撤销本块新增的 exprMap/knownConditions 条目（使缓存只对支配子树有效）。
+5) 最后统一删除冗余指令，并对函数内剩余指令做一次全量寄存器替换。
+*/

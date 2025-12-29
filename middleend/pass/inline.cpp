@@ -14,23 +14,26 @@ namespace ME
     // 构建调用点处的操作数映射表 （寄存器号 -> 实参操作数）
     std::map<size_t, Operand*> InlinePass::buildOperandMap(Function& caller, Function& callee, CallInst* callInst)
     {
+        // operandMap 的目标：
+        // - 形参寄存器 id  -> 调用点实参 （用 caller 侧已有 operand）
+        // - callee 内部其它寄存器 -> caller 侧新分配寄存器（避免编号冲突）
         std::map<size_t, Operand*> operandMap;  // 寄存器号 -> 实参操作数
 
-        // 形参 -> 实参映射：
-        // 将被调函数形参寄存器号映射到调用点提供的实参操作数
+        // 获取callee的形参列表
         auto& calleeArgs = callee.funcDef->argRegs;
         for (size_t i = 0; i < calleeArgs.size(); ++i)
         {
             auto* argReg = calleeArgs[i].second;
             if (argReg && argReg->getType() == OperandType::REG)
             {
+                // callee形参的寄存器id 映射到 caller 调用点的实参操作数
                 operandMap[argReg->getRegNum()] = callInst->args[i].second;
             }
         }
 
-        // 收集被调函数内出现的所有寄存器（use/def），并为未映射寄存器分配 caller 侧新编号
-        std::set<size_t>      regs;
-        std::map<size_t, int> useCounts;
+        // 收集被调函数内出现的所有寄存器（use/def），并为 未映射寄存器分配 caller 侧新编号
+        std::set<size_t>      regs;         // calee 内所有寄存器号
+        std::map<size_t, int> useCounts;    // 寄存器使用次数统计
         UseCollector          useCollector(useCounts);
         DefCollector          defCollector;
         for (auto& [id, block] : callee.blocks)
@@ -213,12 +216,14 @@ namespace ME
         }
 
         // 将 callBlock 末尾改为跳转到 内联后的 callee 入口块
-        // 其实这里为了避免有的有=优化将入口块改了
+        // 其实这里为了避免有的优化将入口块改了
         size_t entryId = callee.blocks.count(0) ? 0 : callee.blocks.begin()->first;
         callBlock->insertBack(new BrUncondInst(getLabelOperand(blockMap[entryId]->blockId)));
 
         // callee id -> caller operand
-        operandMap_ = buildOperandMap(caller, callee, callInst);  //
+        operandMap_ = buildOperandMap(caller, callee, callInst);  
+
+        // 有了映射表之后，开始进行指令的克隆与重命名
         OperandRename renamer;
         InstCloner    cloner;
 
@@ -242,7 +247,7 @@ namespace ME
             auto it              = caller.blocks.find(0);
             entryBlockForAllocas = it != caller.blocks.end() ? it->second : caller.blocks.begin()->second;
         }
-        // 收集待提升的 alloca 指令
+        // 收集待提升的 alloca 指令，先收集后面统一插入避免时间复杂度过高
         std::vector<Instruction*> hoistedAllocas;
 
         // 克隆每个 callee 块内的指令到对应的新块：
@@ -259,14 +264,14 @@ namespace ME
                     auto* ret = static_cast<RetInst*>(inst);
                     if (retPhi && ret->res)
                     {
-                        Operand* mappedRes = ret->res;
+                        // 有返回值
+                        Operand* mappedRes = ret->res; // 在callee侧 的返回值操作数
                         if (mappedRes && mappedRes->getType() == OperandType::REG)
                         {
-                            // 有返回值
                             auto it = operandMap_.find(mappedRes->getRegNum());
                             if (it != operandMap_.end())
                             {
-                                // 获取映射后的操作数
+                                // 根据 operandMap_ 重命名到 caller 侧的返回值操作数
                                 mappedRes = it->second;
                             }
                         }
@@ -307,6 +312,10 @@ namespace ME
 
     void InlinePass::runOnModule(Module& module)
     {
+        // 模块级内联：
+        // - 每轮分析调用图与代价信息
+        // - 按策略给出的处理顺序，尝试内联满足条件的调用点
+        // - 内联会改变调用图与函数规模，循环迭代直到收敛
         module_ = &module;
         InlineStrategy strategy;
         bool           changed = true;
@@ -341,7 +350,7 @@ namespace ME
 
                 for (auto& [call, callee] : calls)
                 {
-                    // 重新定位 call 指令所在的块（之前的内联可能导致块切分/指令移动）
+                    // 定位 call 指令所在的块（之前的内联可能导致块切分/指令移动）
                     Block* foundBlock = nullptr;
                     for (auto& [_, blk] : func->blocks)
                     {
@@ -372,3 +381,16 @@ namespace ME
         // 内联作为模块级别的优化，不在函数级别执行任何操作
     }
 }  // namespace ME
+
+/*
+InlinePass 流程总结（对应本文件实现）：
+1) 决策阶段由 InlineStrategy 完成：给出处理顺序与 shouldInline 判定。
+2) 对每个调用点执行 inlineCall：
+   - 将 call 所在块切分为“call 之前(callBlock)”与“call 之后(afterCall)”；
+   - 为 callee 的每个块创建一个 caller 侧新块，并建立 labelMap_ 用于跳转重映射；
+   - 建立 operandMap_：形参->实参，callee 内部寄存器->caller 新寄存器；
+   - 克隆 callee 指令到新块：重命名寄存器、重映射 label；
+   - ret 改写：若有返回值，在 afterCall 插 Phi 汇合各 ret 的返回值，然后各 ret 分支跳转 afterCall；
+   - alloca 提升：把内联体的 alloca 统一搬到 caller 入口块，便于后续 mem2reg 等优化。
+3) 内联会改变 CFG/分析结果：成功内联后对函数的分析缓存进行失效处理。
+*/

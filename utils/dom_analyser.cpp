@@ -116,7 +116,7 @@ void DomAnalyzer::build(
     vector<int> semi_dom(node_count);
     // 并查集结构：父亲节点与最小祖先节点
     vector<int>         dsu_parent(node_count), min_ancestor(node_count);
-    vector<vector<int>> semi_children(node_count);
+    vector<vector<int>> semi_children(node_count);  // semi_children[x] ：所有“半支配者是 x”的节点集合
 
     // 初始化并查集与半支配者
     for (int i = 0; i < node_count; ++i)
@@ -148,6 +148,7 @@ void DomAnalyzer::build(
     // TODO(Lab 4): 路径压缩并带最小祖先维护的 Find（Tarjan-Eval）
     // 依据半支配序比较，维护 min_ancestor，并做并查集压缩
     // u 是要查询的节点 ，返回值是 u 在并查集中的代表元节点
+    // 始终沿着DFS父指针往上走，直到找到根节点
     auto dsu_find = [&](int u, const auto& self) -> int {
         if (dsu_parent[u] == u) return u;  // 如果 u 是根节点，直接返回
         // 递归查找父节点的根
@@ -163,7 +164,7 @@ void DomAnalyzer::build(
     };
 
     // u 是 要查询的点
-    // 返回值是 u 的最小祖先节点
+    // dsu_query(u) 会返回一个节点 x ，它代表“从 u 沿着并查集父指针一路往上，那条链上 semi_dom 最小的点”
     auto dsu_query = [&](int u) -> int {
         dsu_find(u, dsu_find);
         return min_ancestor[u];
@@ -200,6 +201,8 @@ void DomAnalyzer::build(
             }
         }
 
+        // Link(curr, parent[curr])：并查集父指向 parent[curr]，维护 min_ancestor
+        // 将 curr 放入 semi_children[sdom[curr]]，以备下一步对 parent 的半支配孩子集合进行处理
         int sdom_block = dfs_to_block[semi_dom[curr]];
         semi_children[sdom_block].push_back(curr);
         dsu_parent[curr] = parent[curr];
@@ -229,6 +232,8 @@ void DomAnalyzer::build(
     dom_frontier.resize(virtual_source);
     imm_dom.resize(virtual_source);
 
+    // 在支配树构建完成后，你还需要从里面移除本来并不存在的虚拟源节点
+    // 同时，需要注意设置移除了虚拟源节点后的入口节点的支配者
     // 移除虚拟源节点并调整入口节点的支配者
     // 对于每个实际入口节点，其直接支配者应该设为自己（或 -1 表示无支配者）
     for (int i = 0; i < virtual_source; ++i)
@@ -238,12 +243,6 @@ void DomAnalyzer::build(
             // 这是一个入口节点，它的直接支配者是虚拟源，我们将其设为自己
             imm_dom[i] = i;
         }
-    }
-    // 在支配树构建完成后，你还需要从里面移除本来并不存在的虚拟源节点
-    // 同时，需要注意设置移除了虚拟源节点后的入口节点的支配者
-    for (int i = 0; i < node_count; ++i)
-    {
-        if (imm_dom[i] == virtual_source) { imm_dom[i] = i; }
     }
 
     // TODO(Lab 4): 构建支配边界
