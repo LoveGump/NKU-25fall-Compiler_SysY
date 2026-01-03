@@ -10,6 +10,8 @@ namespace ME
 {
     void TCOPass::runOnModule(Module& module)
     {
+        // TCO（Tail Call Optimization）：
+        // 该实现专门做“尾递归消除”：把对自身函数的尾调用改写为循环。
         for (auto* function : module.functions) eliminateTailRecursion(*function);
     }
 
@@ -58,6 +60,12 @@ namespace ME
     // 尾递归消除实现
     void TCOPass::eliminateTailRecursion(Function& function)
     {
+        // 核心改写思路：
+        // 1) 在函数内找“尾递归调用点”：call self 紧跟 ret（或 void 情况下 call->br->ret void 链）。
+        // 2) 为“会变化的参数”建立可写的栈槽(slot)，将新参数值先 store 到 slot。
+        // 3) 将入口块拆分出 loopHeader，在 loopHeader 开头 load 参数 slot 到新寄存器，并替换后续对形参寄存器的使用。
+        // 4) 将尾递归点的“call+ret”替换为“参数写回 + br loopHeader”，形成显式循环。
+        // 5) 必要时更新 Phi incoming，保持 CFG 语义正确。
         if (!function.funcDef) return;
         if (function.blocks.empty()) return;
 
@@ -357,3 +365,17 @@ namespace ME
         Analysis::AM.invalidate(function);
     }
 }  // namespace ME
+
+/*
+TCO 流程总结（对应本文件“尾递归消除”实现）：
+1) 收集寄存器定义，构建 AllocaDerivedChecker：若尾调用实参含 alloca 派生地址则拒绝处理。
+2) 扫描入口块，建立“参数寄存器 -> 初始化 store 到的栈槽”映射；若某参数没有栈槽且在尾调用中会变化，则为其创建新栈槽。
+3) 识别尾递归调用点：
+   - 非 void：%r = call self(...); ret %r
+   - void：call self(...); ret void，或 call self(...); br ... -> ret void 链
+4) 构造 loopHeader：
+   - 必要时把入口块分裂为“参数初始化块 + loopHeader”，入口块末尾跳转 loopHeader；
+   - 在 loopHeader 开头 load 参数栈槽到新寄存器，并替换函数体内对形参寄存器的使用。
+5) 改写尾递归点：删除 call/ret（或 call/branch 链尾部返回的影响），插入“store 新参数到栈槽 + br loopHeader”。
+6) 更新必要的 Phi incoming，并使分析缓存失效。
+*/

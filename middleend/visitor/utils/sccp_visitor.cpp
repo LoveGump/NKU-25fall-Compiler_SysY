@@ -14,11 +14,12 @@ namespace ME
         if (!dest || dest->getType() != OperandType::REG) return;  // 仅处理寄存器目标
         size_t reg = dest->getRegNum();                            // 目标寄存器编号
         // 获取当前格值并合并新值
-        auto curr   = getValue(pass, dest);   // 当前格值
+        auto curr   = getValue(pass, dest);   // dest格值
         auto merged = mergeValue(curr, val);  // 合并后格值
 
-        // 合并后与原值比较，决定是否需要继续向后传播
-        // 由于 mergeValue 保证单调性，只需检查 kind 是否提升
+        // 合并后与原值比较，决定是否需要继续向后传播：
+        // - 该实现将格定义为 UNDEF < CONST < OVERDEFINED，并通过 mergeValue 保证单调上升
+        // - 因此只有“格值真的上升/变化”时才需要通知使用点，避免工作队列爆炸
 
         // 类型不同则一定变化，类型相同则具体值变化才算变化
         bool changed = (curr.kind != merged.kind);
@@ -36,7 +37,7 @@ namespace ME
             auto it = pass.userMap.find(reg);
             if (it != pass.userMap.end())
             {
-                // 将所有使用该寄存器的指令加入工作队列
+                // 使用点入队：reg 的格值变化，只可能影响“使用 reg 的指令”的求值结果
                 for (auto* user : it->second) { pass.instWorklist.push_back(user); }
             }
         }
@@ -55,7 +56,9 @@ namespace ME
         Block* succ = pass.currFunc->getBlock(to);
         if (!succ) return;
 
-        // 将后继块加入可达块集合与工作队列
+        // 可达性传播的入队策略：
+        // - 后继块第一次变可达：整块入队（需要扫描所有指令以初始化/传播格值）
+        // - 后继块已可达但新增一条可达入边：只把 Phi 入队（只有 Phi 依赖前驱边集合）
         if (pass.reachableBlocks.insert(to).second) { pass.blockWorklist.push_back(succ); }
         else
         {
@@ -138,6 +141,10 @@ namespace ME
     SCCPPass::LatticeVal SCCPEvalVisitor::mergeValue(
         const SCCPPass::LatticeVal& lhs, const SCCPPass::LatticeVal& rhs) const
     {
+        // 合并规则的直观含义：
+        // - UNDEF：尚未获得信息，不影响另一边
+        // - CONST：值已确定，合并不同常量会冲突升级为 OVERDEFINED
+        // - OVERDEFINED：值不确定（多源/未知/内存相关等），一旦出现就“盖住一切”
         // OVERDEFINED 覆盖所有情况
         if (lhs.kind == SCCPPass::LatticeKind::OVERDEFINED || rhs.kind == SCCPPass::LatticeKind::OVERDEFINED)
             return makeOverdefined();
@@ -267,23 +274,18 @@ namespace ME
         // 整数运算 需处理除零与位操作
         int32_t l = static_cast<int32_t>(lhs.i32);
         int32_t r = static_cast<int32_t>(rhs.i32);
-        if (inst.opcode == Operator::ADD)
+        switch (inst.opcode)
         {
+        case Operator::ADD:
             updateValue(pass, inst.res, makeConstInt(static_cast<int>(l + r)));
             return;
-        }
-        if (inst.opcode == Operator::SUB)
-        {
+        case Operator::SUB:
             updateValue(pass, inst.res, makeConstInt(static_cast<int>(l - r)));
             return;
-        }
-        if (inst.opcode == Operator::MUL)
-        {
+        case Operator::MUL:
             updateValue(pass, inst.res, makeConstInt(static_cast<int>(l * r)));
             return;
-        }
-        if (inst.opcode == Operator::DIV)
-        {
+        case Operator::DIV:
             if (r == 0)
             {
                 updateValue(pass, inst.res, makeOverdefined());
@@ -291,9 +293,7 @@ namespace ME
             }
             updateValue(pass, inst.res, makeConstInt(static_cast<int>(l / r)));
             return;
-        }
-        if (inst.opcode == Operator::MOD)
-        {
+        case Operator::MOD:
             if (r == 0)
             {
                 updateValue(pass, inst.res, makeOverdefined());
@@ -301,36 +301,31 @@ namespace ME
             }
             updateValue(pass, inst.res, makeConstInt(static_cast<int>(l % r)));
             return;
-        }
-        if (inst.opcode == Operator::BITXOR)
-        {
+        case Operator::BITXOR:
             updateValue(pass, inst.res, makeConstInt(static_cast<int>(l ^ r)));
             return;
-        }
-        if (inst.opcode == Operator::BITAND)
-        {
+        case Operator::BITAND:
             updateValue(pass, inst.res, makeConstInt(static_cast<int>(l & r)));
             return;
-        }
-        // 位移操作仅考虑低5位移位数，也就是说最大移位31位
-        if (inst.opcode == Operator::SHL)
-        {
+        case Operator::SHL:
+            // 位移操作仅考虑低5位移位数，也就是说最大移位31位
             updateValue(pass, inst.res, makeConstInt(static_cast<int>(l << (r & 31))));
             return;
-        }
-        // ASHR算数右移：保留符号位，LSHR逻辑右移：不保留符号位
-        if (inst.opcode == Operator::ASHR)
-        {
+        case Operator::ASHR:
+            // ASHR算数右移：保留符号位
             updateValue(pass, inst.res, makeConstInt(static_cast<int>(l >> (r & 31))));
             return;
-        }
-        if (inst.opcode == Operator::LSHR)
+        case Operator::LSHR:
         {
+            // LSHR逻辑右移：不保留符号位
             uint32_t ul = static_cast<uint32_t>(l);
             updateValue(pass, inst.res, makeConstInt(static_cast<int>(ul >> (r & 31))));
             return;
         }
-        updateValue(pass, inst.res, makeOverdefined());
+        default:
+            updateValue(pass, inst.res, makeOverdefined());
+            break;
+        }
     }
     void SCCPEvalVisitor::visit(IcmpInst& inst, SCCPPass& pass, Block* block)
     {
@@ -355,28 +350,19 @@ namespace ME
         bool    res = false;
 
         // 逐个分支判断条件码
-        if (inst.cond == ICmpOp::EQ)
-            res = (l == r);
-        else if (inst.cond == ICmpOp::NE)
-            res = (l != r);
-        else if (inst.cond == ICmpOp::SGT)
-            res = (l > r);
-        else if (inst.cond == ICmpOp::SGE)
-            res = (l >= r);
-        else if (inst.cond == ICmpOp::SLT)
-            res = (l < r);
-        else if (inst.cond == ICmpOp::SLE)
-            res = (l <= r);
-        else if (inst.cond == ICmpOp::UGT)
-            res = (static_cast<uint32_t>(l) > static_cast<uint32_t>(r));
-        else if (inst.cond == ICmpOp::UGE)
-            res = (static_cast<uint32_t>(l) >= static_cast<uint32_t>(r));
-        else if (inst.cond == ICmpOp::ULT)
-            res = (static_cast<uint32_t>(l) < static_cast<uint32_t>(r));
-        else if (inst.cond == ICmpOp::ULE)
-            res = (static_cast<uint32_t>(l) <= static_cast<uint32_t>(r));
-        else
+        switch (inst.cond)
         {
+        case ICmpOp::EQ:  res = (l == r); break;
+        case ICmpOp::NE:  res = (l != r); break;
+        case ICmpOp::SGT: res = (l > r); break;
+        case ICmpOp::SGE: res = (l >= r); break;
+        case ICmpOp::SLT: res = (l < r); break;
+        case ICmpOp::SLE: res = (l <= r); break;
+        case ICmpOp::UGT: res = (static_cast<uint32_t>(l) > static_cast<uint32_t>(r)); break;
+        case ICmpOp::UGE: res = (static_cast<uint32_t>(l) >= static_cast<uint32_t>(r)); break;
+        case ICmpOp::ULT: res = (static_cast<uint32_t>(l) < static_cast<uint32_t>(r)); break;
+        case ICmpOp::ULE: res = (static_cast<uint32_t>(l) <= static_cast<uint32_t>(r)); break;
+        default:
             updateValue(pass, inst.res, makeOverdefined());
             return;
         }
@@ -408,36 +394,23 @@ namespace ME
         bool  res  = false;
 
         // 按 IEEE 规则处理有序/无序比较
-        if (inst.cond == FCmpOp::OEQ)
-            res = (!lnan && !rnan && l == r);
-        else if (inst.cond == FCmpOp::OGT)
-            res = (!lnan && !rnan && l > r);
-        else if (inst.cond == FCmpOp::OGE)
-            res = (!lnan && !rnan && l >= r);
-        else if (inst.cond == FCmpOp::OLT)
-            res = (!lnan && !rnan && l < r);
-        else if (inst.cond == FCmpOp::OLE)
-            res = (!lnan && !rnan && l <= r);
-        else if (inst.cond == FCmpOp::ONE)
-            res = (!lnan && !rnan && l != r);
-        else if (inst.cond == FCmpOp::ORD)
-            res = (!lnan && !rnan);
-        else if (inst.cond == FCmpOp::UEQ)
-            res = (lnan || rnan || l == r);
-        else if (inst.cond == FCmpOp::UGT)
-            res = (lnan || rnan || l > r);
-        else if (inst.cond == FCmpOp::UGE)
-            res = (lnan || rnan || l >= r);
-        else if (inst.cond == FCmpOp::ULT)
-            res = (lnan || rnan || l < r);
-        else if (inst.cond == FCmpOp::ULE)
-            res = (lnan || rnan || l <= r);
-        else if (inst.cond == FCmpOp::UNE)
-            res = (lnan || rnan || l != r);
-        else if (inst.cond == FCmpOp::UNO)
-            res = (lnan || rnan);
-        else
+        switch (inst.cond)
         {
+        case FCmpOp::OEQ: res = (!lnan && !rnan && l == r); break;
+        case FCmpOp::OGT: res = (!lnan && !rnan && l > r); break;
+        case FCmpOp::OGE: res = (!lnan && !rnan && l >= r); break;
+        case FCmpOp::OLT: res = (!lnan && !rnan && l < r); break;
+        case FCmpOp::OLE: res = (!lnan && !rnan && l <= r); break;
+        case FCmpOp::ONE: res = (!lnan && !rnan && l != r); break;
+        case FCmpOp::ORD: res = (!lnan && !rnan); break;
+        case FCmpOp::UEQ: res = (lnan || rnan || l == r); break;
+        case FCmpOp::UGT: res = (lnan || rnan || l > r); break;
+        case FCmpOp::UGE: res = (lnan || rnan || l >= r); break;
+        case FCmpOp::ULT: res = (lnan || rnan || l < r); break;
+        case FCmpOp::ULE: res = (lnan || rnan || l <= r); break;
+        case FCmpOp::UNE: res = (lnan || rnan || l != r); break;
+        case FCmpOp::UNO: res = (lnan || rnan); break;
+        default:
             updateValue(pass, inst.res, makeOverdefined());
             return;
         }
@@ -566,7 +539,7 @@ namespace ME
             // 如果前驱块不可达则跳过
             if (pass.reachableEdges.count({predId, block->blockId}) == 0) continue;
 
-            //可达前驱，合并其格值
+            // 可达前驱：合并该 incoming 的格值
             hasIncoming = true;
             result      = mergeValue(result, getValue(pass, valOp));
             // overdefined 后续无需继续合并
@@ -586,6 +559,9 @@ namespace ME
     // 把已知 寄存器操作数替换为对应常量
     void SCCPReplaceVisitor::replaceOperandIfConst(SCCPPass& pass, Operand*& op)
     {
+        // 仅做“寄存器 -> 立即数常量”替换：
+        // - 只在 valueMap 中标记为 CONST 的寄存器才替换
+        // - OVERDEFINED/UNDEF 不做替换，保证语义保守
         if (!op || op->getType() != OperandType::REG) return;
 
         // 获取对应格值
@@ -647,3 +623,13 @@ namespace ME
     }
 
 }  // namespace ME
+
+/*
+SCCP 格值更新策略总结（本文件实现）：
+1) 格定义：UNDEF < CONST < OVERDEFINED，mergeValue 保证格值单调上升并最终收敛。
+2) updateValue：先 merge(curr, new)，只有格值真正变化（kind 变化或 CONST 值变化）才写回 valueMap，
+   并将该寄存器的所有使用点（userMap[reg]）入 instWorklist 做增量重算。
+3) 可达性传播：markEdgeReachable 首次发现可达边(from,to)才处理；若 to 块首次变可达则整块入 blockWorklist，
+   否则仅把 to 块开头的 Phi 入 instWorklist（因为新增可达入边只会影响 Phi 合并）。
+4) Phi 求值：仅合并 reachableEdges 中存在的 incoming（可达前驱），避免不可达路径污染格值。
+*/

@@ -1,3 +1,4 @@
+// 
 #include <middleend/pass/sccp.h>
 #include <middleend/module/ir_block.h>
 #include <middleend/module/ir_instruction.h>
@@ -13,6 +14,17 @@ namespace ME
 {
     void SCCPPass::runOnFunction(Function& function)
     {
+        // SCCP（Sparse Conditional Constant Propagation）：
+        // 目标：在不遍历全 CFG 全状态的前提下，同时完成
+        // - 常量传播：把能确定为常量的寄存器用常量替换
+        // - 不可达性传播：利用可达边/可达块信息，把恒真/恒假的分支折叠并删除不可达块
+        //
+        // 本实现采用“两类工作队列”增量求不动点：
+        // - blockWorklist：新变为可达的基本块，需要遍历其全部指令
+        // - instWorklist：因为某个寄存器格值变化而受影响的指令，只需增量重算
+        //
+        // 具体的格值计算与边可达性更新由 SCCPEvalVisitor 驱动，它会回调 SCCPPass 维护的表。
+
         // 初始化分析状态
         initialize(function);
         if (function.blocks.empty()) return;
@@ -34,7 +46,7 @@ namespace ME
                 // 优先处理新可达块
                 Block* block = blockWorklist.front();
                 blockWorklist.pop_front();
-                // 先处理新可达块，遍历块内所有指令
+                // 新可达块：遍历块内所有指令，建立/更新寄存器格值、可达边与后继可达性
                 for (auto* inst : block->insts)
                 {
                     // 遍历指令并进行格值的计算
@@ -50,7 +62,7 @@ namespace ME
                 // 获取指令所在的基本块
                 Block* block = instBlockMap[inst];
                 if (!block || reachableBlocks.count(block->blockId) == 0) continue;
-                // 仅处理可达块内的指令，进行格值计算
+                // 仅对“可达块内”指令进行增量重算，避免把不可达路径的值错误传播出来
                 apply(evaluator, *inst, *this, block);
             }
         }
@@ -63,7 +75,9 @@ namespace ME
             for (auto* inst : block->insts) { apply(replacer, *inst, *this); }
         }
 
-        // Phi 消除与 CFG 简化
+        // 结果落地：
+        // 1) Phi 消除：若 Phi 结果已被判定为常量，使用点已替换为常量，则删除 Phi
+        // 2) 分支折叠：若条件已变为立即数常量，将条件分支改写为无条件分支，并维护被丢弃边的 Phi incoming
         for (auto& [id, block] : function.blocks)
         {
             // 仅对可达块处理
@@ -121,7 +135,7 @@ namespace ME
             }
         }
 
-        // 删除不可达块
+        // 删除不可达块：移除块前先清理其后继块的 Phi incoming（避免悬挂的 label）
         for (auto it = function.blocks.begin(); it != function.blocks.end();)
         {
             size_t blockId = it->first;
@@ -182,8 +196,9 @@ namespace ME
         blockWorklist.clear();
         instWorklist.clear();
 
-        // 收集寄存器使用关系，并建立指令到基本块的映射
-        // 便于后续通过寄存器值变化快速定位受影响指令
+        // 收集寄存器 use 关系，并建立 inst -> block 映射：
+        // - userMap 用于“某寄存器格值变化后，快速把其所有使用点入队(instWorklist)”
+        // - instBlockMap 用于从指令反查其所在块，从而判断其是否可达并参与求值
         UserCollector collector;
         for (auto& [id, block] : function.blocks)
         {
@@ -226,3 +241,19 @@ namespace ME
     }
 
 }  // namespace ME
+
+/*
+SCCP 流程总结（对应本文件实现）：
+1) 初始化：
+   - 构建 userMap(reg -> users) 与 instBlockMap(inst -> block)；
+   - 初始化格值表 valueMap（参数寄存器直接置为 OVERDEFINED）；
+   - 从入口块开始，将其加入 reachableBlocks 与 blockWorklist。
+2) 求不动点（两类工作队列）：
+   - 处理 blockWorklist：对新可达块遍历所有指令，计算/合并格值，并根据分支结果标记可达边与新可达块；
+   - 处理 instWorklist：当寄存器格值变化时，仅重算受影响指令，做增量更新。
+3) 落地到 IR：
+   - 对可达块做常量替换（ReplaceVisitor）；
+   - 删除“结果已为常量”的 Phi；
+   - 若条件分支条件变为立即数常量，则折叠为无条件分支，并移除被丢弃边对目标块 Phi 的 incoming。
+4) 删除不可达块，并先从其后继块 Phi 中移除 incoming，最后使分析缓存失效。
+*/

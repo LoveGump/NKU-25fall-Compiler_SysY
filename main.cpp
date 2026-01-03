@@ -347,24 +347,35 @@ int main(int argc, char** argv)
 
             ME::DCEPass dcePass;
             dcePass.runOnModule(m);
+            // ME::DCEPass dcePass;
+            // dcePass.runOnModule(m);
 
             ME::InlinePass inlinePass;
             inlinePass.runOnModule(m);
 
-            ME::SCCPPass sccpPass;
-            sccpPass.runOnModule(m);
+            // sccp之后必须进行dce消除不可达块和无用语句
+            // ME::SCCPPass sccpPass;
+            // sccpPass.runOnModule(m);
 
             ME::LICMPass licmPass;
             licmPass.runOnModule(m);
 
             ME::ADCEPass adcePass;
             adcePass.runOnModule(m);
+            // ME::DCEPass dcePass;
+            // dcePass.runOnModule(m);
 
-            ME::CSEPass csePass;
-            csePass.runOnModule(m);
+            // ME::LICMPass licmPass;
+            // licmPass.runOnModule(m);
 
-            ME::SimplifyCFGPass simplifyCFGPass;
-            simplifyCFGPass.runOnModule(m);
+            // ME::ADCEPass adcePass;
+            // adcePass.runOnModule(m);
+
+            // ME::CSEPass csePass;
+            // csePass.runOnModule(m);
+
+            // ME::SimplifyCFGPass simplifyCFGPass;
+            // simplifyCFGPass.runOnModule(m);
         }
 
         if (step == "-llvm")

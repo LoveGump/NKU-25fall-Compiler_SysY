@@ -12,6 +12,13 @@ namespace ME
 {
     void InlineStrategy::analyze(Module& module)
     {
+        // 内联策略分析：只做“决定内联哪些调用点”的静态统计。
+        // 输出包括：
+        // - name_map：函数名 -> Function*
+        // - function_info：函数规模/特征/是否递归/循环深度等
+        // - call_sites：记录每个 call 发生在哪个 caller、是否在循环内
+        // - call_graph + topo_order：用于递归检测与处理顺序
+
         // 清空旧统计，重新分析当前模块
         // 该过程会构建：
         // - 函数名映射（便于通过 call 的 funcName 找到 callee）
@@ -28,7 +35,7 @@ namespace ME
         // 构建函数映射与收集基本信息
         buildFunctionMap(module);
 
-        // 收集函数级统计信息
+        // 收集函数级统计信息：指针和指令数
         collectFunctionInfo();
 
         // 收集循环信息与调用点信息
@@ -97,60 +104,37 @@ namespace ME
         auto* dom = Analysis::AM.get<Analysis::DomInfo>(func);
         if (!cfg || !dom) return;
 
-        const auto& imm_dom = dom->getImmDom();  // 即时支配关系
+        const auto& imm_dom = dom->getImmDom();  // 支配关系
         const auto& G_id    = cfg->G_id;
         const auto& invG_id = cfg->invG_id;
 
-        std::map<size_t, int> loop_depth;  // blockId -> loop depth
-        bool                  has_loop = false;
-
-        // 通过回边识别循环，并估计循环深度：
-        // - 若 v 支配 u，则 u -> v 是一条回边（back edge）
-        // - 从回边源 u 沿反向 CFG 追溯可达节点，得到循环体节点集合
-        // - 同一个节点若属于多个回边形成的循环体，深度累加
+        // 通过回边识别循环体节点
         for (size_t u = 0; u < G_id.size(); ++u)
         {
-            // 遍历所有边
             if (G_id[u].empty()) continue;
             for (size_t v : G_id[u])
             {
                 // v 支配 u 时，u -> v 是一条回边
                 if (!dominates(static_cast<int>(v), static_cast<int>(u), imm_dom)) continue;
 
-                has_loop = true;
-                std::set<size_t>   loop_nodes;  // 循环体节点集合
-                std::deque<size_t> worklist;    // 反向遍历工作队列
+                info.has_loops = true;
+                std::deque<size_t> worklist;
+                info.loop_blocks.insert(v);
+                if (info.loop_blocks.insert(u).second) worklist.push_back(u);
 
-                loop_nodes.insert(v);
-                loop_nodes.insert(u);
-                worklist.push_back(u);
-
-                // 反向遍历 CFG，把能回到回边源（u）的节点加入循环集合
+                // 遍历 反向CFG，把能回到回边源的节点都计入循环
                 while (!worklist.empty())
                 {
                     size_t node = worklist.front();
                     worklist.pop_front();
-
                     if (node >= invG_id.size()) continue;
                     for (size_t pred : invG_id[node])
                     {
-                        // 遍历前驱节点，统计过的跳过
-                        if (loop_nodes.insert(pred).second)
-                        {
-                            // 将所有能到达回边源的节点加入循环体
-                            worklist.push_back(pred);
-                        }
+                        if (info.loop_blocks.insert(pred).second) worklist.push_back(pred);
                     }
                 }
-
-                // 一个节点参与多个回边时，深度累加
-                for (size_t node : loop_nodes) { loop_depth[node]++; }
             }
         }
-
-        info.has_loops = has_loop;
-        // 初步估计的循环深度
-        info.loop_depth = loop_depth;
     }
 
     void InlineStrategy::collectCallSites(Function& func)
@@ -187,12 +171,7 @@ namespace ME
         cs.call_inst = &call_inst;
 
         // 判断是否在循环内
-        auto depth_it = info_it->second.loop_depth.find(block.blockId);
-        if (depth_it != info_it->second.loop_depth.end())
-        {
-            // 如果深度大于0，则在循环内
-            cs.in_loop = depth_it->second > 0;
-        }
+        cs.in_loop = info_it->second.loop_blocks.count(block.blockId);
 
         // 保存调用点信息
         call_sites.push_back(cs);
@@ -274,6 +253,11 @@ namespace ME
 
     bool InlineStrategy::shouldInline(Function& caller, Function& callee, CallInst& call_inst) const
     {
+        // 启发式决策：宁可“可控地内联多一点”也要避免明显的坏情况：
+        // - 递归一律拒绝（避免无限展开）
+        // - 规模约束用于控制代码膨胀
+        // - 循环内调用更偏向内联（可能更高频）
+        // - 指针参数更偏向内联（有时利于后续优化收敛）
         auto caller_it = function_info.find(&caller);
         auto callee_it = function_info.find(&callee);
 
@@ -291,7 +275,7 @@ namespace ME
         // - 小函数倾向内联（降低 call 开销）
         // - 合并规模可控则允许（控制代码膨胀）
         // - 指针参数可能增加优化机会（如常量传播/别名信息更集中），倾向内联
-        // - 循环内调用更偏向内联（按更高频率估计收益）
+        // - 循环内调用更偏向内联，减少重复构造栈帧的开销
 
         // 被调用函数规模较小
         bool smallFunc = callee_info.instruction_count <= 30;
@@ -313,6 +297,7 @@ namespace ME
         return smallFunc || sizeOk || hasPtr || inLoop;  //
     }
 
+    // callee 优先于 caller
     std::vector<Function*> InlineStrategy::getProcessingOrder() const { return topo_order; }
 
     Function* InlineStrategy::findFunction(const std::string& name) const
@@ -322,6 +307,7 @@ namespace ME
         return it->second;
     }
 
+    // 判断支配关系：dom 是否支配 node
     bool InlineStrategy::dominates(int dom, int node, const std::vector<int>& imm_dom) const
     {
         // 通过 imm_dom 链向上判断支配关系：从 node 沿 idom 向上追溯
@@ -335,9 +321,19 @@ namespace ME
         {
             cur = imm_dom[cur];
             if (cur == dom) return true;
-            if (cur < 0) break;
             if (cur == imm_dom[cur]) break;
         }
         return false;
     }
 }  // namespace ME
+
+/*
+InlineStrategy 流程总结（对应本文件实现）：
+1) 建立 name_map：仅对有定义(funcDef)的函数建立“函数名 -> Function*”映射。
+2) 统计 function_info：指令数、是否含指针参数等基础属性。
+3) 计算循环信息：借助 CFG + DomInfo，通过回边(u->v 且 v 支配 u)识别循环体并估计 loop_depth。
+4) 收集 call_sites 与 call_graph：记录 caller->callee 的调用图边以及调用点是否在循环内。
+5) 递归检测：在 call_graph 上 DFS，若命中递归栈则标记该环上的函数为递归。
+6) 处理顺序：对调用图做 DFS 后序，生成 topo_order（callee 优先于 caller）。
+7) shouldInline：综合函数规模、合并规模、递归、指针参数、循环内调用等因素做启发式判定。
+*/
