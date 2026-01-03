@@ -58,8 +58,63 @@ namespace BE::RV64::Passes::Lowering
                 if (predIt == func->blocks.end() || !predIt->second) continue;
                 BE::Block* predBlock = predIt->second;
 
+                // 如果前驱块以「条件跳转 + 无条件跳转」结束，并且当前块是条件跳转的目标，
+                // 直接在原块中插入拷贝会污染另一条分支的寄存器，需拆分边。
+                auto splitEdgeForCondTarget = [&](BE::Block*& pb) {
+                    auto& insts = pb->insts;
+                    if (insts.empty()) return;
+
+                    auto createEdgeBlock = [&](RV64::Instr* condInst) {
+                        uint32_t newId = func->blocks.empty() ? 0 : (func->blocks.rbegin()->first + 1);
+                        auto*    edgeBlock = new BE::Block(newId);
+
+                        // 重定向条件跳转的目标到新块
+                        condInst->label     = RV64::Label(static_cast<int>(newId));
+                        condInst->use_label = true;
+
+                        // 新块只需一个无条件跳转回原目标
+                        edgeBlock->insts.push_back(createJInst(
+                            RV64::Operator::JAL, Register(0, BE::I64, false), RV64::Label(static_cast<int>(blockId))));
+                        func->blocks[newId] = edgeBlock;
+                        pb                  = edgeBlock;
+                    };
+
+                    for (size_t i = 0; i < insts.size(); ++i)
+                    {
+                        auto* condInst   = insts[i];
+                        if (!adapter->isCondBranch(condInst)) continue;
+
+                        int trueTarget  = adapter->extractBranchTarget(condInst);
+                        if (trueTarget != static_cast<int>(blockId)) continue;
+
+                        bool hasUncondFalse = (i + 1 < insts.size()) && adapter->isUncondBranch(insts[i + 1]);
+                        bool isOnlyCond     = (i == insts.size() - 1);
+
+                        // 需要拆分的两种情况：
+                        // 1) cond + uncond，且当前块是 cond 的目标
+                        // 2) cond 作为末尾跳转（另一条边为 fallthrough），当前块是 cond 的目标
+                        if (hasUncondFalse || isOnlyCond)
+                        {
+                            if (auto* ri = dynamic_cast<RV64::Instr*>(condInst)) { createEdgeBlock(ri); }
+                            return;
+                        }
+                    }
+                };
+                splitEdgeForCondTarget(predBlock);
+
                 auto computeInsertIdx = [&](BE::Block* pb) -> size_t {
                     size_t n = pb->insts.size();
+                    if (n == 0) return 0;
+
+                    auto* last = pb->insts.back();
+                    // 如果以单条条件跳转结束且目标不是当前块，则当前块必然是fallthrough，
+                    // 应该把拷贝放在分支之后（只在落空路径执行）。
+                    if (adapter->isCondBranch(last))
+                    {
+                        int t = adapter->extractBranchTarget(last);
+                        if (t != static_cast<int>(blockId)) return n;  // fallthrough edge
+                    }
+
                     // 优先放在指向当前块的终结指令之前
                     for (size_t i = n; i > 0; --i)
                     {
@@ -72,47 +127,46 @@ namespace BE::RV64::Passes::Lowering
                         }
                     }
                     // 否则放在最后一条终结指令前（若存在）
-                    if (n > 0)
-                    {
-                        auto* last = pb->insts.back();
-                        if (adapter->isCondBranch(last) || adapter->isUncondBranch(last) || adapter->isReturn(last))
-                            return n - 1;
-                    }
+                    if (adapter->isCondBranch(last) || adapter->isUncondBranch(last) || adapter->isReturn(last))
+                        return n - 1;
                     return n;
                 };
                 size_t insertIdx = computeInsertIdx(predBlock);
 
                 std::vector<MInstruction*> newInsts;
 
-                auto hasDest = [&](Register r) {
-                    for (auto& cp : copies)
-                        if (cp.first == r) return true;
-                    return false;
-                };
-
                 // 并行拷贝消解
                 while (!copies.empty())
                 {
-                    // 跳过自拷贝
+                    // 先移除自拷贝
                     bool removedSelf = false;
-                    for (auto it = copies.begin(); it != copies.end(); ++it)
+                    for (auto it = copies.begin(); it != copies.end();)
                     {
                         auto* srcReg = dynamic_cast<RegOperand*>(it->second);
                         if (srcReg && srcReg->reg == it->first)
                         {
-                            copies.erase(it);
-                            removedSelf = true;
-                            break;
+                            it           = copies.erase(it);
+                            removedSelf  = true;
                         }
+                        else
+                            ++it;
                     }
                     if (removedSelf) continue;
 
-                    // 尝试选择一个源不依赖其他目标的拷贝
+                    // 选择一个“目标不再被其他拷贝作为源”的拷贝，安全地顺序执行
+                    auto destUsedAsSrc = [&](const Register& dst) {
+                        for (auto& cp : copies)
+                        {
+                            auto* srcReg = dynamic_cast<RegOperand*>(cp.second);
+                            if (srcReg && srcReg->reg == dst) return true;
+                        }
+                        return false;
+                    };
+
                     bool progress = false;
                     for (auto it = copies.begin(); it != copies.end(); ++it)
                     {
-                        auto* srcReg = dynamic_cast<RegOperand*>(it->second);
-                        if (!srcReg || !hasDest(srcReg->reg))
+                        if (!destUsedAsSrc(it->first))
                         {
                             newInsts.push_back(createMove(new RegOperand(it->first), it->second, "phi-elim"));
                             copies.erase(it);
@@ -122,25 +176,53 @@ namespace BE::RV64::Passes::Lowering
                     }
                     if (progress) continue;
 
-                    // 剩余拷贝形成环：使用临时寄存器打破
-                    auto& cyc      = copies.front();
-                    auto* srcRegOp = dynamic_cast<RegOperand*>(cyc.second);
-                    if (!srcRegOp)
+                    // 剩余拷贝必然形成环，按环进行旋转拷贝
+                    std::map<Register, Register> destToSrc;
+                    for (auto& cp : copies)
                     {
-                        newInsts.push_back(createMove(new RegOperand(cyc.first), cyc.second, "phi-elim"));
+                        if (auto* srcReg = dynamic_cast<RegOperand*>(cp.second)) { destToSrc[cp.first] = srcReg->reg; }
+                    }
+
+                    Register              start = copies.front().first;
+                    std::vector<Register> cycle;
+                    Register              cur = start;
+                    do
+                    {
+                        cycle.push_back(cur);
+                        auto it = destToSrc.find(cur);
+                        if (it == destToSrc.end())
+                        {
+                            break;
+                        }
+                        cur = it->second;
+                    } while (!(cur == start));
+
+                    // 如果未形成闭环，降级处理为普通拷贝，避免死循环
+                    if (cycle.size() < 2 || !(cur == start))
+                    {
+                        auto cp = copies.front();
+                        newInsts.push_back(createMove(new RegOperand(cp.first), cp.second, "phi-elim"));
                         copies.erase(copies.begin());
                         continue;
                     }
 
-                    Register tmp = getVReg(srcRegOp->reg.dt);
-                    newInsts.push_back(createMove(new RegOperand(tmp), cyc.second, "phi-spill"));
+                    Register tmp = getVReg(cycle.front().dt);
+                    newInsts.push_back(createMove(new RegOperand(tmp), new RegOperand(cycle.front()), "phi-cycle"));
 
-                    // 将该源替换为临时寄存器，解除环
-                    for (auto& cp : copies)
+                    for (size_t i = 0; i + 1 < cycle.size(); ++i)
                     {
-                        if (auto* s = dynamic_cast<RegOperand*>(cp.second); s && s->reg == srcRegOp->reg)
-                            cp.second = new RegOperand(tmp);
+                        Register dst = cycle[i];
+                        Register src = destToSrc[dst];
+                        newInsts.push_back(createMove(new RegOperand(dst), new RegOperand(src), "phi-cycle"));
                     }
+
+                    Register lastDst = cycle.back();
+                    newInsts.push_back(createMove(new RegOperand(lastDst), new RegOperand(tmp), "phi-cycle"));
+
+                    auto inCycle = [&](const std::pair<Register, Operand*>& cp) {
+                        return std::find(cycle.begin(), cycle.end(), cp.first) != cycle.end();
+                    };
+                    copies.erase(std::remove_if(copies.begin(), copies.end(), inCycle), copies.end());
                 }
 
                 predBlock->insts.insert(predBlock->insts.begin() + insertIdx, newInsts.begin(), newInsts.end());

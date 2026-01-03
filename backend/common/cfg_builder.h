@@ -16,7 +16,7 @@ namespace BE::MIR
 
       private:
         const BE::Targeting::TargetInstrAdapter* adapter_;
-        std::vector<uint32_t>                    getBlockTargets(BE::Block* block);
+        std::vector<uint32_t>                    getBlockTargets(BE::Function* func, BE::Block* block);
         void                                     addFallthroughEdges(BE::Function* func, CFG* cfg);
     };
 }  // namespace BE::MIR

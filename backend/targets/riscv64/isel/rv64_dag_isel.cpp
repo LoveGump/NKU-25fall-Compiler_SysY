@@ -18,16 +18,23 @@ namespace BE::RV64
 
     static Operator getLoadOpForType(BE::DataType* dt)
     {
+        // SysY integers are 32-bit. Some DAG nodes lose their type metadata
+        // during optimization and pass a null dt, which previously defaulted
+        // to 64-bit memory ops. That widened access can clobber adjacent
+        // 32-bit slots (e.g., array elements). Default to word-width when
+        // the type is missing.
+        auto len = dt ? dt->dl : BE::DataType::Length::B32;
         if (dt && dt->dt == BE::DataType::Type::FLOAT)
-            return (dt->dl == BE::DataType::Length::B32) ? Operator::FLW : Operator::FLD;
-        return (dt && dt->dl == BE::DataType::Length::B32) ? Operator::LW : Operator::LD;
+            return (len == BE::DataType::Length::B32) ? Operator::FLW : Operator::FLD;
+        return (len == BE::DataType::Length::B32) ? Operator::LW : Operator::LD;
     }
 
     static Operator getStoreOpForType(BE::DataType* dt)
     {
+        auto len = dt ? dt->dl : BE::DataType::Length::B32;
         if (dt && dt->dt == BE::DataType::Type::FLOAT)
-            return (dt->dl == BE::DataType::Length::B32) ? Operator::FSW : Operator::FSD;
-        return (dt && dt->dl == BE::DataType::Length::B32) ? Operator::SW : Operator::SD;
+            return (len == BE::DataType::Length::B32) ? Operator::FSW : Operator::FSD;
+        return (len == BE::DataType::Length::B32) ? Operator::SW : Operator::SD;
     }
 
     std::vector<const DAG::SDNode*> DAGIsel::scheduleDAG(const DAG::SelectionDAG& dag)
@@ -117,7 +124,7 @@ namespace BE::RV64
         if (it != nodeToVReg_.end()) return it->second;
 
         if (opcode == DAG::ISD::REG && node->hasIRRegId())
-            return getOrCreateVReg(node->getIRRegId(), node->getNumValues() > 0 ? node->getValueType(0) : BE::I64);
+            return getOrCreateVReg(node->getIRRegId(), node->getNumValues() > 0 ? node->getValueType(0) : BE::I32);
 
         if (opcode == DAG::ISD::CONST_I32 || opcode == DAG::ISD::CONST_I64)
         {
@@ -621,8 +628,9 @@ namespace BE::RV64
 
         if (node->getNumOperands() < 2) return;
 
-        Register           dst  = nodeToVReg_.at(node);
-        const DAG::SDNode* addr = node->getOperand(1).getNode();
+        Register           dst    = nodeToVReg_.at(node);
+        DataType*          loadTy = node->getValueType(0);  // Prefer the DAG node's type when choosing width
+        const DAG::SDNode* addr   = node->getOperand(1).getNode();
 
         const DAG::SDNode* baseNode;
         int64_t            offset = 0;
@@ -653,7 +661,11 @@ namespace BE::RV64
             else
                 baseReg = getOperandReg(baseNode, m_block);
 
-            Operator loadOp = getLoadOpForType(dst.dt);
+        // Always decide the memory width from the DAG node's value type. VReg dtypes can drift when IR regs
+        // are re-used with different widths, which would silently widen loads to 64-bit and read past the
+        // intended 32-bit slots.
+        Operator loadOp = getLoadOpForType(loadTy ? loadTy : dst.dt);
+        if (loadOp == Operator::LD && loadTy && loadTy->dl == BE::DataType::Length::B32) loadOp = Operator::LW;
 
             if (offset < -2048 || offset > 2047)
             {
@@ -669,7 +681,7 @@ namespace BE::RV64
         else
         {
             Register addrReg = getOperandReg(addr, m_block);
-            Operator loadOp  = getLoadOpForType(dst.dt);
+            Operator loadOp  = getLoadOpForType(loadTy ? loadTy : dst.dt);
             m_block->insts.push_back(createIInst(loadOp, dst, addrReg, 0));
         }
     }
@@ -690,6 +702,7 @@ namespace BE::RV64
         // 确定存储指令类型
         DataType* valType = valNode->getNumValues() > 0 ? valNode->getValueType(0) : BE::I32;
         Operator  storeOp = getStoreOpForType(valType);
+        if (storeOp == Operator::SD && srcReg.dt && srcReg.dt->dl == BE::DataType::Length::B32) storeOp = Operator::SW;
 
         // 尝试地址选择
         const DAG::SDNode* baseNode;

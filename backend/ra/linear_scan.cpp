@@ -143,24 +143,18 @@ namespace BE::RA
     static std::vector<int> buildAllocatableInt(const BE::Targeting::TargetRegInfo& ri)
     {
         std::vector<int> allocatable;
-        const auto&      intRegs      = ri.intRegs();
         const auto&      reservedRegs = ri.reservedRegs();
         std::set<int>    reserved(reservedRegs.begin(), reservedRegs.end());
 
-        // Include callee-saved registers first (they are preferred for cross-call intervals)
+        // Only use callee-saved integer registers for allocation. Caller-saved
+        // registers are clobbered by every call, and the current allocator
+        // does not insert save/restore around call sites. Restricting the
+        // pool here avoids accidental corruption of values that stay live
+        // across calls, at the cost of a few extra spills.
         const auto& calleeSaved = ri.calleeSavedIntRegs();
         for (int r : calleeSaved)
         {
             if (!reserved.count(r)) allocatable.push_back(r);
-        }
-
-        // Then include caller-saved registers (temporary registers)
-        for (int r : intRegs)
-        {
-            if (!reserved.count(r) && std::find(allocatable.begin(), allocatable.end(), r) == allocatable.end())
-            {
-                allocatable.push_back(r);
-            }
         }
         return allocatable;
     }
@@ -168,24 +162,14 @@ namespace BE::RA
     static std::vector<int> buildAllocatableFloat(const BE::Targeting::TargetRegInfo& ri)
     {
         std::vector<int> allocatable;
-        const auto&      floatRegs    = ri.floatRegs();
         const auto&      reservedRegs = ri.reservedRegs();
         std::set<int>    reserved(reservedRegs.begin(), reservedRegs.end());
 
-        // Include callee-saved FP registers first
+        // Only use callee-saved FP registers for the same reason as integers.
         const auto& calleeSaved = ri.calleeSavedFloatRegs();
         for (int r : calleeSaved)
         {
             if (!reserved.count(r)) allocatable.push_back(r);
-        }
-
-        // Then include caller-saved FP registers
-        for (int r : floatRegs)
-        {
-            if (!reserved.count(r) && std::find(allocatable.begin(), allocatable.end(), r) == allocatable.end())
-            {
-                allocatable.push_back(r);
-            }
         }
         return allocatable;
     }

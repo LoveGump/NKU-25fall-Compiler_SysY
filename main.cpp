@@ -344,11 +344,7 @@ int main(int argc, char** argv)
 
             ME::Mem2RegPass mem2RegPass;
             mem2RegPass.runOnModule(m);
-            ME::Mem2RegPass mem2RegPass;
-            mem2RegPass.runOnModule(m);
 
-            ME::DCEPass dcePass;
-            dcePass.runOnModule(m);
             ME::DCEPass dcePass;
             dcePass.runOnModule(m);
 
@@ -360,10 +356,6 @@ int main(int argc, char** argv)
 
             ME::LICMPass licmPass;
             licmPass.runOnModule(m);
-            ME::SCCPPass sccpPass;
-            sccpPass.runOnModule(m);
-            
-            
 
             ME::ADCEPass adcePass;
             adcePass.runOnModule(m);
