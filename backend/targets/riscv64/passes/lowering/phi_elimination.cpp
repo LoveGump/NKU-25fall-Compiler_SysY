@@ -5,235 +5,231 @@
 
 namespace BE::RV64::Passes::Lowering
 {
+    // 可以修改为线性时间复杂度的指令的构造
     using namespace BE;
     using namespace BE::RV64;
 
+    // 一个前驱块可能对应多个 PHI 的拷贝（多个 PHI 指令共享同一前驱）
+    using CopyList = std::vector<std::pair<Register, Operand*>>;
+
+    static std::vector<PhiInst*> collectPhis(BE::Block* block)
+    {
+        std::vector<PhiInst*> phis;
+        for (auto* inst : block->insts)
+            if (inst && inst->kind == InstKind::PHI)
+                phis.push_back(static_cast<PhiInst*>(inst));
+        return phis;
+    }
+
+    // 将 PHI 指令按前驱块分组：predLabel -> [(dst, src), ...]
+    static std::map<uint32_t, CopyList> aggregateCopies(const std::vector<PhiInst*>& phis)
+    {
+        std::map<uint32_t, CopyList> copiesPerPred;
+        for (auto* phi : phis)
+            for (auto& [predLabel, srcOp] : phi->incomingVals)
+                copiesPerPred[predLabel].push_back({phi->resReg, srcOp});
+        return copiesPerPred;
+    }
+
+    /**
+     * 关键边分裂：当条件跳转指向当前块时，需要插入中间块避免污染另一分支
+     *
+     * 例如：
+     *   BB_pred:
+     *     beq x1, x2, BB_target   <- 条件跳转到目标块
+     *     j BB_other              <- 无条件跳转到另一块
+     *
+     * 如果直接在 BB_pred 插入拷贝，会影响 BB_other 分支。
+     * 解决方案：插入中间块 BB_edge，让条件跳转指向它，再由它跳转到原目标。
+     */
+    static BE::Block* splitCriticalEdge(BE::Function* func, BE::Block* predBlock, uint32_t blockId,
+                                        const BE::Targeting::TargetInstrAdapter* adapter)
+    {
+        
+        // 查找指向目标块的条件跳转
+        auto& insts = predBlock->insts;
+        for (size_t i = 0; i < insts.size(); ++i)
+        {
+            auto* ri = dynamic_cast<RV64::Instr*>(insts[i]);
+            if (!ri || !adapter->isCondBranch(ri)) continue; // 非（条件跳转）语句直接跳过
+            if (adapter->extractBranchTarget(ri) != static_cast<int>(blockId)) continue; // 目标块不匹配跳过
+
+            // 需要分裂：cond+uncond 或 cond 作为末尾（另一边 fallthrough）
+            bool needSplit = (i + 1 < insts.size() && adapter->isUncondBranch(insts[i + 1]))
+                          || (i == insts.size() - 1);
+            if (!needSplit) break;
+
+            // 创建中间块，重定向条件跳转
+            uint32_t newId = func->blocks.rbegin()->first + 1;
+            auto* edgeBlock = new BE::Block(newId);
+
+            // 跳转指令目标改为中间块
+            ri->label = RV64::Label(static_cast<int>(newId));
+            ri->use_label = true;
+
+            // 中间块跳转到原目标块
+            edgeBlock->insts.push_back(createJInst(RV64::Operator::JAL,
+                Register(0, BE::I64, false), RV64::Label(static_cast<int>(blockId))));
+
+            // 插入新块到函数
+            func->blocks[newId] = edgeBlock;
+            return edgeBlock;
+        }
+        return predBlock;
+    }
+
+    // 确定拷贝指令的插入位置
+    static size_t findInsertIndex(BE::Block* predBlock, uint32_t blockId,
+                                  const BE::Targeting::TargetInstrAdapter* adapter)
+    {
+        size_t n = predBlock->insts.size();
+        if (n == 0) return 0;
+
+        auto* last = predBlock->insts.back();
+
+        // 无条件跳转或返回：插入到指令之前
+        // 条件跳转：经过 splitCriticalEdge 后一定是 fallthrough，插入到末尾
+        if (adapter->isUncondBranch(last) || adapter->isReturn(last))
+            return n - 1;
+
+        return n;
+    }
+
+    // 检查 dst 是否被用作其他拷贝的 src
+    static bool isDestUsedAsSrc(const Register& dst, const CopyList& copies)
+    {
+        for (auto& [_, srcOp] : copies)
+            if (auto* srcReg = dynamic_cast<RegOperand*>(srcOp))
+                if (srcReg->reg == dst) return true;
+        return false;
+    }
+
+    // 移除 dst == src 的自拷贝
+    static bool removeSelfCopies(CopyList& copies)
+    {
+        size_t before = copies.size();
+        for (auto it = copies.begin(); it != copies.end(); )
+        {
+            auto* srcReg = dynamic_cast<RegOperand*>(it->second);
+            if (srcReg && srcReg->reg == it->first)
+                it = copies.erase(it);
+            else
+                ++it;
+        }
+        return copies.size() < before;
+    }
+
+    /**
+     * 并行拷贝消解算法
+     *
+     * PHI 的语义是"并行赋值"，但实际执行是顺序的，需要处理依赖：
+     *   1. 无依赖：直接执行 (dst 不被其他拷贝用作 src)
+     *   2. 有环：使用临时寄存器打破环 (a <- b, b <- a => tmp <- a, a <- b, b <- tmp)
+     */
+    static std::vector<MInstruction*> resolveParallelCopies(CopyList copies)
+    {
+        std::vector<MInstruction*> result;
+
+        while (!copies.empty())
+        {
+            if (removeSelfCopies(copies)) continue;
+
+            // 优先处理无依赖的拷贝
+            bool found = false;
+            for (auto it = copies.begin(); it != copies.end(); ++it)
+            {
+                // 遍历指令，如果没有被用作其他拷贝的源，则可以安全执行
+                if (!isDestUsedAsSrc(it->first, copies))
+                {
+                    result.push_back(createMove(new RegOperand(it->first), it->second, "phi-elim"));
+                    copies.erase(it);
+                    found = true;
+                    break;
+                }
+            }
+            if (found) continue;
+
+            // 剩余拷贝一定存在环，用临时寄存器打破
+            std::map<Register, Register> destToSrc;
+            for (auto& [dst, srcOp] : copies)
+                if (auto* srcReg = dynamic_cast<RegOperand*>(srcOp))
+                    destToSrc[dst] = srcReg->reg;
+
+            // 从任意节点开始找环
+            Register start = destToSrc.begin()->first;
+            Register cur = start;
+            std::vector<Register> cycle;
+            do {
+                cycle.push_back(cur);
+                cur = destToSrc[cur];
+            } while (!(cur == start));
+
+            // 环处理：tmp <- first; first <- second; ... ; last <- tmp
+            Register tmp = getVReg(cycle.front().dt);
+            result.push_back(createMove(new RegOperand(tmp), new RegOperand(cycle.front()), "phi-cycle"));
+
+            for (size_t i = 0; i + 1 < cycle.size(); ++i)
+                result.push_back(createMove(new RegOperand(cycle[i]), new RegOperand(destToSrc[cycle[i]]), "phi-cycle"));
+
+            result.push_back(createMove(new RegOperand(cycle.back()), new RegOperand(tmp), "phi-cycle"));
+
+            std::set<Register> cycleSet(cycle.begin(), cycle.end());
+            for (auto it = copies.begin(); it != copies.end(); )
+            {
+                if (cycleSet.count(it->first))
+                    it = copies.erase(it);
+                else
+                    ++it;
+            }
+        }
+
+        return result;
+    }
+
     void PhiEliminationPass::runOnModule(BE::Module& module, const BE::Targeting::TargetInstrAdapter* adapter)
     {
-        if (module.functions.empty()) return;
-        for (auto* func : module.functions) runOnFunction(func, adapter);
+        for (auto* func : module.functions)
+            runOnFunction(func, adapter);
     }
 
     void PhiEliminationPass::runOnFunction(BE::Function* func, const BE::Targeting::TargetInstrAdapter* adapter)
     {
         if (!func || func->blocks.empty()) return;
 
-        // 构建 CFG 以获取前驱信息
-        BE::MIR::CFGBuilder cfgBuilder(adapter);
-        auto* cfg = cfgBuilder.buildCFGForFunction(func);
-        if (!cfg) return;
-
-        // 遍历所有基本块，收集并消解 PHI
         for (auto& [blockId, block] : func->blocks)
         {
             if (!block) continue;
 
-            // 收集当前块的所有 PHI 指令
-            std::vector<PhiInst*> phis;
-            for (auto* inst : block->insts)
-            {
-                if (inst && inst->kind == InstKind::PHI)
-                    phis.push_back(static_cast<PhiInst*>(inst));
-            }
-
+            // 收集 PHI 指令
+            auto phis = collectPhis(block);
             if (phis.empty()) continue;
 
-            // 按前驱块聚合需要插入的拷贝
-            std::map<uint32_t, std::vector<std::pair<Register, Operand*>>> copiesPerPred;
-            for (auto* phi : phis)
-            {
-                Register dst = phi->resReg;
+            // 按前驱块聚合拷贝
+            auto copiesPerPred = aggregateCopies(phis);
 
-                // 对每个 incoming value，在对应的前驱块末尾插入 MOVE
-                for (auto& [predLabel, srcOp] : phi->incomingVals)
-                {
-                    copiesPerPred[predLabel].push_back({dst, srcOp});
-                }
-            }
-
-            // 将聚合后的拷贝插入对应的前驱块，使用并行拷贝算法处理互相依赖
             for (auto& [predLabel, copies] : copiesPerPred)
             {
                 auto predIt = func->blocks.find(predLabel);
                 if (predIt == func->blocks.end() || !predIt->second) continue;
-                BE::Block* predBlock = predIt->second;
 
-                // 如果前驱块以「条件跳转 + 无条件跳转」结束，并且当前块是条件跳转的目标，
-                // 直接在原块中插入拷贝会污染另一条分支的寄存器，需拆分边。
-                auto splitEdgeForCondTarget = [&](BE::Block*& pb) {
-                    auto& insts = pb->insts;
-                    if (insts.empty()) return;
+                // 要插入的块号
+                BE::Block* predBlock = splitCriticalEdge(func, predIt->second, blockId, adapter);
 
-                    auto createEdgeBlock = [&](RV64::Instr* condInst) {
-                        uint32_t newId = func->blocks.empty() ? 0 : (func->blocks.rbegin()->first + 1);
-                        auto*    edgeBlock = new BE::Block(newId);
+                // 要插入的位置
+                size_t insertIdx = findInsertIndex(predBlock, blockId, adapter);
 
-                        // 重定向条件跳转的目标到新块
-                        condInst->label     = RV64::Label(static_cast<int>(newId));
-                        condInst->use_label = true;
-
-                        // 新块只需一个无条件跳转回原目标
-                        edgeBlock->insts.push_back(createJInst(
-                            RV64::Operator::JAL, Register(0, BE::I64, false), RV64::Label(static_cast<int>(blockId))));
-                        func->blocks[newId] = edgeBlock;
-                        pb                  = edgeBlock;
-                    };
-
-                    for (size_t i = 0; i < insts.size(); ++i)
-                    {
-                        auto* condInst   = insts[i];
-                        if (!adapter->isCondBranch(condInst)) continue;
-
-                        int trueTarget  = adapter->extractBranchTarget(condInst);
-                        if (trueTarget != static_cast<int>(blockId)) continue;
-
-                        bool hasUncondFalse = (i + 1 < insts.size()) && adapter->isUncondBranch(insts[i + 1]);
-                        bool isOnlyCond     = (i == insts.size() - 1);
-
-                        // 需要拆分的两种情况：
-                        // 1) cond + uncond，且当前块是 cond 的目标
-                        // 2) cond 作为末尾跳转（另一条边为 fallthrough），当前块是 cond 的目标
-                        if (hasUncondFalse || isOnlyCond)
-                        {
-                            if (auto* ri = dynamic_cast<RV64::Instr*>(condInst)) { createEdgeBlock(ri); }
-                            return;
-                        }
-                    }
-                };
-                splitEdgeForCondTarget(predBlock);
-
-                auto computeInsertIdx = [&](BE::Block* pb) -> size_t {
-                    size_t n = pb->insts.size();
-                    if (n == 0) return 0;
-
-                    auto* last = pb->insts.back();
-                    // 如果以单条条件跳转结束且目标不是当前块，则当前块必然是fallthrough，
-                    // 应该把拷贝放在分支之后（只在落空路径执行）。
-                    if (adapter->isCondBranch(last))
-                    {
-                        int t = adapter->extractBranchTarget(last);
-                        if (t != static_cast<int>(blockId)) return n;  // fallthrough edge
-                    }
-
-                    // 优先放在指向当前块的终结指令之前
-                    for (size_t i = n; i > 0; --i)
-                    {
-                        auto* inst = pb->insts[i - 1];
-                        if (!inst || inst->kind != InstKind::TARGET) continue;
-                        if (adapter->isCondBranch(inst) || adapter->isUncondBranch(inst))
-                        {
-                            int t = adapter->extractBranchTarget(inst);
-                            if (t == static_cast<int>(blockId)) return i - 1;
-                        }
-                    }
-                    // 否则放在最后一条终结指令前（若存在）
-                    if (adapter->isCondBranch(last) || adapter->isUncondBranch(last) || adapter->isReturn(last))
-                        return n - 1;
-                    return n;
-                };
-                size_t insertIdx = computeInsertIdx(predBlock);
-
-                std::vector<MInstruction*> newInsts;
-
-                // 并行拷贝消解
-                while (!copies.empty())
-                {
-                    // 先移除自拷贝
-                    bool removedSelf = false;
-                    for (auto it = copies.begin(); it != copies.end();)
-                    {
-                        auto* srcReg = dynamic_cast<RegOperand*>(it->second);
-                        if (srcReg && srcReg->reg == it->first)
-                        {
-                            it           = copies.erase(it);
-                            removedSelf  = true;
-                        }
-                        else
-                            ++it;
-                    }
-                    if (removedSelf) continue;
-
-                    // 选择一个“目标不再被其他拷贝作为源”的拷贝，安全地顺序执行
-                    auto destUsedAsSrc = [&](const Register& dst) {
-                        for (auto& cp : copies)
-                        {
-                            auto* srcReg = dynamic_cast<RegOperand*>(cp.second);
-                            if (srcReg && srcReg->reg == dst) return true;
-                        }
-                        return false;
-                    };
-
-                    bool progress = false;
-                    for (auto it = copies.begin(); it != copies.end(); ++it)
-                    {
-                        if (!destUsedAsSrc(it->first))
-                        {
-                            newInsts.push_back(createMove(new RegOperand(it->first), it->second, "phi-elim"));
-                            copies.erase(it);
-                            progress = true;
-                            break;
-                        }
-                    }
-                    if (progress) continue;
-
-                    // 剩余拷贝必然形成环，按环进行旋转拷贝
-                    std::map<Register, Register> destToSrc;
-                    for (auto& cp : copies)
-                    {
-                        if (auto* srcReg = dynamic_cast<RegOperand*>(cp.second)) { destToSrc[cp.first] = srcReg->reg; }
-                    }
-
-                    Register              start = copies.front().first;
-                    std::vector<Register> cycle;
-                    Register              cur = start;
-                    do
-                    {
-                        cycle.push_back(cur);
-                        auto it = destToSrc.find(cur);
-                        if (it == destToSrc.end())
-                        {
-                            break;
-                        }
-                        cur = it->second;
-                    } while (!(cur == start));
-
-                    // 如果未形成闭环，降级处理为普通拷贝，避免死循环
-                    if (cycle.size() < 2 || !(cur == start))
-                    {
-                        auto cp = copies.front();
-                        newInsts.push_back(createMove(new RegOperand(cp.first), cp.second, "phi-elim"));
-                        copies.erase(copies.begin());
-                        continue;
-                    }
-
-                    Register tmp = getVReg(cycle.front().dt);
-                    newInsts.push_back(createMove(new RegOperand(tmp), new RegOperand(cycle.front()), "phi-cycle"));
-
-                    for (size_t i = 0; i + 1 < cycle.size(); ++i)
-                    {
-                        Register dst = cycle[i];
-                        Register src = destToSrc[dst];
-                        newInsts.push_back(createMove(new RegOperand(dst), new RegOperand(src), "phi-cycle"));
-                    }
-
-                    Register lastDst = cycle.back();
-                    newInsts.push_back(createMove(new RegOperand(lastDst), new RegOperand(tmp), "phi-cycle"));
-
-                    auto inCycle = [&](const std::pair<Register, Operand*>& cp) {
-                        return std::find(cycle.begin(), cycle.end(), cp.first) != cycle.end();
-                    };
-                    copies.erase(std::remove_if(copies.begin(), copies.end(), inCycle), copies.end());
-                }
+                // 生成拷贝指令
+                auto newInsts = resolveParallelCopies(std::move(copies));
 
                 predBlock->insts.insert(predBlock->insts.begin() + insertIdx, newInsts.begin(), newInsts.end());
             }
 
-            // 从当前块中删除所有 PHI 指令
-            auto newEnd = std::remove_if(block->insts.begin(), block->insts.end(),
-                [](MInstruction* inst) { return inst && inst->kind == InstKind::PHI; });
-            block->insts.erase(newEnd, block->insts.end());
+            // 移除 PHI 指令
+            std::deque<MInstruction*> filtered;
+            for (auto* inst : block->insts)
+                if (!inst || inst->kind != InstKind::PHI)
+                    filtered.push_back(inst);
+            block->insts = std::move(filtered);
         }
-
-        delete cfg;
     }
 }  // namespace BE::RV64::Passes::Lowering

@@ -295,13 +295,13 @@ namespace BE::RV64
         Register    rd, rs1, rs2;
         int         imme;
         Label       label;
-        bool        use_label;
+        bool        use_label;      // 是否使用标签作为目标
         int         call_ireg_cnt, call_freg_cnt;
-        std::string func_name;  // For call instructions
-        int         ins_id;     // Instruction ID for register allocation
+        std::string func_name;  // For call instructions 函数调用
+        int         ins_id;     // Instruction ID for register allocation       
 
-        Operand* fiop;     // FrameIndexOperand for lowering
-        bool     use_ops;  // Whether ops array is used instead of imme/label
+        Operand* fiop;     // FrameIndexOperand for lowering      帧索引操作数
+        bool     use_ops;  // Whether ops array is used instead of imme/label 是否使用 ops 数组代替立即数/标签
 
         Instr()
             : BE::MInstruction(BE::InstKind::TARGET),

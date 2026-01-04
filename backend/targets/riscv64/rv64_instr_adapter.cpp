@@ -58,6 +58,7 @@ namespace BE::Targeting::RV64
     {
         auto* ri = dynamic_cast<Instr*>(inst);
         if (!ri) return -1;
+        // 返回跳转目标标签 ID
         if (ri->use_label) return ri->label.jmp_label;
         return -1;
     }
