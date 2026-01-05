@@ -32,6 +32,7 @@ namespace BE
     {
         static inline bool isFloatType(ME::DataType t) { return t == ME::DataType::F32 || t == ME::DataType::DOUBLE; }
 
+        // 将 ME::DataType 转换为 BE::DataType
         BE::DataType* DAGBuilder::mapType(ME::DataType t)
         {
             switch (t)
@@ -47,6 +48,7 @@ namespace BE
             }
         }
 
+        // 访问 ME::Module，构建 SelectionDAG
         void DAGBuilder::visit(ME::Module& module, SelectionDAG& dag)
         {
             // Module 级别的 DAG 构建：遍历函数
@@ -55,6 +57,7 @@ namespace BE
             {
                 apply(*this, *func, dag);
             }
+            //这里
         }
         void DAGBuilder::visit(ME::Function& func, SelectionDAG& dag)
         {
@@ -68,58 +71,81 @@ namespace BE
             }
         }
 
+        // 获取 IR 操作数对应的 DAG 节点
         SDValue DAGBuilder::getValue(ME::Operand* op, SelectionDAG& dag, BE::DataType* dtype)
         {
+            // 如果操作数为空，返回空的 SDValue
             if (!op) return SDValue();
+            // 根据操作数类型进行分支处理
             switch (op->getType())
             {
+                // 处理寄存器操作数
                 case ME::OperandType::REG:
                 {
+                    // 寄存器操作数必须提供目标数据类型
                     ASSERT(dtype != nullptr && "dtype required for REG operands");
 
+                    // 获取寄存器编号
                     size_t id = op->getRegNum();
+                    // 检查是否已经存在该寄存器的映射，若存在则直接返回
                     auto   it = reg_value_map_.find(id);
                     if (it != reg_value_map_.end()) return it->second;
 
+                    // 若不存在，则在 DAG 中创建一个新的寄存器节点
                     SDValue v = dag.getRegNode(id, dtype);
 
+                    // 缓存映射关系并返回
                     reg_value_map_[id] = v;
                     return v;
                 }
+                // 处理 32 位整型立即数
                 case ME::OperandType::IMMEI32:
                 {
+                    // 提取立即数值并创建 I32 类型的常量节点
                     auto imm = static_cast<ME::ImmeI32Operand*>(op)->value;
                     return dag.getConstantI64(imm, BE::I32);
                 }
+                // 处理 32 位浮点型立即数
                 case ME::OperandType::IMMEF32:
                 {
+                    // 提取立即数值并创建 F32 类型的常量节点
                     auto imm = static_cast<ME::ImmeF32Operand*>(op)->value;
                     return dag.getConstantF32(imm, BE::F32);
                 }
+                // 处理全局变量操作数
                 case ME::OperandType::GLOBAL:
                 {
                     // 将全局符号映射为 SYMBOL 节点并返回
                     auto* gop = static_cast<ME::GlobalOperand*>(op);
                     return dag.getSymNode(static_cast<uint32_t>(ISD::SYMBOL), {BE::PTR}, {}, gop->name);
                 }
+                // 处理标签操作数
                 case ME::OperandType::LABEL:
                 {
                     // 将标签操作数映射为 LABEL 节点（立即数携带标签 id）
                     auto* lop = static_cast<ME::LabelOperand*>(op);
                     return dag.getImmNode(static_cast<uint32_t>(ISD::LABEL), {}, {}, static_cast<int64_t>(lop->lnum));
                 }
+                // 遇到不支持的操作数类型，触发错误
                 default: ERROR("Unsupported IR operand in DAGBuilder"); return SDValue();
             }
         }
 
+        // 设置操作数的定义结果
         void DAGBuilder::setDef(ME::Operand* res, const SDValue& val)
         {
+            // 检查操作数是否有效且为寄存器类型
             if (!res || res->getType() != ME::OperandType::REG) return;
+
+            // 获取寄存器 ID 并更新寄存器到 SDValue 的映射
             size_t regId          = res->getRegNum();
             reg_value_map_[regId] = val;
+
+            // 如果 SDValue 关联了节点，则在节点中记录对应的 IR 寄存器 ID
             if (val.getNode()) val.getNode()->setIRRegId(regId);
         }
 
+        // 将 ME::Operator 映射为 ISD::Operator
         uint32_t DAGBuilder::mapArithmeticOpcode(ME::Operator op, bool isFloat)
         {
             if (isFloat)
@@ -149,76 +175,88 @@ namespace BE
             }
         }
 
+        // 访问 ME::Block，构建 SelectionDAG
         void DAGBuilder::visit(ME::Block& block, SelectionDAG& dag)
         {
+            // 记录当前基本块的入口令牌
             currentChain_ = dag.getNode(static_cast<unsigned>(ISD::ENTRY_TOKEN), {BE::TOKEN}, {});
+            // 遍历基本块中的指令
             for (auto* inst : block.insts) apply(*this, *inst, dag);
         }
 
+        // 访问 ME::RetInst，构建 SelectionDAG
         void DAGBuilder::visit(ME::RetInst& inst, SelectionDAG& dag)
         {
+            // 构建返回指令的操作数列表
             std::vector<SDValue> ops;
 
             // 结合此处考虑 currentChain_ 的作用是什么
+            // currentChain 的作用是：
+            // 记录当前的副作用序列，确保有副作用的操作（如 STORE、CALL、RET）
+            // 按照程序语义正确的顺序执行，防止被调度器重排。
+            // 确保返回指令在所有副作用操作之后执行，符合程序语义。
             ops.push_back(currentChain_);
 
-            if (inst.res == nullptr)
+            // 如果存在返回值，则将其转换为 DAG 节点并加入操作数列表
+            if (inst.res != nullptr)
             {
-                dag.getNode(static_cast<unsigned>(ISD::RET), {}, ops);
-                return;
-            }
-
-            if (inst.res->getType() == ME::OperandType::IMMEI32)
-            {
-                auto v = dag.getNode(static_cast<unsigned>(ISD::CONST_I32), {I32}, {});
-                v.getNode()->setImmI64(static_cast<ME::ImmeI32Operand*>(inst.res)->value);
+                SDValue v = getValue(inst.res, dag, mapType(inst.rt));
                 ops.push_back(v);
             }
-            else if (inst.res->getType() == ME::OperandType::IMMEF32)
-            {
-                auto v = dag.getNode(static_cast<unsigned>(ISD::CONST_F32), {F32}, {});
-                v.getNode()->setImmF32(static_cast<ME::ImmeF32Operand*>(inst.res)->value);
-                ops.push_back(v);
-            }
-            else if (inst.res->getType() == ME::OperandType::REG)
-            {
-                auto v = getValue(inst.res, dag, mapType(inst.rt));
-                ops.push_back(v);
-            }
-            else
-                ERROR("Unsupported return operand type in DAGBuilder");
-
+            // 在 DAG 中创建 RET 节点，RET 节点通常作为基本块的终结节点
             dag.getNode(static_cast<unsigned>(ISD::RET), {}, ops);
         }
 
+        //这是处理 IR Load 指令 的函数，将其转换为 DAG LOAD 节点：
         void DAGBuilder::visit(ME::LoadInst& inst, SelectionDAG& dag)
         {
+            // 1. 获取加载数据的类型（i32 → BE::I32）
             auto    vt  = mapType(inst.dt);
+            // 2. 获取地址操作数对应的 DAG 节点
             SDValue ptr = getValue(inst.ptr, dag, BE::PTR);
+
             // LOAD: (Chain, Address) -> (Value, Chain)
+            // 3. 创建 LOAD 节点
+            // LOAD 节点的特点：
+            //   输入：[Chain, Address]
+            //   输出：[Value, Chain]  ← 有两个输出！
             SDValue node = dag.getNode(static_cast<unsigned>(ISD::LOAD), {vt, BE::TOKEN}, {currentChain_, ptr});
+            // 4. 记录加载的值（结果 #0）到 reg_value_map_
             setDef(inst.res, SDValue(node.getNode(), 0));  // Value is result #0
+            // 5. 更新 currentChain_ 为 LOAD 节点的 Chain 输出
             currentChain_ = SDValue(node.getNode(), 1);    // Chain is result #1
         }
 
+        //这是处理 IR Store 指令 的函数，将其转换为 DAG STORE 节点：
         void DAGBuilder::visit(ME::StoreInst& inst, SelectionDAG& dag)
         {
-            // 生成 STORE 节点并维护 Chain
+            // 1. 获取值操作数对应的 DAG 节点
             SDValue val = getValue(inst.val, dag, mapType(inst.dt));
+            // 2. 获取地址操作数对应的 DAG 节点
             SDValue ptr = getValue(inst.ptr, dag, BE::PTR);
-            // STORE: (Chain, Value, Address) -> (Chain)
+            // 3. 创建 STORE 节点
+            // STORE 节点的特点：
+            //   输入：[Chain, Value, Address]
+            //   输出：[Chain]
             SDValue storeNode = dag.getNode(static_cast<unsigned>(ISD::STORE), {BE::TOKEN}, {currentChain_, val, ptr});
+            // 4. 更新 currentChain_ 为 STORE 节点的 Chain 输出
             currentChain_ = storeNode;
         }
 
+        //这是处理 IR 算术指令 的函数，将其转换为 DAG 算术节点：
         void DAGBuilder::visit(ME::ArithmeticInst& inst, SelectionDAG& dag)
         {
+            // 1. 判断是否为浮点数类型
             bool     f    = isFloatType(inst.dt);
+            // 2. 获取操作数类型
             auto     vt   = mapType(inst.dt);
+            // 3. 获取左操作数对应的 DAG 节点
             SDValue  lhs  = getValue(inst.lhs, dag, vt);
             SDValue  rhs  = getValue(inst.rhs, dag, vt);
             uint32_t opc  = mapArithmeticOpcode(inst.opcode, f);
+            // 4. 创建算术节点
             SDValue  node = dag.getNode(opc, {vt}, {lhs, rhs});
+            // 5. 设置结果寄存器
             setDef(inst.res, node);
         }
 
@@ -244,16 +282,22 @@ namespace BE
             setDef(inst.res, node);
         }
 
+        //为alloca指令生成DAG节点，对于没有优化的部分就用这个
         void DAGBuilder::visit(ME::AllocaInst& inst, SelectionDAG& dag)
         {
+            // 1. 获取结果寄存器ID
             size_t dest_id = static_cast<ME::RegOperand*>(inst.res)->getRegNum();
 
+            // 2. 创建 FrameIndex 节点
             DataType* ptr_ty = BE::I64;
             SDValue   v      = dag.getFrameIndexNode(static_cast<int>(dest_id), ptr_ty);
 
+            // 3. 设置 IR 寄存器ID
             v.getNode()->setIRRegId(dest_id);
 
+            // 4. 记录结果寄存器
             reg_value_map_[dest_id] = v;
+            // 5. 记录 alloca 指令
             alloca_map_[dest_id]    = v;
         }
 
@@ -449,18 +493,23 @@ namespace BE
         {
             // 为 PHI 构造操作数列表（成对的 LABEL 与 VALUE）
             // ops 形如 [LABEL0, VAL0, LABEL1, VAL1, ...]
-            auto vt = mapType(inst.dt);
-            std::vector<SDValue> ops;
+            auto vt = mapType(inst.dt);//结果类型
+            std::vector<SDValue> ops;//操作数列表
             
+            // 1. 构造操作数列表
             for (auto& [labelOp, valOp] : inst.incomingVals)
             {
+                // 2. 获取值
                 SDValue val = getValue(valOp, dag, vt);
+                // 3. 获取标签
                 SDValue label = getValue(labelOp, dag, nullptr);
                 // SelectionDAG PHI operands are [value, label] pairs
+                // 4. 添加到操作数列表
                 ops.push_back(val);
                 ops.push_back(label);
             }
             
+            // 5. 构造 PHI 节点
             SDValue node = dag.getNode(static_cast<unsigned>(ISD::PHI), {vt}, ops);
             setDef(inst.res, node);
         }

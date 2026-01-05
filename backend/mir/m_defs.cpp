@@ -5,6 +5,8 @@
 
 namespace BE
 {
+    // Global DataType instances for common types
+    //单例模式及其指针，用于表示寄存器和操作数的类型
     DataType  I32INSTANCE(DataType::Type::INT, DataType::Length::B32);
     DataType  I64INSTANCE(DataType::Type::INT, DataType::Length::B64);
     DataType  F32INSTANCE(DataType::Type::FLOAT, DataType::Length::B32);
@@ -18,6 +20,7 @@ namespace BE
     DataType* PTR   = &PTRINSTANCE;
     DataType* TOKEN = &TOKENINSTANCE;
 
+    //虚拟寄存器分配器，每次调用返回一个全局唯一的新虚拟寄存器
     Register getVReg(DataType* dt)
     {
         static uint32_t vreg_count = 0;

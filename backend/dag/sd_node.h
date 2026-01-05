@@ -25,9 +25,9 @@ namespace BE
             SDValue() : node_(nullptr), res_no_(0) {}
             SDValue(SDNode* node, uint32_t res_no) : node_(node), res_no_(res_no) {}
 
-            SDNode*  getNode() const { return node_; }
-            uint32_t getResNo() const { return res_no_; }
-            explicit operator bool() const { return node_ != nullptr; }
+            SDNode*  getNode() const { return node_; }//获取节点
+            uint32_t getResNo() const { return res_no_; }//获取结果编号
+            explicit operator bool() const { return node_ != nullptr; }//是否为空
         };
 
         
@@ -57,80 +57,86 @@ namespace BE
                 : opcode_(opcode), operands_(ops), value_types_(vts)
             {}
 
-            void     setId(uint32_t id) { id_ = id; }
-            uint32_t getId() const { return id_; }
+            void     setId(uint32_t id) { id_ = id; }//设置id
+            uint32_t getId() const { return id_; }//获取id
 
-            uint32_t getOpcode() const { return opcode_; }
-            void     setOpcode(uint32_t opc) { opcode_ = opc; }
+            uint32_t getOpcode() const { return opcode_; }//获取操作码
+            void     setOpcode(uint32_t opc) { opcode_ = opc; }//设置操作码
 
-            const std::vector<SDValue>& getOperands() const { return operands_; }
-            const SDValue&              getOperand(unsigned i) const { return operands_[i]; }
-            void                        setOperand(unsigned i, const SDValue& v)
+            const std::vector<SDValue>& getOperands() const { return operands_; }//获取操作数
+            const SDValue&              getOperand(unsigned i) const { return operands_[i]; }//获取第i个操作数
+            void                        setOperand(unsigned i, const SDValue& v)//设置第i个操作数
             {
                 if (i < operands_.size()) operands_[i] = v;
             }
-            void replaceOperands(const std::vector<SDValue>& ops) { operands_ = ops; }
+            void replaceOperands(const std::vector<SDValue>& ops) { operands_ = ops; }//替换操作数
 
-            unsigned getNumOperands() const { return operands_.size(); }
-            unsigned getNumValues() const { return value_types_.size(); }
+            unsigned getNumOperands() const { return operands_.size(); }//获取操作数数量
+            unsigned getNumValues() const { return value_types_.size(); }//获取结果数量
 
-            DataType* getValueType(unsigned i) const { return value_types_[i]; }
+            DataType* getValueType(unsigned i) const { return value_types_[i]; }//获取第i个结果类型
 
-            void setImmI64(int64_t v)
+            void setImmI64(int64_t v)//设置64位整数立即数
             {
                 has_imm_i64_ = true;
                 imm_i64_     = v;
             }
-            bool    hasImmI64() const { return has_imm_i64_; }
-            int64_t getImmI64() const { return imm_i64_; }
+            bool    hasImmI64() const { return has_imm_i64_; }//是否有64位整数立即数
+            int64_t getImmI64() const { return imm_i64_; }//获取64位整数立即数
 
-            void setImmF32(float v)
+            void setImmF32(float v)//设置32位浮点数立即数
             {
                 has_imm_f32_ = true;
                 imm_f32_     = v;
             }
-            bool  hasImmF32() const { return has_imm_f32_; }
-            float getImmF32() const { return imm_f32_; }
+            bool  hasImmF32() const { return has_imm_f32_; }//是否有32位浮点数立即数
+            float getImmF32() const { return imm_f32_; }//获取32位浮点数立即数
 
-            void setSymbol(const std::string& s)
+            void setSymbol(const std::string& s)//设置符号
             {
                 has_symbol_ = true;
                 symbol_     = s;
             }
-            bool               hasSymbol() const { return has_symbol_; }
-            const std::string& getSymbol() const { return symbol_; }
+            bool               hasSymbol() const { return has_symbol_; }//是否有符号
+            const std::string& getSymbol() const { return symbol_; }//获取符号
 
-            void setIRRegId(size_t id)
+            void setIRRegId(size_t id)//设置IR寄存器ID
             {
                 has_ir_reg_id_ = true;
                 ir_reg_id_     = id;
             }
-            bool   hasIRRegId() const { return has_ir_reg_id_; }
-            size_t getIRRegId() const { return ir_reg_id_; }
+            bool   hasIRRegId() const { return has_ir_reg_id_; }//是否有IR寄存器ID
+            size_t getIRRegId() const { return ir_reg_id_; }//获取IR寄存器ID
 
-            void setFrameIndex(int fi)
+            void setFrameIndex(int fi)//设置栈帧索引
             {
                 has_frame_index_ = true;
                 frame_index_     = fi;
             }
-            bool hasFrameIndex() const { return has_frame_index_; }
-            int  getFrameIndex() const { return frame_index_; }
+            bool hasFrameIndex() const { return has_frame_index_; }//是否有栈帧索引
+            int  getFrameIndex() const { return frame_index_; }//获取栈帧索引
 
-            void Profile(FoldingSetNodeID& ID) const
+            //把节点的所有重要属性添加到 FoldingSetNodeID， DAG 节点生成一个唯一的标识（指纹/哈希），用于判断两个节点是否完全相同。
+            void Profile(FoldingSetNodeID& ID) const//用于FoldingSet的Profile
             {
+                // 1. 操作码（ADD? MUL? LOAD?）
                 ID.AddInteger(opcode_);
 
+                 // 2. 操作数和结果类型的数量
                 ID.AddInteger(operands_.size());
                 ID.AddInteger(value_types_.size());
 
+                // 3. 每个操作数（哪个节点的第几个结果）
                 for (const auto& op : operands_)
                 {
                     ID.AddPointer(op.getNode());
                     ID.AddInteger(op.getResNo());
                 }
 
+                // 4. 每个结果类型
                 for (auto* vt : value_types_) ID.AddPointer(vt);
 
+                // 5. 可选属性：立即数、符号、栈帧索引等
                 if (has_imm_i64_)
                 {
                     ID.AddBoolean(true);
@@ -163,6 +169,7 @@ namespace BE
                 else
                     ID.AddBoolean(false);
 
+                // 6. REG 节点特殊处理：加入 IR 寄存器 ID
                 if (opcode_ == static_cast<unsigned>(ISD::REG))
                 {
                     if (has_ir_reg_id_)

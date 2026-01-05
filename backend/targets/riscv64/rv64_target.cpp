@@ -52,7 +52,6 @@ namespace BE::Targeting::RV64
 
 
         }
-
         static void runRAPipeline(BE::Module& m, const BE::Targeting::RV64::RegInfo& regInfo)
         {
             BE::RA::LinearScanRA ls;
@@ -79,7 +78,7 @@ namespace BE::Targeting::RV64
         isel.run();
 
         runPreRAPasses(*backend, &s_adapter);
-
+        
         runRAPipeline(*backend, s_regInfo);
 
         runPostRAPasses(*backend);

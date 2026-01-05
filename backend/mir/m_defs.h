@@ -18,7 +18,7 @@
 
 namespace ME
 {
-    enum class DataType;
+    enum class DataType; ///< 前端数据类型前向声明
 }
 
 namespace BE
@@ -41,27 +41,41 @@ namespace BE
             B32,  ///< 32 位
             B64   ///< 64 位
         };
-        Type   dt;  ///< 类型
-        Length dl;  ///< 宽度
+        Type   dt;  ///< 类型成员变量
+        Length dl;  ///< 宽度成员变量
+
+        /// 拷贝构造函数
         DataType(const DataType& other)
         {
             this->dt = other.dt;
             this->dl = other.dl;
         }
+
+        /// 赋值运算符重载
         DataType operator=(const DataType& other)
         {
             this->dt = other.dt;
             this->dl = other.dl;
             return *this;
         }
+
+        /// 构造函数
         DataType(Type dt, Length dl) : dt(dt), dl(dl) {}
+
+        /// 相等比较运算符
         bool operator==(const DataType& other) const { return this->dt == other.dt && this->dl == other.dl; }
+
+        /// 判断两个类型是否相等
         bool equal(const DataType& other) const { return this->dt == other.dt && this->dl == other.dl; }
+
+        /// 判断与指针指向的类型是否相等
         bool equal(const DataType* other) const
         {
             if (!other) return false;
             return this->dt == other->dt && this->dl == other->dl;
         }
+
+        /// 获取数据类型的字节宽度
         int getDataWidth()
         {
             switch (dl)
@@ -71,6 +85,8 @@ namespace BE
             }
             return 0;
         }
+
+        /// 将类型转换为字符串描述（如 i32, f64）
         std::string toString()
         {
             std::string ret;
@@ -82,7 +98,7 @@ namespace BE
         }
     };
 
-    /// 预定义的全局数据类型实例
+    /// 预定义的全局数据类型实例指针
     extern DataType *I32, *I64, *F32, *F64, *PTR, *TOKEN;
 
     /**
@@ -92,34 +108,35 @@ namespace BE
      */
     enum class InstKind
     {
-        NOP    = 0,   ///< 空指令，可作为 comment 使用
-        PHI    = 1,   ///< 不同路径选择值（SSA 形式）
-        MOVE   = 2,   ///< 数据拷贝
-        SELECT = 3,   ///< 条件选择
-        LSLOT  = 4,   ///< 内存槽加载（溢出恢复）
-        SSLOT  = 5,   ///< 内存槽存储（溢出保存）
-        TARGET = 100  ///< 目标相关指令
+        NOP    = 0,   ///< 空指令，可作为注释使用
+        PHI    = 1,   ///< SSA 形式的 PHI 节点
+        MOVE   = 2,   ///< 寄存器间数据拷贝
+        SELECT = 3,   ///< 条件选择指令
+        LSLOT  = 4,   ///< 从栈槽加载数据
+        SSLOT  = 5,   ///< 存储数据到栈槽
+        TARGET = 100  ///< 目标架构相关的特定指令起始值
     };
 
     /**
      * @brief 寄存器
      *
      * 表示一个虚拟寄存器或物理寄存器。
-     * - 虚拟寄存器 (isVreg=true)：由指令选择生成，在寄存器分配时分配到物理寄存器
-     * - 物理寄存器 (isVreg=false)：目标架构的实际寄存器（如 x0-x31, f0-f31）
      */
     class Register
     {
       public:
-        uint32_t  rId;    ///< 寄存器编号
-        DataType* dt;     ///< 数据类型
-        bool      isVreg; ///< 是否为虚拟寄存器
+        uint32_t  rId;    ///< 寄存器唯一标识编号
+        DataType* dt;     ///< 寄存器存储的数据类型
+        bool      isVreg; ///< 标识是否为虚拟寄存器
 
       public:
+        /// 构造函数
         Register(int reg = 0, DataType* dataType = nullptr, bool isV = false) : rId(reg), dt(dataType), isVreg(isV) {}
 
       public:
+        /// 小于比较，用于 STL 容器排序
         bool operator<(Register other) const;
+        /// 相等比较
         bool operator==(Register other) const;
     };
 
@@ -131,6 +148,7 @@ namespace BE
     class Operand
     {
       public:
+        /// 操作数具体类型枚举
         enum class Type
         {
             REG         = 0,  ///< 寄存器操作数
@@ -138,54 +156,77 @@ namespace BE
             IMMI64      = 2,  ///< 64 位整数立即数
             IMMF32      = 3,  ///< 32 位浮点立即数
             IMMF64      = 4,  ///< 64 位浮点立即数
-            FRAME_INDEX = 5   ///< 栈槽引用（抽象的栈位置）
+            FRAME_INDEX = 5   ///< 栈帧索引（用于访问局部变量/溢出槽）
         };
 
       public:
         DataType* dt;  ///< 操作数的数据类型
-        Type      ot;  ///< 操作数类型
+        Type      ot;  ///< 操作数的种类
 
       public:
+        /// 构造函数
         Operand(DataType* dt, Type ot) : dt(dt), ot(ot) {}
+        /// 虚析构函数，确保派生类正确释放
         virtual ~Operand() = default;
     };
 
+    /// 寄存器操作数派生类
     class RegOperand : public Operand
     {
       public:
-        Register reg;
+        Register reg; ///< 关联的寄存器对象
 
       public:
+        /// 通过寄存器构造寄存器操作数
         RegOperand(Register reg) : Operand(reg.dt, Operand::Type::REG), reg(reg) {}
     };
 
+    /// 32位整数立即数操作数派y生类
     class I32Operand : public Operand
     {
       public:
-        int val;
+        int val; ///< 立即数值
 
       public:
+        /// 构造 32 位整数立即数
         I32Operand(int value) : Operand(I32, Operand::Type::IMMI32), val(value) {}
     };
 
+    /// 32位浮点立即数操作数派生类
     class F32Operand : public Operand
     {
       public:
-        float val;
+        float val; ///< 浮点数值
 
       public:
+        /// 构造 32 位浮点立即数
         F32Operand(float value) : Operand(F32, Operand::Type::IMMF32), val(value) {}
     };
 
+    /// 栈帧索引操作数派生类
     class FrameIndexOperand : public Operand
     {
       public:
-        int frameIndex;
+        int frameIndex; ///< 栈帧中的索引位置
 
       public:
+        /// 构造栈帧索引操作数
         FrameIndexOperand(int fi) : Operand(I64, Operand::Type::FRAME_INDEX), frameIndex(fi) {}
     };
 
+/*
+生命周期：
+指令选择阶段：
+  lw v1, FrameIndex(0)    // 第0个局部变量，偏移未知
+
+帧降低阶段（Pre-RA）：
+  lw v1, 16(sp)           // 计算出偏移为16
+
+寄存器分配后：
+  lw a0, 16(sp)           // 物理寄存器
+*/
+
+    /// 分配并获取一个新的虚拟寄存器
     Register getVReg(DataType* dt);
 }  // namespace BE
 
