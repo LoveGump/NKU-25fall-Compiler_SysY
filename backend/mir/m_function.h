@@ -15,12 +15,14 @@
 namespace BE
 {
     /**
-     * @brief 后端函数
+     * @brief 后端函数 (Machine IR Function)
      *
-     * 存储函数的所有信息，包括：
-     * - 函数名和参数列表
-     * - 所有基本块（按 blockId 索引）
-     * - 栈帧信息（局部变量、溢出槽等）
+     * BE::Function 是后端代码生成的中心数据结构，代表了一个经过指令选择后的机器级函数。
+     * 它的主要作用包括：
+     * 1. **控制流维护**：管理函数内部的所有基本块 (Block)，构成函数的控制流图 (CFG)。
+     * 2. **栈帧管理**：通过 MFrameInfo 记录局部变量、溢出槽 (spill slots) 以及被调用者保存寄存器的布局。
+     * 3. **寄存器分配**：作为寄存器分配器的基本单位，存储虚拟寄存器到物理寄存器的映射上下文。
+     * 4. **代码生成**：最终汇编代码生成的直接来源，包含函数头、序言 (prologue)、主体、尾声 (epilogue) 等。
      */
     class Function
     {
@@ -29,11 +31,11 @@ namespace BE
         std::vector<Register>      params;         ///< 参数对应的虚拟寄存器列表
         std::map<uint32_t, Block*> blocks;         ///< 基本块映射：blockId -> Block*
 
-        int                        stackSize     = 0;      ///< 栈大小（字节）
-        bool                       hasStackParam = false;  ///< 是否有通过栈传递的参数
-        int                        paramSize     = 0;      ///< 传出参数区大小
-        std::vector<MInstruction*> allocInsts;             ///< alloca 指令列表（待处理）
-        MFrameInfo                 frameInfo;              ///< 栈帧信息管理器
+        int                        stackSize     = 0;      ///< 栈大小（字节），包括局部变量和溢出空间
+        bool                       hasStackParam = false;  ///< 是否有通过栈传递的输入参数
+        int                        paramSize     = 0;      ///< 调用其他函数时，传出参数区的大小
+        std::vector<MInstruction*> allocInsts;             ///< 待处理的 alloca 指令列表，用于计算栈空间
+        MFrameInfo                 frameInfo;              ///< 栈帧详细信息管理器
 
       public:
         Function(const std::string& name)

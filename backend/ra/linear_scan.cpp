@@ -40,6 +40,7 @@ namespace BE::RA
      */
     namespace
     {
+        //活跃区间片段
         struct Segment
         {
             int start;
@@ -52,15 +53,17 @@ namespace BE::RA
             BE::Register         vreg;
             std::vector<Segment> segs;
             bool                 crossesCall = false;
-            int                  assignedReg = -1;    // Assigned physical register ID, -1 if spilled
-            int                  spillSlot   = -1;    // Spill slot index, -1 if not spilled
+            int                  assignedReg = -1;    // 分配的物理寄存器，-1表示溢出
+            int                  spillSlot   = -1;    //溢出槽索引
 
+            //添加活跃区间片段
             void addSegment(int s, int e)
             {
                 if (s >= e) return;
                 segs.emplace_back(s, e);
             }
 
+            //合并活跃区间片段
             void merge()
             {
                 if (segs.empty()) return;
@@ -83,9 +86,12 @@ namespace BE::RA
                 segs = std::move(merged);
             }
 
+            // 获取起始点
             int getStart() const { return segs.empty() ? INT_MAX : segs.front().start; }
+            // 获取结束点
             int getEnd() const { return segs.empty() ? 0 : segs.back().end; }
 
+            // 检查某个点是否在区间内
             bool overlaps(int point) const
             {
                 for (const auto& seg : segs)
@@ -95,6 +101,7 @@ namespace BE::RA
                 return false;
             }
 
+            // 检查两个区间是否重叠
             bool overlapsInterval(const Interval& other) const
             {
                 for (const auto& s1 : segs)
@@ -108,17 +115,18 @@ namespace BE::RA
             }
         };
 
+        // 区间比较器：按起始点排序
         struct IntervalOrder
         {
             bool operator()(const Interval* a, const Interval* b) const
             {
-                // Sort by start point, then by vreg ID for determinism
+                // 按起始点排序，相同则按 vreg ID 排序（保证确定性）
                 if (a->getStart() != b->getStart()) return a->getStart() < b->getStart();
                 return a->vreg.rId < b->vreg.rId;
             }
         };
 
-        // Comparator for active set (sorted by end point for easy expiration)
+        // 活跃集合比较器：按结束点排序（方便移除过期区间）
         struct ActiveOrder
         {
             bool operator()(const Interval* a, const Interval* b) const
@@ -128,44 +136,46 @@ namespace BE::RA
             }
         };
 
+        // 判断是否为整数类型
         bool isIntegerType(BE::DataType* dt)
         {
             if (!dt) return true;
             return dt->dt == BE::DataType::Type::INT || dt->dt == BE::DataType::Type::TOKEN;
         }
 
+        // 判断是否为浮点类型
         bool isFloatType(BE::DataType* dt)
         {
             return dt && dt->dt == BE::DataType::Type::FLOAT;
         }
     }  // namespace
 
+    // 筛选可分配的整数寄存器列表
     static std::vector<int> buildAllocatableInt(const BE::Targeting::TargetRegInfo& ri)
     {
-        std::vector<int> allocatable;
-        const auto&      reservedRegs = ri.reservedRegs();
-        std::set<int>    reserved(reservedRegs.begin(), reservedRegs.end());
+        std::vector<int> allocatable;//可分配的寄存器列表
+        const auto&      reservedRegs = ri.reservedRegs();//保留的寄存器列表
+        std::set<int>    reserved(reservedRegs.begin(), reservedRegs.end());//保留的寄存器集合
 
-        // Only use callee-saved integer registers for allocation. Caller-saved
-        // registers are clobbered by every call, and the current allocator
-        // does not insert save/restore around call sites. Restricting the
-        // pool here avoids accidental corruption of values that stay live
-        // across calls, at the cost of a few extra spills.
-        const auto& calleeSaved = ri.calleeSavedIntRegs();
+        // 只使用 callee-saved 寄存器进行分配。caller-saved 寄存器会被每次调用破坏，
+        // 当前分配器不会在调用点周围插入保存/恢复指令。
+        // 限制寄存器池可以避免跨调用的值被意外破坏，代价是可能会有更多溢出。
+        const auto& calleeSaved = ri.calleeSavedIntRegs();// callee-saved 寄存器列表
         for (int r : calleeSaved)
         {
-            if (!reserved.count(r)) allocatable.push_back(r);
+            if (!reserved.count(r)) allocatable.push_back(r);//加入可分配的寄存器列表
         }
         return allocatable;
     }
 
+    // 构建可分配的浮点寄存器列表
     static std::vector<int> buildAllocatableFloat(const BE::Targeting::TargetRegInfo& ri)
     {
         std::vector<int> allocatable;
         const auto&      reservedRegs = ri.reservedRegs();
         std::set<int>    reserved(reservedRegs.begin(), reservedRegs.end());
 
-        // Only use callee-saved FP registers for the same reason as integers.
+        // 同样只使用 callee-saved 浮点寄存器
         const auto& calleeSaved = ri.calleeSavedFloatRegs();
         for (int r : calleeSaved)
         {
@@ -181,18 +191,24 @@ namespace BE::RA
 
         std::cerr << "[RA] " << func.name << " step1 numbering" << std::endl;
         // ============================================================================
-        // Step 1: Instruction numbering 
+        // 第 1 步：指令编号
         // ============================================================================
-        std::map<BE::Block*, std::pair<int, int>>                                   blockRange;
-        std::vector<std::pair<BE::Block*, std::deque<BE::MInstruction*>::iterator>> id2iter;
-        std::set<int>                                                               callPoints;
-        int                                                                         ins_id = 0;
+        std::map<BE::Block*, std::pair<int, int>>                                   blockRange;//每个基本块的指令编号范围
+        std::vector<std::pair<BE::Block*, std::deque<BE::MInstruction*>::iterator>> id2iter;//指令编号到指令的映射
+        std::set<int>                                                               callPoints;//调用点
+        int                                                                         ins_id = 0;//指令编号
         for (auto& [bid, block] : func.blocks)
         {
+            //记录每个基本块的指令编号范围
             int start = ins_id;
+            //记录指令编号到指令的映射
             for (auto it = block->insts.begin(); it != block->insts.end(); ++it, ++ins_id)
             {
                 id2iter.emplace_back(block, it);
+                //记录调用点，调用点的作用是？
+                // 记录调用点
+                // 作用：后续用于判断哪些 vreg 的活跃区间跨越了函数调用
+                // 跨调用的 vreg 必须分配到 callee-saved 寄存器，否则值会被调用破坏
                 if (BE::Targeting::g_adapter->isCall(*it)) callPoints.insert(ins_id);
             }
             blockRange[block] = {start, ins_id};
@@ -200,29 +216,36 @@ namespace BE::RA
 
         std::cerr << "[RA] " << func.name << " step2 USE/DEF" << std::endl;
         // ============================================================================
-        // Step 2: Build USE/DEF sets for each block
+        // 第 2 步：构建每个基本块的 USE/DEF 集合
         // ============================================================================
-        std::map<BE::Block*, std::set<BE::Register>> USE, DEF;
+        std::map<BE::Block*, std::set<BE::Register>> USE, DEF;//USE/DEF 集合    
+        //遍历每个基本块
         for (auto& [bid, block] : func.blocks)
         {
+            // 初始化当前基本块的 USE 和 DEF 集合
             std::set<BE::Register> use, def;
+            // 遍历基本块中的所有指令
             for (auto it = block->insts.begin(); it != block->insts.end(); ++it)
             {
                 std::vector<BE::Register> uses, defs;
+                // 获取当前指令读取（uses）和写入（defs）的寄存器列表
                 BE::Targeting::g_adapter->enumUses(*it, uses);
                 BE::Targeting::g_adapter->enumDefs(*it, defs);
+                // 记录基本块内定义的寄存器
                 for (auto& d : defs)
                     if (!def.count(d)) def.insert(d);
+                // 若寄存器在被当前块定义之前就被使用，则属于该块的 USE 集合（活跃性源头）
                 for (auto& u : uses)
                     if (!def.count(u)) use.insert(u);
             }
+            // 将计算出的集合存入映射表，用于后续的活跃性迭代分析
             USE[block] = std::move(use);
             DEF[block] = std::move(def);
         }
 
         std::cerr << "[RA] " << func.name << " step3 CFG" << std::endl;
         // ============================================================================
-        // Step 3: Build CFG and get successor relations
+        // 第 3 步：构建 CFG 并获取后继关系
         // ============================================================================
         BE::MIR::CFGBuilder                           builder(BE::Targeting::g_adapter);
         BE::MIR::CFG*                                 cfg = builder.buildCFGForFunction(&func);
@@ -245,27 +268,33 @@ namespace BE::RA
 
         std::cerr << "[RA] " << func.name << " step4 liveness" << std::endl;
         // ============================================================================
-        // Step 4: Liveness analysis (IN/OUT)
+        // 第 4 步：活跃性分析（IN/OUT）
         // ============================================================================
         // IN[b] = USE[b] ∪ (OUT[b] − DEF[b])，OUT[b] = ⋃ IN[s]，s ∈ succs[b]
         std::map<BE::Block*, std::set<BE::Register>> IN, OUT;
+        // 迭代计算 IN/OUT，直到收敛（不再变化）
+        // 这是经典的后向数据流分析：信息从后继块向前驱块传播
         bool                                         changed = true;
         while (changed)
         {
             changed = false;
             for (auto& [bid, block] : func.blocks)
             {
+                // 计算 OUT[block] = ⋃ IN[succ]，即所有后继块入口活跃寄存器的并集
                 std::set<BE::Register> newOUT;
                 for (auto* s : succs[block])
                 {
                     auto it = IN.find(s);
                     if (it != IN.end()) newOUT.insert(it->second.begin(), it->second.end());
                 }
+                
+                // 计算 IN[block] = USE[block] ∪ (OUT[block] - DEF[block])
+                // 直觉：入口活跃 = 块内使用的 ∪ (出口活跃但不在块内定义的)
                 std::set<BE::Register> newIN = USE[block];
-
                 for (auto& r : newOUT)
                     if (!DEF[block].count(r)) newIN.insert(r);
 
+                // 如果 IN 或 OUT 有变化，继续迭代
                 if (newOUT != OUT[block] || newIN != IN[block])
                 {
                     OUT[block] = std::move(newOUT);
@@ -279,7 +308,9 @@ namespace BE::RA
 
         std::cerr << "[RA] " << func.name << " step5 intervals" << std::endl;
         // ============================================================================
-        // Step 5: Build live intervals
+        // 第 5 步：构建活跃区间
+        // 活跃区间表示一个 vreg 在哪些指令编号范围内是活跃的
+        // 例如：v1 在指令 [2, 7) 范围内活跃，意味着 v1 的值在这个范围内可能被使用
         // ============================================================================
         std::map<BE::Register, Interval> intervals;
 
@@ -287,7 +318,8 @@ namespace BE::RA
         {
             auto [blockStart, blockEnd] = blockRange[block];
 
-            // All registers in OUT are live at block end
+            // 如果寄存器在块出口活跃（OUT 中），说明它需要传递给后继块
+            // 因此在整个块内都是活跃的
             for (const auto& r : OUT[block])
             {
                 if (!r.isVreg) continue;
@@ -295,7 +327,8 @@ namespace BE::RA
                 intervals[r].addSegment(blockStart, blockEnd);
             }
 
-            // Walk instructions backward to build intervals
+            // 从后向前遍历指令构建区间
+            // 为什么从后向前？因为我们需要先知道「使用点」才能确定活跃范围的终点
             int instIdx = blockEnd - 1;
             for (auto it = block->insts.rbegin(); it != block->insts.rend(); ++it, --instIdx)
             {
@@ -303,16 +336,18 @@ namespace BE::RA
                 BE::Targeting::g_adapter->enumUses(*it, uses);
                 BE::Targeting::g_adapter->enumDefs(*it, defs);
 
-                // Definitions kill the live range at this point
+                // 定义点：vreg 在此处被定义，活跃区间从这里「开始」
+                // 添加一个最小区间 [instIdx, instIdx+1) 表示定义点本身
                 for (auto& d : defs)
                 {
                     if (!d.isVreg) continue;
                     intervals[d].vreg = d;
-                    // Definition point starts a new segment
                     intervals[d].addSegment(instIdx, instIdx + 1);
                 }
 
-                // Uses extend the live range
+                // 使用点：vreg 在此处被使用
+                // 活跃范围从块开始延伸到使用点 [blockStart, instIdx+1)
+                // 这样能确保值从定义点传递到使用点
                 for (auto& u : uses)
                 {
                     if (!u.isVreg) continue;
@@ -322,13 +357,17 @@ namespace BE::RA
             }
         }
 
-        // Merge segments in each interval
+        // 合并每个区间中的片段
+        // 由于从多个块、多个使用点累积片段，可能有重叠或相邻的片段
+        // 合并后得到简洁的活跃区间表示
         for (auto& [vreg, interval] : intervals)
         {
             interval.merge();
         }
 
-        // Mark intervals that cross call points
+        // 标记跨越调用点的区间
+        // 如果 vreg 的活跃区间覆盖了某个 call 指令，必须使用 callee-saved 寄存器
+        // 否则 call 会破坏 caller-saved 寄存器中的值
         for (auto& [vreg, interval] : intervals)
         {
             for (int callPt : callPoints)
@@ -343,51 +382,62 @@ namespace BE::RA
 
         std::cerr << "[RA] " << func.name << " step6 allocate" << std::endl;
         // ============================================================================
-        // Step 6: Linear scan main loop
+        // 第 6 步：线性扫描主循环
         // ============================================================================
-        auto allIntRegs   = buildAllocatableInt(regInfo);
-        auto allFloatRegs = buildAllocatableFloat(regInfo);
+        auto allIntRegs   = buildAllocatableInt(regInfo);//可分配的整数寄存器列表
+        auto allFloatRegs = buildAllocatableFloat(regInfo);//可分配的浮点寄存器列表
 
-        // Separate intervals by type
-        std::vector<Interval*> intIntervals, fpIntervals;
+        // 按类型分离区间
+        std::vector<Interval*> intIntervals, fpIntervals;//整数和浮点区间
+        //遍历所有区间
         for (auto& [vreg, interval] : intervals)
         {
-            if (isIntegerType(vreg.dt))
-                intIntervals.push_back(&interval);
-            else if (isFloatType(vreg.dt))
-                fpIntervals.push_back(&interval);
+            if (isIntegerType(vreg.dt))//如果是整数类型
+                intIntervals.push_back(&interval);//加入整数区间
+            else if (isFloatType(vreg.dt))//如果是浮点类型
+                fpIntervals.push_back(&interval);//加入浮点区间
         }
 
-        // Sort by start point
+        // 按起始点排序
         std::sort(intIntervals.begin(), intIntervals.end(), IntervalOrder());
         std::sort(fpIntervals.begin(), fpIntervals.end(), IntervalOrder());
 
-        // Callee-saved register sets for prioritization
+        // callee-saved 寄存器集合，用于优先级分配
         std::set<int> calleeSavedIntSet(regInfo.calleeSavedIntRegs().begin(), regInfo.calleeSavedIntRegs().end());
         std::set<int> calleeSavedFPSet(regInfo.calleeSavedFloatRegs().begin(), regInfo.calleeSavedFloatRegs().end());
 
-        // Allocate integer registers
+        // 线性扫描分配的核心 lambda 函数
+        // 参数：toAlloc - 待分配的区间列表（已按起始点排序）
+        //       allocRegs - 可分配的物理寄存器列表
+        //       calleeSaved - callee-saved 寄存器集合
         auto allocateIntervals = [&](std::vector<Interval*>& toAlloc, const std::vector<int>& allocRegs,
                                      const std::set<int>& calleeSaved) {
+            // active: 当前活跃的区间集合，按结束点排序（方便移除过期区间）
             std::set<Interval*, ActiveOrder> active;
+            // freeRegs: 当前空闲的物理寄存器
             std::set<int>                    freeRegs(allocRegs.begin(), allocRegs.end());
 
+            // 溢出函数：将区间标记为溢出，并分配栈槽
             auto spillInterval = [&](Interval* iv) {
                 if (!iv) return;
-                iv->assignedReg = -1;
-                int spillWidth  = iv->vreg.dt ? iv->vreg.dt->getDataWidth() : 8;
+                iv->assignedReg = -1;  // 标记为未分配物理寄存器
+                int spillWidth  = iv->vreg.dt ? iv->vreg.dt->getDataWidth() : 8;  // 溢出宽度（4/8字节）
+                // 在栈帧中创建溢出槽
                 if (iv->spillSlot < 0) iv->spillSlot = func.frameInfo.createSpillSlot(spillWidth);
             };
 
+            // 按起始点顺序扫描每个区间
             for (Interval* interval : toAlloc)
             {
                 int start = interval->getStart();
 
-                // Expire old intervals
+                // ========== Step 1: 移除已过期的区间，回收寄存器 ==========
+                // 如果某个 active 区间的结束点 <= 当前起始点，说明它已经不再活跃
                 for (auto it = active.begin(); it != active.end();)
                 {
                     if ((*it)->getEnd() <= start)
                     {
+                        // 回收寄存器到空闲池
                         if ((*it)->assignedReg >= 0) freeRegs.insert((*it)->assignedReg);
                         it = active.erase(it);
                     }
@@ -397,12 +447,13 @@ namespace BE::RA
                     }
                 }
 
-                // Try to find a free register
+                // ========== Step 2: 尝试分配空闲寄存器 ==========
                 int chosenReg = -1;
 
                 if (interval->crossesCall)
                 {
-                    // Prefer callee-saved registers; if none available, force spill later
+                    // 跨调用的区间必须使用 callee-saved 寄存器
+                    // 否则 call 会破坏 caller-saved 寄存器中的值
                     for (int r : freeRegs)
                     {
                         if (calleeSaved.count(r))
@@ -414,29 +465,36 @@ namespace BE::RA
                 }
                 else if (!freeRegs.empty())
                 {
+                    // 不跨调用，任意空闲寄存器都可以
                     chosenReg = *freeRegs.begin();
                 }
 
+                // ========== Step 3: 分配成功或溢出 ==========
                 if (chosenReg >= 0)
                 {
-                    interval->assignedReg = chosenReg;
-                    freeRegs.erase(chosenReg);
-                    active.insert(interval);
+                    // 分配成功！
+                    interval->assignedReg = chosenReg;  // 记录分配的物理寄存器
+                    freeRegs.erase(chosenReg);          // 从空闲池移除
+                    active.insert(interval);            // 加入活跃集合
                 }
                 else
                 {
-                    // Need to spill: choose the interval with the furthest end point
+                    // ========== Step 4: 无空闲寄存器，需要溢出 ==========
+                    // 策略：选择结束点最远的区间溢出（它占用寄存器时间最长）
                     Interval* toSpill = nullptr;
                     for (auto* act : active)
                     {
+                        // 如果当前区间跨调用，只考虑 callee-saved 寄存器
                         if (interval->crossesCall && !calleeSaved.count(act->assignedReg)) continue;
+                        // 选择结束点最远的
                         if (!toSpill || act->getEnd() > toSpill->getEnd()) toSpill = act;
                     }
 
+                    // 决定溢出谁
                     bool canTakeReg = toSpill && (!interval->crossesCall || calleeSaved.count(toSpill->assignedReg));
                     if (canTakeReg && toSpill->getEnd() > interval->getEnd())
                     {
-                        // Spill the active interval, give its register to current
+                        // 情况 A：toSpill 活得更久，溢出它，把寄存器给当前区间
                         interval->assignedReg = toSpill->assignedReg;
                         spillInterval(toSpill);
                         active.erase(toSpill);
@@ -444,70 +502,76 @@ namespace BE::RA
                     }
                     else
                     {
-                        // Spill current interval
+                        // 情况 B：当前区间活得更久，溢出它自己
                         spillInterval(interval);
                     }
                 }
             }
         };
 
-        allocateIntervals(intIntervals, allIntRegs, calleeSavedIntSet);
-        allocateIntervals(fpIntervals, allFloatRegs, calleeSavedFPSet);
+        // 分别对整数和浮点区间进行分配
+        allocateIntervals(intIntervals, allIntRegs, calleeSavedIntSet);    // 整数寄存器
+        allocateIntervals(fpIntervals, allFloatRegs, calleeSavedFPSet);    // 浮点寄存器
 
         std::cerr << "[RA] " << func.name << " step7 rewrite" << std::endl;
         // ============================================================================
-        // Step 7: Rewrite MIR (insert reload/spill, replace use/def)
+        // 第 7 步：重写 MIR
+        // 将虚拟寄存器替换为物理寄存器，对溢出的 vreg 插入 load/store 指令
         // ============================================================================
-        // Build vreg -> assignment mapping
-        std::map<BE::Register, std::pair<int, int>> vregToAssignment;  // vreg -> (physReg, spillSlot)
+        
+        // 构建 vreg -> (physReg, spillSlot) 的映射表
+        // physReg >= 0 表示分配了物理寄存器
+        // spillSlot >= 0 表示溢出到栈
+        std::map<BE::Register, std::pair<int, int>> vregToAssignment;
         for (auto& [vreg, interval] : intervals)
         {
             vregToAssignment[vreg] = {interval.assignedReg, interval.spillSlot};
         }
-        if (func.name == "reverse")
-        {
-            std::cerr << "[RA] mapping for reverse:" << std::endl;
-            for (auto& [vr, asg] : vregToAssignment)
-            {
-                std::cerr << "  v" << vr.rId << " isV=" << vr.isVreg << " dt=" << (vr.dt ? (vr.dt->dt == BE::DataType::Type::INT ? "I" : "F") : "?")
-                          << " -> reg " << asg.first << " spill " << asg.second << std::endl;
-            }
-        }
 
-        // Get scratch registers (prefer reserved registers that are not sp/ra/zero)
-        std::vector<int> scratchIntPool;
-        std::vector<int> scratchFloatPool;
+        // 获取临时寄存器池（用于溢出时的 load/store）
+        // 临时寄存器从保留寄存器中选取，避免影响已分配的寄存器
+        std::vector<int> scratchIntPool;    // 整数临时寄存器池
+        std::vector<int> scratchFloatPool;  // 浮点临时寄存器池
+        
         for (int r : regInfo.reservedRegs())
         {
             if (r >= 32)
-                scratchFloatPool.push_back(r);
+                scratchFloatPool.push_back(r);  // 浮点寄存器 (f0-f31 编号为 32-63)
             else if (r != regInfo.spRegId() && r != regInfo.raRegId() && r != regInfo.zeroRegId() && r != 3 && r != 4 &&
-                     r != 5)  // t0 is used by lowering for big offsets, avoid clobbering it
+                     r != 5)  // 排除 sp, ra, zero, gp, tp, t0（t0 被 lowering 用于大偏移）
                 scratchIntPool.push_back(r);
         }
+        // 如果没有可用的临时寄存器，使用最后一个可分配寄存器作为后备
         if (scratchIntPool.empty() && !allIntRegs.empty()) scratchIntPool.push_back(allIntRegs.back());
         if (scratchFloatPool.empty() && !allFloatRegs.empty()) scratchFloatPool.push_back(allFloatRegs.back());
 
+        // 遍历每个基本块的每条指令
         for (auto& [bid, block] : func.blocks)
         {
             for (size_t idx = 0; idx < block->insts.size(); ++idx)
             {
                 auto* inst = block->insts[idx];
 
+                // 获取当前指令的使用和定义寄存器
                 std::vector<BE::Register> uses, defs;
                 BE::Targeting::g_adapter->enumUses(inst, uses);
                 BE::Targeting::g_adapter->enumDefs(inst, defs);
 
+                // 获取当前指令已占用的物理寄存器（避免冲突）
                 std::vector<BE::Register>      physRegs;
                 BE::Targeting::g_adapter->enumPhysRegs(inst, physRegs);
                 std::set<int> busyPhys;
                 for (auto& pr : physRegs) busyPhys.insert(pr.rId);
 
+                // before: 要在当前指令前插入的指令（reload）
+                // after:  要在当前指令后插入的指令（spill）
                 std::vector<BE::MInstruction*> before, after;
                 std::set<int>                   usedScratchInt, usedScratchFloat;
                 std::vector<int>               useScratchIntList, useScratchFloatList;
 
-                // Handle uses: replace vreg with physReg or insert reload
+                // ========== 处理使用点（uses）==========
+                // 如果分配了物理寄存器：直接替换
+                // 如果溢出了：先从栈加载到临时寄存器，再用临时寄存器替换
                 for (const auto& u : uses)
                 {
                     if (!u.isVreg) continue;
@@ -517,14 +581,18 @@ namespace BE::RA
                     auto [physReg, spillSlot] = assignIt->second;
                     if (physReg >= 0)
                     {
+                        // 情况 1：分配了物理寄存器，直接替换
                         BE::Register phys(physReg, u.dt, false);
                         BE::Targeting::g_adapter->replaceUse(inst, u, phys);
                     }
                     else if (spillSlot >= 0)
                     {
+                        // 情况 2：溢出了，需要插入 reload 指令
                         bool isFloat = isFloatType(u.dt);
                         auto& pool   = isFloat ? scratchFloatPool : scratchIntPool;
                         auto& used   = isFloat ? usedScratchFloat : usedScratchInt;
+                        
+                        // 选择一个未被占用的临时寄存器
                         int   scratch = -1;
                         for (int r : pool)
                         {
@@ -536,7 +604,9 @@ namespace BE::RA
                         if (scratch >= 0)
                         {
                             BE::Register scratchReg(scratch, u.dt, false);
+                            // 在指令前插入：load scratch, spillSlot
                             before.push_back(new BE::FILoadInst(scratchReg, spillSlot, "reload from spill slot"));
+                            // 用临时寄存器替换 vreg
                             BE::Targeting::g_adapter->replaceUse(inst, u, scratchReg);
                             if (isFloat)
                                 useScratchFloatList.push_back(scratch);
@@ -546,7 +616,9 @@ namespace BE::RA
                     }
                 }
 
-                // Handle defs: replace vreg with physReg or insert spill
+                // ========== 处理定义点（defs）==========
+                // 如果分配了物理寄存器：直接替换
+                // 如果溢出了：用临时寄存器替换，然后存储到栈
                 for (const auto& d : defs)
                 {
                     if (!d.isVreg) continue;
@@ -556,14 +628,18 @@ namespace BE::RA
                     auto [physReg, spillSlot] = assignIt->second;
                     if (physReg >= 0)
                     {
+                        // 情况 1：分配了物理寄存器，直接替换
                         BE::Register phys(physReg, d.dt, false);
                         BE::Targeting::g_adapter->replaceDef(inst, d, phys);
                     }
                     else if (spillSlot >= 0)
                     {
+                        // 情况 2：溢出了，需要插入 spill 指令
                         bool isFloat = isFloatType(d.dt);
                         auto& pool   = isFloat ? scratchFloatPool : scratchIntPool;
                         auto& used   = isFloat ? usedScratchFloat : usedScratchInt;
+                        
+                        // 选择一个临时寄存器
                         int   scratch = -1;
                         for (int r : pool)
                         {
@@ -572,6 +648,7 @@ namespace BE::RA
                             used.insert(r);
                             break;
                         }
+                        // 如果没有空闲的，复用之前 use 阶段用过的
                         if (scratch < 0)
                         {
                             if (!isFloat && !useScratchIntList.empty()) scratch = useScratchIntList.front();
@@ -580,18 +657,22 @@ namespace BE::RA
                         if (scratch >= 0)
                         {
                             BE::Register scratchReg(scratch, d.dt, false);
+                            // 用临时寄存器替换 vreg
                             BE::Targeting::g_adapter->replaceDef(inst, d, scratchReg);
+                            // 在指令后插入：store scratch, spillSlot
                             after.push_back(new BE::FIStoreInst(scratchReg, spillSlot, "spill to spill slot"));
                         }
                     }
                 }
 
+                // 插入 reload 指令（在当前指令前）
                 if (!before.empty())
                 {
                     block->insts.insert(block->insts.begin() + idx, before.begin(), before.end());
-                    idx += before.size();
+                    idx += before.size();  // 跳过插入的指令
                 }
 
+                // 插入 spill 指令（在当前指令后）
                 if (!after.empty())
                 {
                     block->insts.insert(block->insts.begin() + idx + 1, after.begin(), after.end());
@@ -599,7 +680,5 @@ namespace BE::RA
             }
         }
 
-        // Debug: check remaining vregs
-        std::cerr << "[RA] function " << func.name << " end" << std::endl;
     }
 }  // namespace BE::RA

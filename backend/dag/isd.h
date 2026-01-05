@@ -12,62 +12,63 @@ namespace BE
         enum class ISD : unsigned
         {
             // Terminators
-            RET = 1,
-            BR,
-            BRCOND,
+            RET = 1,      // 函数返回
+            BR,           // 无条件跳转
+            BRCOND,       // 有条件跳转
 
             // Token for memory/side-effect ordering
-            ENTRY_TOKEN,
-            TOKEN_FACTOR,
+            ENTRY_TOKEN,  // DAG入口Token，用于表示副作用序列的开始
+            TOKEN_FACTOR, // 合并多个Token，用于同步多个副作用路径
 
             // Values and constants
-            COPY,
-            REG,
-            PHI,
-            CONST_I32,
-            CONST_I64,
-            CONST_F32,
+            COPY,//寄存器或节点间的值复制
+            REG,//物理寄存器
+            PHI,//SSA形式的PHI节点
+            CONST_I32,//32位整型常量
+            CONST_I64,//64位整型常量
+            CONST_F32,//32位浮点型常量
             SYMBOL,  // global/function symbol
             LABEL,   // basic block label id
 
             // Memory
-            LOAD,
-            STORE,
-            FRAME_INDEX,  // Abstract stack slot index
-            GEP,
+            LOAD,//加载操作
+            STORE,//存储操作
+            FRAME_INDEX,//抽象栈帧索引
+            GEP,//获取元素地址
 
             // Integer ops
-            ADD,
-            SUB,
-            MUL,
-            DIV,
-            MOD,
-            SHL,
-            ASHR,
-            LSHR,
-            AND,
-            OR,
-            XOR,
+            ADD,//加法
+            SUB,//减法
+            MUL,//乘法
+            DIV,//除法
+            MOD,//取模
+            SHL,//左移
+            ASHR,//算术右移
+            LSHR,//逻辑右移
+            AND,//按位与
+            OR,//按位或
+            XOR,//按位异或
 
             // Floating ops
-            FADD,
-            FSUB,
-            FMUL,
-            FDIV,
+            FADD,//浮点数加法
+            FSUB,//浮点数减法
+            FMUL,//浮点数乘法
+            FDIV,//浮点数除法
 
             // Casts/extends
-            ZEXT,
-            SITOFP,
-            FPTOSI,
+            ZEXT,//零扩展
+            SITOFP,//有符号整数到浮点数
+            FPTOSI,//浮点数到有符号整数
 
             // Compares
-            ICMP,  // cond code in node imm
-            FCMP,  // cond code in node imm
+            ICMP,//整数比较
+            FCMP,//浮点数比较
 
             // Calls
-            CALL,
+            CALL,//调用
         };
 
+        //生成ISD的字符串表示
         static inline const char* toString(ISD op)
         {
             switch (op)

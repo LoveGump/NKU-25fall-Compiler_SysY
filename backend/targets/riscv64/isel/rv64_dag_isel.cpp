@@ -16,53 +16,77 @@ namespace BE::RV64
 {
     [[maybe_unused]]static inline bool imm12(int imm) { return imm >= -2048 && imm <= 2047; }
 
+    // 获取Load操作码
     static Operator getLoadOpForType(BE::DataType* dt)
     {
-        // SysY integers are 32-bit. Some DAG nodes lose their type metadata
-        // during optimization and pass a null dt, which previously defaulted
-        // to 64-bit memory ops. That widened access can clobber adjacent
-        // 32-bit slots (e.g., array elements). Default to word-width when
-        // the type is missing.
-        auto len = dt ? dt->dl : BE::DataType::Length::B32;
+        // 获取数据长度，若类型缺失则默认为 32 位（SysY 整数为 32 位，防止 64 位操作覆盖相邻数据）
+        BE::DataType::Length len;
+        if (dt)
+            len = dt->dl;
+        else
+            len = BE::DataType::Length::B32;
+        // 如果数据类型是浮点型
         if (dt && dt->dt == BE::DataType::Type::FLOAT)
-            return (len == BE::DataType::Length::B32) ? Operator::FLW : Operator::FLD;
-        return (len == BE::DataType::Length::B32) ? Operator::LW : Operator::LD;
+        {
+            // 32 位返回 FLW，否则返回 FLD
+            if (len == BE::DataType::Length::B32)
+                return Operator::FLW;
+            else
+                return Operator::FLD;
+        }
+        // 32 位返回 LW，否则返回 LD
+        if (len == BE::DataType::Length::B32)
+            return Operator::LW;
+        else
+            return Operator::LD;
     }
 
+    //获取Store操作码
     static Operator getStoreOpForType(BE::DataType* dt)
     {
-        auto len = dt ? dt->dl : BE::DataType::Length::B32;
+        BE::DataType::Length len;
+        if (dt)
+            len = dt->dl;
+        else
+            len = BE::DataType::Length::B32;
+
         if (dt && dt->dt == BE::DataType::Type::FLOAT)
-            return (len == BE::DataType::Length::B32) ? Operator::FSW : Operator::FSD;
-        return (len == BE::DataType::Length::B32) ? Operator::SW : Operator::SD;
+        {
+            if (len == BE::DataType::Length::B32)
+                return Operator::FSW;
+            else
+                return Operator::FSD;
+        }
+
+        if (len == BE::DataType::Length::B32)
+            return Operator::SW;
+        else
+            return Operator::SD;
     }
 
+    // ============================================================================
+        // TODO: 实现 DAG 调度
+        // ============================================================================
+        //
+        // 作用：
+        // 将 DAG 的所有节点排序为线性指令序列，保证依赖关系正确。
+        //
+        // 为什么需要：
+        // - DAG 是无序的节点集合，生成代码前必须确定指令的先后顺序
+        // - 必须保证每条指令的操作数在使用前已被计算（拓扑序）
+        // - 需要正确处理 Chain 依赖，维持内存操作与副作用的顺序
+        //
+        // 如何做：
+        // - 后序遍历：从根节点（无使用者的节点）出发，先访问依赖再访问当前节点
     std::vector<const DAG::SDNode*> DAGIsel::scheduleDAG(const DAG::SelectionDAG& dag)
     {
         std::vector<const DAG::SDNode*> result;
         std::set<const DAG::SDNode*> visited;
 
-        // 后序遍历辅助函数
-        std::function<void(const DAG::SDNode*)> postOrder = [&](const DAG::SDNode* node) {
-            if (!node || visited.count(node)) return;
-            visited.insert(node);
-
-            // 先访问所有操作数（依赖）
-            for (unsigned i = 0; i < node->getNumOperands(); ++i)
-            {
-                const DAG::SDNode* opNode = node->getOperand(i).getNode();
-                if (opNode) postOrder(opNode);
-            }
-
-            // 后访问当前节点
-            result.push_back(node);
-        };
-
         // 从所有节点开始遍历（确保不遗漏任何节点）
         for (const auto* node : dag.getNodes())
         {
-            if (node && !visited.count(node))
-                postOrder(node);
+            postOrderHelper(node, visited, result);  // 调用辅助函数
         }
 
         return result;
@@ -371,6 +395,24 @@ namespace BE::RV64
         m_block->insts.push_back(createMove(new RegOperand(dst), new RegOperand(srcReg), LOC_STR));
     }
 
+        // ============================================================================
+        // TODO: 选择 PHI 节点
+        // ============================================================================
+        //
+        // 作用：
+        // 为 PHI 节点生成 MIR 的 PhiInst，记录所有前驱块与对应的值。
+        //
+        // 为什么需要：
+        // - PHI 节点在 SSA 中合并来自不同前驱的值
+        // - 需要保留前驱块信息，供后续 PHI 消解 Pass 使用
+        //
+        // 关键点：
+        // - 此处的常量应直接作为立即数，无需实例化为寄存器
+        // - 至于为什么，你可以思考一下 getOperandReg 的实现
+        // - 因为 getOperandReg 会将 li 指令插入到当前块
+        // - 但 PHI 的语义要求值来自前驱块，而不是当前块
+        // - getOperandReg 对于第一次使用常量的行为是什么，会将立即数加载的指令插入到什么地方？
+        // - 所以常量应该保留为立即数，让 PhiElimination Pass 在正确的
     void DAGIsel::selectPhi(const DAG::SDNode* node, BE::Block* m_block)
     {
         // PHI 节点的操作数成对出现：[value0, label0, value1, label1, ...]
@@ -629,7 +671,7 @@ namespace BE::RV64
         if (node->getNumOperands() < 2) return;
 
         Register           dst    = nodeToVReg_.at(node);
-        DataType*          loadTy = node->getValueType(0);  // Prefer the DAG node's type when choosing width
+        DataType*          loadTy = node->getValueType(0);  // 优先使用 DAG 节点的类型来决定访存宽度
         const DAG::SDNode* addr   = node->getOperand(1).getNode();
 
         const DAG::SDNode* baseNode;
@@ -661,9 +703,9 @@ namespace BE::RV64
             else
                 baseReg = getOperandReg(baseNode, m_block);
 
-        // Always decide the memory width from the DAG node's value type. VReg dtypes can drift when IR regs
-        // are re-used with different widths, which would silently widen loads to 64-bit and read past the
-        // intended 32-bit slots.
+        // 始终根据 DAG 节点的值类型来决定内存访问宽度。
+        // 虚拟寄存器的数据类型可能会在 IR 寄存器被不同宽度复用时发生偏移，
+        // 这会导致 Load 操作静默地被扩展为 64 位，从而读取超出预期 32 位槽位的数据。
         Operator loadOp = getLoadOpForType(loadTy ? loadTy : dst.dt);
         if (loadOp == Operator::LD && loadTy && loadTy->dl == BE::DataType::Length::B32) loadOp = Operator::LW;
 
@@ -701,7 +743,7 @@ namespace BE::RV64
 
         // 确定存储指令类型
         DataType* valType = valNode->getNumValues() > 0 ? valNode->getValueType(0) : BE::I32;
-        Operator  storeOp = getStoreOpForType(valType);
+        Operator storeOp = getStoreOpForType(valType);
         if (storeOp == Operator::SD && srcReg.dt && srcReg.dt->dl == BE::DataType::Length::B32) storeOp = Operator::SW;
 
         // 尝试地址选择
@@ -798,12 +840,12 @@ namespace BE::RV64
                 break;
             }
             case ME::ICmpOp::SGT:
-                // SGT = SLT with swapped operands
+                // SGT = SLT（交换操作数）
                 m_block->insts.push_back(createRInst(Operator::SLT, dst, rhsReg, lhsReg));
                 break;
             case ME::ICmpOp::SLE:
             {
-                // SLE = NOT(SGT) = NOT(SLT swapped)
+                // SLE = NOT(SGT) = NOT(SLT 交换操作数)
                 Register tmp = getVReg(BE::I64);
                 m_block->insts.push_back(createRInst(Operator::SLT, tmp, rhsReg, lhsReg));
                 m_block->insts.push_back(createIInst(Operator::XORI, dst, tmp, 1));
@@ -866,18 +908,18 @@ namespace BE::RV64
                 break;
             case ME::FCmpOp::OGT:
             case ME::FCmpOp::UGT:
-                // OGT = OLT with swapped operands
+                // OGT = OLT（交换操作数）
                 m_block->insts.push_back(createRInst(Operator::FLT_S, dst, rhsReg, lhsReg));
                 break;
             case ME::FCmpOp::OGE:
             case ME::FCmpOp::UGE:
-                // OGE = OLE with swapped operands
+                // OGE = OLE（交换操作数）
                 m_block->insts.push_back(createRInst(Operator::FLE_S, dst, rhsReg, lhsReg));
                 break;
             case ME::FCmpOp::ONE:
             case ME::FCmpOp::UNE:
             {
-                // ONE = NOT(OEQ)
+                // ONE = NOT(OEQ)，不等于 = 取反等于
                 Register tmp = getVReg(BE::I64);
                 m_block->insts.push_back(createRInst(Operator::FEQ_S, tmp, lhsReg, rhsReg));
                 m_block->insts.push_back(createIInst(Operator::XORI, dst, tmp, 1));
@@ -897,7 +939,7 @@ namespace BE::RV64
             // 无条件分支: BR [Chain, Target]
             if (node->getNumOperands() < 1) return;
 
-            // allow optional chain at operand 0
+            // 允许操作数 0 为可选的 Chain
             int                  targetIdx = (node->getNumOperands() == 1) ? 0 : 1;
             const DAG::SDNode*   targetNode = node->getOperand(targetIdx).getNode();
             if (!targetNode || !targetNode->hasImmI64()) return;
@@ -974,7 +1016,7 @@ namespace BE::RV64
             Register  argReg  = getOperandReg(argNode, m_block);
             DataType* argType = argNode->getNumValues() > 0 ? argNode->getValueType(0) : BE::I64;
 
-            unsigned argPos = idx - 2;  // argument index in call
+            unsigned argPos = idx - 2;  // 参数在调用中的索引位置
             if (argPos < 8)
             {
                 regArgs.push_back({argPos, argReg, argType});
@@ -1210,6 +1252,23 @@ namespace BE::RV64
         target_->buildDAG(ir_module_);
 
         for (auto* f : ir_module_->functions) selectFunction(f);
+    }
+
+
+    void DAGIsel::postOrderHelper(
+    const DAG::SDNode* node,
+    std::set<const DAG::SDNode*>& visited,
+    std::vector<const DAG::SDNode*>& result)
+    {
+    if (!node || visited.count(node)) return;
+    visited.insert(node);
+    
+    for (unsigned i = 0; i < node->getNumOperands(); ++i) {
+        const DAG::SDNode* opNode = node->getOperand(i).getNode();
+        if (opNode) postOrderHelper(opNode, visited, result);  // 递归
+    }
+    
+    result.push_back(node);
     }
 
 }  // namespace BE::RV64

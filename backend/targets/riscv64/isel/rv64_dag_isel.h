@@ -19,6 +19,8 @@
  * 额外的，如果你正确实现了 dag 的构建，那么你可以在其它 Target （如 aarch64）中直接复用构建好的 dag，从而减少重复劳动
  */
 
+
+
 namespace BE::Targeting
 {
     class BackendTarget;
@@ -65,41 +67,46 @@ namespace BE::RV64
         std::map<const DAG::SDNode*, Register> nodeToVReg_;  ///< DAG 节点 -> 其结果虚拟寄存器
         std::set<const DAG::SDNode*>           selected_;    ///< 已经选择过的节点集合
 
-        void runImpl();
-        void importGlobals();
-        void selectFunction(ME::Function* ir_func);
+        void runImpl();//入口
+        void importGlobals();//导入全局变量
+        void selectFunction(ME::Function* ir_func);//选择函数
 
-        void collectAllocas(ME::Function* ir_func);
-        void setupParameters(ME::Function* ir_func);
-        void selectBlock(ME::Block* ir_block, const DAG::SelectionDAG& dag);
+        void collectAllocas(ME::Function* ir_func);//收集 alloca
+        void setupParameters(ME::Function* ir_func);//设置参数
+        void selectBlock(ME::Block* ir_block, const DAG::SelectionDAG& dag);//选择基本块
 
         // ==================== 阶段 1：调度（Schedule） ====================
 
-        std::vector<const DAG::SDNode*> scheduleDAG(const DAG::SelectionDAG& dag);
-        void                            allocateRegistersForNode(const DAG::SDNode* node);
+        std::vector<const DAG::SDNode*> scheduleDAG(const DAG::SelectionDAG& dag);//调度DAG
+        void                            allocateRegistersForNode(const DAG::SDNode* node);//分配寄存器
 
         // ==================== 阶段 2：选择（Select） ====================
 
-        void     selectNode(const DAG::SDNode* node, BE::Block* m_block);
-        Register getOperandReg(const DAG::SDNode* node, BE::Block* m_block);
-        Register materializeAddress(const DAG::SDNode* node, BE::Block* m_block);
-        bool     selectAddress(const DAG::SDNode* addrNode, const DAG::SDNode*& baseNode, int64_t& offset);
-        Register getOrCreateVReg(size_t ir_reg_id, BE::DataType* dt);
+        void     selectNode(const DAG::SDNode* node, BE::Block* m_block);//选择节点
+        Register getOperandReg(const DAG::SDNode* node, BE::Block* m_block);//获取操作数寄存器
+        Register materializeAddress(const DAG::SDNode* node, BE::Block* m_block);// materializeAddress
+        bool     selectAddress(const DAG::SDNode* addrNode, const DAG::SDNode*& baseNode, int64_t& offset);//选择地址
+        Register getOrCreateVReg(size_t ir_reg_id, BE::DataType* dt);//获取或创建虚拟寄存器
 
-        void selectCopy(const DAG::SDNode* node, BE::Block* m_block);
-        void selectPhi(const DAG::SDNode* node, BE::Block* m_block);
-        void selectBinary(const DAG::SDNode* node, BE::Block* m_block);
-        void selectUnary(const DAG::SDNode* node, BE::Block* m_block);
-        void selectLoad(const DAG::SDNode* node, BE::Block* m_block);
-        void selectStore(const DAG::SDNode* node, BE::Block* m_block);
-        void selectICmp(const DAG::SDNode* node, BE::Block* m_block);
-        void selectFCmp(const DAG::SDNode* node, BE::Block* m_block);
-        void selectBranch(const DAG::SDNode* node, BE::Block* m_block);
-        void selectCall(const DAG::SDNode* node, BE::Block* m_block);
-        void selectRet(const DAG::SDNode* node, BE::Block* m_block);
-        void selectCast(const DAG::SDNode* node, BE::Block* m_block);
+        void selectCopy(const DAG::SDNode* node, BE::Block* m_block);//选择copy
+        void selectPhi(const DAG::SDNode* node, BE::Block* m_block);//选择phi
+        void selectBinary(const DAG::SDNode* node, BE::Block* m_block);//选择二元操作
+        void selectUnary(const DAG::SDNode* node, BE::Block* m_block);//选择一元操作
+        void selectLoad(const DAG::SDNode* node, BE::Block* m_block);//选择load
+        void selectStore(const DAG::SDNode* node, BE::Block* m_block);//选择store
+        void selectICmp(const DAG::SDNode* node, BE::Block* m_block);//选择icmp
+        void selectFCmp(const DAG::SDNode* node, BE::Block* m_block);//选择fcmp
+        void selectBranch(const DAG::SDNode* node, BE::Block* m_block);//选择branch
+        void selectCall(const DAG::SDNode* node, BE::Block* m_block);//选择call
+        void selectRet(const DAG::SDNode* node, BE::Block* m_block);//选择ret
+        void selectCast(const DAG::SDNode* node, BE::Block* m_block);//选择cast
 
-        int dataTypeSize(BE::DataType* dt);
+        int dataTypeSize(BE::DataType* dt);//数据类型宽度
+
+        //后续遍历辅助函数
+        static void postOrderHelper(const DAG::SDNode* node,
+                                    std::set<const DAG::SDNode*>& visited,
+                                    std::vector<const DAG::SDNode*>& result);
     };
 
 }  // namespace BE::RV64

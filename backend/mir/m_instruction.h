@@ -28,11 +28,17 @@ namespace BE
     class MInstruction
     {
       public:
-        InstKind    kind;     ///< 指令类型（NOP/PHI/MOVE/TARGET 等）
-        std::string comment;  ///< 可选的注释信息
-        uint32_t    id;       ///< 指令 ID（用于寄存器分配等）
+        InstKind    kind;     ///< 指令类型：标识指令具体类别；影响后续指令选择与发射；决定了指令在流水线中的基本行为。
+        std::string comment;  ///< 调试注释：存储可读性信息；不影响代码生成逻辑；在汇编输出中作为注释行出现。
+        uint32_t    id;       ///< 指令 ID：唯一标识符；用于活跃分析和寄存器分配中的索引；在指令序列中提供拓扑参考。
 
       public:
+        /**
+         * @brief 销毁指令对象
+         * 
+         * 静态辅助函数，用于安全释放指令内存。
+         * @param inst 指向待销毁指令的指针
+         */
         static void delInst(MInstruction* inst)
         {
             if (!inst) return;
@@ -41,7 +47,16 @@ namespace BE
         }
 
       protected:
+        /**
+         * @brief 构造函数
+         * 
+         * 仅供派生类（如 PseudoInst 或 具体后端指令）调用。
+         * @param k 指令的类别标识
+         * @param c 关联的调试注释串
+         */
         MInstruction(InstKind k, const std::string& c = "") : kind(k), comment(c) {}
+
+        /// @brief 虚析构函数，确保派生类资源能够被正确回收
         virtual ~MInstruction() = default;
     };
 
@@ -72,10 +87,10 @@ namespace BE
     class PhiInst : public PseudoInst
     {
       public:
-        using labelId = uint32_t;
-        using srcOp   = Operand*;
-        std::map<labelId, srcOp> incomingVals;  ///< 前驱块 ID -> 对应的值
-        Register                 resReg;        ///< 结果寄存器
+        using labelId = uint32_t;///前驱块 ID
+        using srcOp   = Operand*;///源操作数
+        std::map<labelId, srcOp> incomingVals;  ///< 来源映射：记录不同路径的来源值；在 PhiElimination 阶段决定插入 Move 的位置；实现 SSA 形式的合并。
+        Register                 resReg;        ///< 结果寄存器：存储合并后的结果；作为后续指令的源操作数；在物理寄存器分配后被具体化。
 
       public:
         PhiInst(Register res, const std::string& c = "") : PseudoInst(InstKind::PHI, c), resReg(res) {}
@@ -90,8 +105,8 @@ namespace BE
     class MoveInst : public PseudoInst
     {
       public:
-        Operand* src;   ///< 源操作数（寄存器或立即数）
-        Operand* dest;  ///< 目标操作数（寄存器）
+        Operand* src;   ///< 源操作数：参与数据流传递；最终映射为 MOV 或 LI 指令；定义了数据的来源。
+        Operand* dest;  ///< 目标操作数：接收计算结果；定义了寄存器的生命周期起点；决定了数据的去向。
 
       public:
         MoveInst(Operand* s, Operand* d, const std::string& c = "") : PseudoInst(InstKind::MOVE, c), src(s), dest(d) {}
@@ -106,8 +121,8 @@ namespace BE
     class FILoadInst : public PseudoInst
     {
       public:
-        Register dest;        ///< 目标物理寄存器
-        int      frameIndex;  ///< MFrameInfo 中的溢出槽索引
+        Register dest;        ///< 目标寄存器：用于恢复溢出到栈的值；在 StackLowering 中转换为具体的 Load 指令；作为后续计算的输入。
+        int      frameIndex;  ///< 栈槽索引：关联 MFrameInfo 中的偏移量；决定了访存的具体地址计算；标识了溢出数据在栈帧中的位置。
 
       public:
         FILoadInst(Register d, int fi, const std::string& c = "")
@@ -124,8 +139,8 @@ namespace BE
     class FIStoreInst : public PseudoInst
     {
       public:
-        Register src;         ///< 源物理寄存器
-        int      frameIndex;  ///< MFrameInfo 中的溢出槽索引
+        Register src;         ///< 源寄存器：待存储的物理寄存器；用于将寄存器值溢出到内存；在 StackLowering 中转换为具体的 Store 指令。
+        int      frameIndex;  ///< 栈槽索引：指定溢出数据在栈帧中的位置；确保数据在函数调用或寄存器压力大时能正确保存；关联内存地址。
 
       public:
         FIStoreInst(Register s, int fi, const std::string& c = "")
@@ -133,8 +148,11 @@ namespace BE
         {}
     };
 
+    //创建MoveInst，从源操作数src移动到目标操作数dst
     MoveInst* createMove(Operand* dst, Operand* src, const std::string& c = "");
+    //创建MoveInst，从立即数imme移动到目标操作数dst
     MoveInst* createMove(Operand* dst, int imme, const std::string& c = "");
+    //创建MoveInst，从立即数imme移动到目标操作数dst
     MoveInst* createMove(Operand* dst, float imme, const std::string& c = "");
 }  // namespace BE
 
