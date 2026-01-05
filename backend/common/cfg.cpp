@@ -5,6 +5,7 @@ namespace BE::MIR
 {
     CFG::CFG() : max_label(0), entry_block(nullptr), ret_block(nullptr) {}
 
+    // 添加新块到 CFG
     void CFG::addNewBlock(uint32_t id, BE::Block* block)
     {
         blocks[id] = block;
@@ -19,6 +20,7 @@ namespace BE::MIR
         }
     }
 
+    // 在 CFG 中创建边
     void CFG::makeEdge(uint32_t from, uint32_t to)
     {
         uint32_t max_id = std::max(from, to);
@@ -41,10 +43,12 @@ namespace BE::MIR
         }
     }
 
+    // 在 CFG 中移除边
     void CFG::removeEdge(uint32_t from, uint32_t to)
     {
         if (from >= graph_id.size() || to >= inv_graph_id.size()) return;
 
+        // 找到并移除正向边
         auto it_id = std::find(graph_id[from].begin(), graph_id[from].end(), to);
         if (it_id != graph_id[from].end())
         {
@@ -53,6 +57,7 @@ namespace BE::MIR
             graph[from].erase(graph[from].begin() + idx);
         }
 
+        // 反向边
         auto it_inv_id = std::find(inv_graph_id[to].begin(), inv_graph_id[to].end(), from);
         if (it_inv_id != inv_graph_id[to].end())
         {

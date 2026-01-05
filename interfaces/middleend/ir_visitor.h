@@ -29,10 +29,13 @@ namespace ME
     class ZextInst;
     class PhiInst;
 
+    // 非指令类型列表
     using NonInstTypeSet = TypeList<Module, Function, Block>;
+    // 指令类型列表
     using InstTypeSet    = TypeList<LoadInst, StoreInst, ArithmeticInst, IcmpInst, FcmpInst, AllocaInst, BrCondInst,
         BrUncondInst, GlbVarDeclInst, CallInst, FuncDeclInst, FuncDefInst, RetInst, GEPInst, FP2SIInst, SI2FPInst,
         ZextInst, PhiInst>;
+    // 全类型列表
     using TypeSet        = type_list_utils::Concat_t<NonInstTypeSet, InstTypeSet>;
 
     template <typename... Ts>

@@ -17,6 +17,7 @@
  */
 namespace BE::Targeting
 {
+    // 目标指令适配器基类
     class TargetInstrAdapter
     {
       public:

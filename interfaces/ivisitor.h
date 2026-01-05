@@ -54,79 +54,100 @@ std::string result = apply(visitor, d, 3);  // 第一个参数为访问者实例
 #include <utility>
 #include <optional>
 
+// 类型列表定义与操作
 template <typename... Ts>
 struct TypeList
 {
-    static constexpr size_t size = sizeof...(Ts);
-    using tuple_type             = std::tuple<Ts...>;
+    static constexpr size_t size = sizeof...(Ts); // 类型数量
+    using tuple_type             = std::tuple<Ts...>; // 对应的元组类型
 };
 
 namespace type_list_utils
 {
+    // 声明拼接类型列表
     template <typename List1, typename List2>
     struct Concat;
 
+    // 拼接类型列表实现
     template <typename... Ts1, typename... Ts2>
     struct Concat<TypeList<Ts1...>, TypeList<Ts2...>>
     {
         using type = TypeList<Ts1..., Ts2...>;
     };
 
+    // 拼接类型列表别名
     template <typename List1, typename List2>
     using Concat_t = typename Concat<List1, List2>::type;
 
+    // 向类型列表末尾添加类型
     template <typename List, typename T>
     struct Append;
 
+    // 添加类型实现
     template <typename... Ts, typename T>
     struct Append<TypeList<Ts...>, T>
     {
         using type = TypeList<Ts..., T>;
     };
 
+    // 添加类型别名
     template <typename List, typename T>
     using Append_t = typename Append<List, T>::type;
 
+    // 检查类型列表是否包含某类型
     template <typename List, typename T>
     struct Contains;
 
+    // 递归终止条件
+    // 列表为空，返回 false
     template <typename T>
     struct Contains<TypeList<>, T> : std::false_type
     {};
 
+    // 列表的第一个类型匹配，返回 true
     template <typename T, typename... Rest>
     struct Contains<TypeList<T, Rest...>, T> : std::true_type
     {};
 
+    // 递归检查剩余类型，第一个情况是U,不是T,继续检查Rest
     template <typename U, typename T, typename... Rest>
     struct Contains<TypeList<U, Rest...>, T> : Contains<TypeList<Rest...>, T>
     {};
 
+    // Contains<List, T>继承自std::true_type或std::false_type
+    // 因此可以使用value成员获取结果，这里直接给出Contains_v别名
     template <typename List, typename T>
     constexpr bool Contains_v = Contains<List, T>::value;
 }  // namespace type_list_utils
 
+// 访问者模式基础设施
 struct iVisitErased
 {
     virtual ~iVisitErased() = default;
 };
 
+// 带返回值和参数的访问者接口
+// decay_t 的作用是去除引用和const volatile 限定符，确保参数类型一致
 template <typename R, typename... Args>
 struct iVisit
 {
+    // 返回类型信息
     using ReturnType       = R;
+    // 参数类型信息
     using DecayedArgsTuple = std::tuple<std::decay_t<Args>...>;
     virtual ~iVisit()      = default;
 };
 
 namespace detail
 {
+    // 为每个类型生成访问函数的纯虚接口
     template <typename T>
     struct ErasedVisitDecl
     {
         virtual void* visit(T&) = 0;
     };
 
+    // 也是为每个类型生成访问函数的纯虚接口，但带有返回值和参数
     template <typename R, typename T, typename... Args>
     struct TypedVisitDecl
     {
@@ -134,9 +155,11 @@ namespace detail
     };
 }  // namespace detail
 
+// 访问者集合模板：针对 Ts... 生成统一的访问接口和包装器
 template <typename... Ts>
 struct VisitSet
 {
+    // 擦除版访问者接口：只保留 visit(T&) 以便 accept 调用
     struct ErasedVisitor : iVisitErased, detail::ErasedVisitDecl<Ts>...
     {
         using detail::ErasedVisitDecl<Ts>::visit...;
@@ -144,6 +167,7 @@ struct VisitSet
         virtual ~ErasedVisitor() = default;
     };
 
+    // 带返回值和参数的访问者接口：要求实现 visit(T&, Args...)
     template <typename R, typename... Args>
     struct Visitor : iVisit<R, Args...>, detail::TypedVisitDecl<R, Ts, Args...>...
     {
@@ -152,9 +176,11 @@ struct VisitSet
         virtual ~Visitor() = default;
     };
 
+    // 非 void 返回值的访问者包装器（用于 apply）
     template <typename R, typename VisitorType, typename ArgsTuple, typename... Vs>
     class VisitorWrapperNV;
 
+    // 递归基类：只持有真实访问者与参数，并提供 dispatch/invoke
     template <typename R, typename VisitorType, typename ArgsTuple>
     class VisitorWrapperNV<R, VisitorType, ArgsTuple> : public ErasedVisitor
     {
@@ -164,16 +190,18 @@ struct VisitSet
             : concrete(concrete), argsTuple(std::move(args))
         {}
 
+        // 取回在 dispatch 中保存的结果
         R takeResult() { return std::move(*resultOpt); }
 
       protected:
-        using TupleType = ArgsTuple;
-        VisitorType&     concrete;
-        ArgsTuple        argsTuple;
-        std::optional<R> resultOpt;
+        using TupleType = ArgsTuple;    // 参数元组类型
+        VisitorType&     concrete;      // 真实访问者引用
+        ArgsTuple        argsTuple;     // 参数元组
+        std::optional<R> resultOpt;     // 保存返回值
 
         using ErasedVisitor::visit;
 
+        // 通过元组参数调用真实 visit，并缓存返回值
         template <typename T>
         void* dispatch(T& obj)
         {
@@ -181,6 +209,7 @@ struct VisitSet
             return &(*resultOpt);
         }
 
+        // 展开元组转发到具体访问者
         template <typename T, std::size_t... I>
         R invoke(T& obj, std::index_sequence<I...>)
         {
@@ -188,6 +217,7 @@ struct VisitSet
         }
     };
 
+    // 递归继承：为每个 T 覆盖 visit(T&) 并转发到 dispatch
     template <typename R, typename VisitorType, typename ArgsTuple, typename T, typename... Rest>
     class VisitorWrapperNV<R, VisitorType, ArgsTuple, T, Rest...>
         : public VisitorWrapperNV<R, VisitorType, ArgsTuple, Rest...>
@@ -202,9 +232,11 @@ struct VisitSet
         void* visit(T& v) override { return dispatch(v); }
     };
 
+    // void 返回值的访问者包装器（逻辑同上，但不保存结果）
     template <typename VisitorType, typename ArgsTuple, typename... Vs>
     class VisitorWrapperV;
 
+    // 递归基类：void 版本
     template <typename VisitorType, typename ArgsTuple>
     class VisitorWrapperV<VisitorType, ArgsTuple> : public ErasedVisitor
     {
@@ -216,12 +248,14 @@ struct VisitSet
         void takeResult() {}
 
       protected:
-        using TupleType = ArgsTuple;
-        VisitorType& concrete;
-        ArgsTuple    argsTuple;
+        using TupleType = ArgsTuple; // 参数元组类型
+        //  visit 调用转发给这个 concrete，所以叫“真实/具体访问者”
+        VisitorType& concrete;      // 真实访问者引用
+        ArgsTuple    argsTuple;     // 参数元组
 
         using ErasedVisitor::visit;
 
+        // 通过元组参数调用真实 visit
         template <typename T>
         void* dispatch(T& obj)
         {
@@ -229,6 +263,7 @@ struct VisitSet
             return nullptr;
         }
 
+        // 展开元组转发到具体访问者
         template <typename T, std::size_t... I>
         void invoke(T& obj, std::index_sequence<I...>)
         {
@@ -236,6 +271,7 @@ struct VisitSet
         }
     };
 
+    // 递归继承：为每个 T 覆盖 visit(T&) 并转发到 dispatch
     template <typename VisitorType, typename ArgsTuple, typename T, typename... Rest>
     class VisitorWrapperV<VisitorType, ArgsTuple, T, Rest...> : public VisitorWrapperV<VisitorType, ArgsTuple, Rest...>
     {
@@ -249,6 +285,7 @@ struct VisitSet
         void* visit(T& v) override { return dispatch(v); }
     };
 
+    // 非 void 返回值的 apply：包装 -> accept -> 取回结果
     template <typename R, typename Visitable, typename... DeclaredArgs, typename... CallArgs>
     static std::enable_if_t<!std::is_void_v<R>, R> apply(
         Visitable& vt, Visitor<R, DeclaredArgs...>& visitor, CallArgs&&... args)
@@ -261,6 +298,7 @@ struct VisitSet
         return wrapper.takeResult();
     }
 
+    // void 返回值的 apply：包装 -> accept
     template <typename R, typename Visitable, typename... DeclaredArgs, typename... CallArgs>
     static std::enable_if_t<std::is_void_v<R>, void> apply(
         Visitable& vt, Visitor<R, DeclaredArgs...>& visitor, CallArgs&&... args)

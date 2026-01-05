@@ -6,13 +6,11 @@
 namespace BE::RV64::Passes::Lowering
 {
     // 可以修改为线性时间复杂度的指令的构造
+    // 部分随机访问和删除操作会降低性能，但考虑到 PHI 指令数量通常较少，影响有限
     using namespace BE;
     using namespace BE::RV64;
 
-    // 一个前驱块可能对应多个 PHI 的拷贝（多个 PHI 指令共享同一前驱）
-    using CopyList = std::vector<std::pair<Register, Operand*>>;
-
-    static std::vector<PhiInst*> collectPhis(BE::Block* block)
+    std::vector<PhiInst*> PhiEliminationPass::collectPhis(BE::Block* block)
     {
         std::vector<PhiInst*> phis;
         for (auto* inst : block->insts)
@@ -22,7 +20,7 @@ namespace BE::RV64::Passes::Lowering
     }
 
     // 将 PHI 指令按前驱块分组：predLabel -> [(dst, src), ...]
-    static std::map<uint32_t, CopyList> aggregateCopies(const std::vector<PhiInst*>& phis)
+    std::map<uint32_t, PhiEliminationPass::CopyList> PhiEliminationPass::aggregateCopies(const std::vector<PhiInst*>& phis)
     {
         std::map<uint32_t, CopyList> copiesPerPred;
         for (auto* phi : phis)
@@ -32,18 +30,13 @@ namespace BE::RV64::Passes::Lowering
     }
 
     /**
+     * 关键边：一条从有多个后继的块，连到有多个前驱的块的边。
      * 关键边分裂：当条件跳转指向当前块时，需要插入中间块避免污染另一分支
-     *
-     * 例如：
-     *   BB_pred:
-     *     beq x1, x2, BB_target   <- 条件跳转到目标块
-     *     j BB_other              <- 无条件跳转到另一块
-     *
      * 如果直接在 BB_pred 插入拷贝，会影响 BB_other 分支。
      * 解决方案：插入中间块 BB_edge，让条件跳转指向它，再由它跳转到原目标。
      */
-    static BE::Block* splitCriticalEdge(BE::Function* func, BE::Block* predBlock, uint32_t blockId,
-                                        const BE::Targeting::TargetInstrAdapter* adapter)
+    BE::Block* PhiEliminationPass::splitCriticalEdge(BE::Function* func, BE::Block* predBlock, uint32_t blockId,
+                                                     const BE::Targeting::TargetInstrAdapter* adapter)
     {
         
         // 查找指向目标块的条件跳转
@@ -79,8 +72,8 @@ namespace BE::RV64::Passes::Lowering
     }
 
     // 确定拷贝指令的插入位置
-    static size_t findInsertIndex(BE::Block* predBlock, uint32_t blockId,
-                                  const BE::Targeting::TargetInstrAdapter* adapter)
+    size_t PhiEliminationPass::findInsertIndex(BE::Block* predBlock, uint32_t blockId,
+                                               const BE::Targeting::TargetInstrAdapter* adapter)
     {
         size_t n = predBlock->insts.size();
         if (n == 0) return 0;
@@ -96,7 +89,7 @@ namespace BE::RV64::Passes::Lowering
     }
 
     // 检查 dst 是否被用作其他拷贝的 src
-    static bool isDestUsedAsSrc(const Register& dst, const CopyList& copies)
+    bool PhiEliminationPass::isDestUsedAsSrc(const Register& dst, const CopyList& copies)
     {
         for (auto& [_, srcOp] : copies)
             if (auto* srcReg = dynamic_cast<RegOperand*>(srcOp))
@@ -105,7 +98,7 @@ namespace BE::RV64::Passes::Lowering
     }
 
     // 移除 dst == src 的自拷贝
-    static bool removeSelfCopies(CopyList& copies)
+    bool PhiEliminationPass::removeSelfCopies(CopyList& copies)
     {
         size_t before = copies.size();
         for (auto it = copies.begin(); it != copies.end(); )
@@ -126,7 +119,7 @@ namespace BE::RV64::Passes::Lowering
      *   1. 无依赖：直接执行 (dst 不被其他拷贝用作 src)
      *   2. 有环：使用临时寄存器打破环 (a <- b, b <- a => tmp <- a, a <- b, b <- tmp)
      */
-    static std::vector<MInstruction*> resolveParallelCopies(CopyList copies)
+    std::vector<MInstruction*> PhiEliminationPass::resolveParallelCopies(CopyList copies)
     {
         std::vector<MInstruction*> result;
 
@@ -149,7 +142,7 @@ namespace BE::RV64::Passes::Lowering
             }
             if (found) continue;
 
-            // 剩余拷贝一定存在环，用临时寄存器打破
+            // 剩余拷贝一定只剩下环，用临时寄存器打破
             std::map<Register, Register> destToSrc;
             for (auto& [dst, srcOp] : copies)
                 if (auto* srcReg = dynamic_cast<RegOperand*>(srcOp))
